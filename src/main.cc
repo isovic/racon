@@ -34,13 +34,21 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.raw_contigs_path), VALUE_TYPE_STRING, "", "raw", "", "Path to the raw contig sequences (output from the layout step). GFA, FASTA/FASTQ or SAM formats allowed.", -3, "Input/Output options");
   argparser.AddArgument(&(parameters.aln_path), VALUE_TYPE_STRING, "", "aln", "", "Path to a SAM file with read-to-raw contig alignments.", -2, "Input/Output options");
   argparser.AddArgument(&(parameters.alt_contig_path), VALUE_TYPE_STRING, "", "temp", "", "Extracted alternate contigs. Output is in SAM format.", -1, "Input/Output options");
+  argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "5000", "Length of the window to perform POA on.", 0, "Input/Output options");
+  argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "q", "qvthresh", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped.", 0, "Algorithm");
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
+
+  if (argc == 1) {
+    fprintf (stderr, "  %s [options] <raw> <aln> <temp>\n\n", argv[0]);
+    fprintf (stderr, "%s\n", argparser.VerboseUsage().c_str());
+    exit(1);
+  }
 
   argparser.ProcessArguments(argc, argv);
 
   /// Check if help was triggered.
   if (argparser.GetArgumentByLongName("help")->is_set == true) {
-//    PrintUsage();
+    fprintf (stderr, "  %s [options] <raw> <aln> <temp>\n\n", argv[0]);
     fprintf (stderr, "%s\n", argparser.VerboseUsage().c_str());
     exit(1);
   }
@@ -55,7 +63,7 @@ int main(int argc, char* argv[]) {
 
   std::string alt_contig_path = argv[3];
 
-  Consensus(seqs_gfa, seqs_sam, alt_contig_path);
+  Consensus(parameters, seqs_gfa, seqs_sam);
 
 	return 0;
 }

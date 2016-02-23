@@ -15,6 +15,8 @@ struct ProgramParameters {
   std::string aln_path = "";
   std::string alt_contig_path = "";
   std::string out_fmt = "fasta";
+  int64_t window_len = 5000;
+  double qv_threshold = 10.0;
 };
 
 

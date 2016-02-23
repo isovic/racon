@@ -1,5 +1,5 @@
 /*
- * consensus.cc
+b * consensus.cc
  *
  *  Created on: Feb 15, 2016
  *      Author: isovic
@@ -31,7 +31,7 @@ int AlignmentsToContigs(const SequenceFile &alns, std::vector<std::string> &ctg_
   return 0;
 }
 
-int ExtractAltContigs(std::vector<const SingleSequence *> &ctg_alns, int64_t raw_ctg_len, double coverage_threshold, double percent_overlap, std::vector<std::vector<const SingleSequence *> *> &ret_alt_contigs, std::vector<const SingleSequence *> &rejected_alns) {
+int ExtractAltContigs(std::vector<const SingleSequence *> &ctg_alns, int64_t raw_ctg_len, double coverage_threshold, double percent_overlap, double qv_threshold, std::vector<std::vector<const SingleSequence *> *> &ret_alt_contigs, std::vector<const SingleSequence *> &rejected_alns) {
   ret_alt_contigs.clear();
 
   // This sorts ascending by the pos field.
@@ -42,7 +42,8 @@ int ExtractAltContigs(std::vector<const SingleSequence *> &ctg_alns, int64_t raw
   std::vector<const SingleSequence *> alns_to_process;
   alns_to_process.reserve(ctg_alns.size());
   for (int64_t i=0; i<ctg_alns.size(); i++) {
-//    if (ctg_alns[i]->CalcAverageBQ() < 10.0) { continue; }
+    double average_bq = ctg_alns[i]->CalcAverageBQ();
+    if (average_bq >= 0 && average_bq < qv_threshold) { continue; }
 //    printf ("ctg_alns[i]->CalcAverageBQ() = %f\n", ctg_alns[i]->CalcAverageBQ());
 
     if (ctg_alns[i]->get_aln().IsMapped()) { alns_to_process.push_back(ctg_alns[i]); }
@@ -267,7 +268,7 @@ int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector
   return 0;
 }
 
-int Consensus(const SequenceFile &contigs, const SequenceFile &alns, std::string alt_contig_path) {
+int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
   LOG_ALL("Running consensus.\n");
 
   std::vector<std::string> ctg_names;
@@ -294,14 +295,15 @@ int Consensus(const SequenceFile &contigs, const SequenceFile &alns, std::string
     aln_ref_lens[alns.get_sequences()[i]] = alns.get_sequences()[i]->get_aln().GetReferenceLengthFromCigar();
   }
 
-  FILE *fp_temp = fopen(alt_contig_path.c_str(), "w");
+  // Debug output of alternate contigs, aligned to the raw contig (input sequence), in SAM format.
+  FILE *fp_temp = fopen(parameters.alt_contig_path.c_str(), "w");
   fprintf (fp_temp, "@HD\tVN:1.0\tSO:unknown\n");
   for (int32_t i=0; i<ctg_names.size(); i++) {
     fprintf (fp_temp, "@SQ\tSN:%s\tLN:%ld\n", ctg_names[i].c_str(), rname_to_seq[ctg_names[i]]->get_data_length());
   }
   fprintf (fp_temp, "@PG\tID:consise PN:consise\n");
 
-  // For each contig process alignments to obtain alternate contigs.
+  // For each contig, process alignments to obtain alternate contigs.
   for (int32_t i=0; i<ctg_names.size(); i++) {
     auto it = all_ctg_alns.find(ctg_names[i]);
     if (it == all_ctg_alns.end()) {
@@ -309,21 +311,59 @@ int Consensus(const SequenceFile &contigs, const SequenceFile &alns, std::string
       // Exits.
     }
 
+    const SingleSequence *current_contig = rname_to_seq[ctg_names[i]];
+
     // Get alternate contigs in form of vectors of alignments. Each vector presents one alternate contig.
     std::vector<const SingleSequence *> &ctg_alns = it->second;
     std::vector<std::vector<const SingleSequence *> *> alt_contigs;
     std::vector<const SingleSequence *> rejected_alns;
 
-    ExtractAltContigs(ctg_alns, rname_to_seq.find(it->first)->second->get_sequence_length(), 0.80, 0.01, alt_contigs, rejected_alns);
+    ExtractAltContigs(ctg_alns, rname_to_seq.find(it->first)->second->get_sequence_length(), 0.80, 0.01, parameters.qv_threshold, alt_contigs, rejected_alns);
 
+    // Generate the alternate contig sequences from the sets of alignments (alt_contigs).
+    SingleSequence alt_contig_seqs[alt_contigs.size()];
+    int64_t max_alt_seq_len = -1;
     for (int32_t j=0; j<alt_contigs.size(); j++) {
       LOG_DEBUG("Constructing contig %d / %d...\n", (j + 1), alt_contigs.size());
-      SingleSequence new_contig;
-      ConstructContigFromAlns(*rname_to_seq[ctg_names[i]], (const std::vector<const SingleSequence *> *) alt_contigs[j], aln_ref_lens, new_contig);
-      new_contig.InitHeader(FormatString("AlternateContig_%d", j));
-//      fprintf (fp_temp, "%s\n", new_contig.MakeFASTQLine().c_str());
-      fprintf (fp_temp, "%s\n", new_contig.MakeSAMLine().c_str());
+      ConstructContigFromAlns(*rname_to_seq[ctg_names[i]], (const std::vector<const SingleSequence *> *) alt_contigs[j], aln_ref_lens, alt_contig_seqs[j]);
+      max_alt_seq_len = std::max((int64_t) max_alt_seq_len, (int64_t) alt_contig_seqs[j].get_sequence_length());
+      alt_contig_seqs[j].InitHeader(FormatString("AlternateContig_%d", j));
+      // Debug output.
+      // fprintf (fp_temp, "%s\n", new_contig.MakeFASTQLine().c_str());
+      fprintf (fp_temp, "%s\n", alt_contig_seqs[j].MakeSAMLine().c_str());
     }
+
+    ///////////////////////////////////////
+    /// At this point we have obtained all alternate contig sequences.
+    /// Now we need to process them with a sliding (non-overlapping) window and POA.
+    ///////////////////////////////////////
+    for (int64_t window_start = 0; window_start < current_contig->get_sequence_length(); window_start += parameters.window_len) {
+      int64_t window_end = window_start + parameters.window_len;
+      LOG_ALL("Processing window: %ld bp to %ld bp.\n", window_start, window_end);
+
+      std::vector<const int8_t *> sequences_for_poa;
+      std::vector<int64_t> sequences_for_poa_lengths;
+      for (int64_t j=0; j<alt_contigs.size(); j++) {
+        const SequenceAlignment &aln = alt_contig_seqs[j].get_aln();
+        int64_t start_seq = aln.FindBasePositionOnRead(aln.cigar, window_start);
+        int64_t end_seq = aln.FindBasePositionOnRead(aln.cigar, window_end);
+
+        // If the last requested position was out of bounds of the sequence, position it at the last base.
+        if (end_seq == -1) {
+          end_seq = (aln.pos - 1) + aln.GetReferenceLengthFromCigar() - 1;  // The extra -1 is to point to the last base (and not one after it).
+        }
+
+        if ((end_seq - start_seq) <= 0) { continue; };
+
+        sequences_for_poa.push_back(alt_contig_seqs[j].get_data() + start_seq);
+        sequences_for_poa_lengths.push_back(end_seq - start_seq + 1);
+      }
+
+      // Here we have a window of sequences prepared for POA.
+      // Robert, please feed it here :-)
+      // Pointers to sequences are located in sequences_for_poa, and their corresponding lengths in sequences_for_poa_lengths.
+    }
+    ///////////////////////////////////////
 
     VerboseExtractedAlignments(alt_contigs, rejected_alns, "temp/alt_contigs.csv", "temp/rejected_alns.csv");
 //    VerboseExtractedAlignments(alt_contigs1, rejected_alns1, "temp/alt_contigs1.csv", "temp/rejected_alns1.csv");

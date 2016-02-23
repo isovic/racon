@@ -6,6 +6,7 @@ tools/
 temp/
 obj_debug/
 .cproject
+.project
 .settings/
 *.log
 test-data/lambda/*
