@@ -1,0 +1,11 @@
+test-out/
+obj_linux/
+obj/
+bin/
+tools/
+temp/
+obj_debug/
+test-data/
+.cproject
+.settings/
+*.log

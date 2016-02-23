@@ -1,0 +1,6 @@
+[submodule "codebase/seqlib"]
+	path = codebase/seqlib
+	url = https://github.com/isovic/seqlib.git
+[submodule "codebase/argparser"]
+	path = codebase/argparser
+	url = https://github.com/isovic/argparser.git
