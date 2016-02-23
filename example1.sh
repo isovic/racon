@@ -1,10 +1,11 @@
 #! /bin/sh
 
-mkdir temp
-mkdir tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap; make -j extcigar; cd ..
+# mkdir temp
+# mkdir tools; cd tools; git clone https://github.com/isovic/graphmap.git && cd graphmap && make -j extcigar && cd ..
 
 ### Lambda:
-tools/graphmap/bin/Linux-x64/graphmap -a anchor -z 0 -c 40 -r test-data/lambda/layout-miniasm.fasta -d test-data/lambda/reads.fastq -o test-data/lambda/alignments.sam
+# awk '$1 ~/S/ {print ">"$2"\n"$3}' test-data/lambda/layout-miniasm.gfa > test-data/lambda/layout-miniasm.fasta
+# tools/graphmap/bin/Linux-x64/graphmap -a anchor -z 0 -c 40 -r test-data/lambda/layout-miniasm.fasta -d test-data/lambda/reads.fastq -o test-data/lambda/alignments.sam
 bin/consise test-data/lambda/layout-miniasm.gfa test-data/lambda/alignments.sam temp/alt_contigs_lambda.sam
 ../../aligner-comparison/scripts/convert_to_bam.sh temp/alt_contigs_lambda
 

@@ -31,9 +31,9 @@ int main(int argc, char* argv[]) {
   bool help = false;
   ProgramParameters parameters;
   ArgumentParser argparser;
-  argparser.AddArgument(&(parameters.raw_contigs_path), VALUE_TYPE_STRING, "", "", "", "Path to the raw contig sequences (output from the layout step). GFA, FASTA/FASTQ or SAM formats allowed.", -3, "Input/Output options");
-  argparser.AddArgument(&(parameters.aln_path), VALUE_TYPE_STRING, "", "", "", "Path to a SAM file with read-to-raw contig alignments.", -2, "Input/Output options");
-  argparser.AddArgument(&(parameters.alt_contig_path), VALUE_TYPE_STRING, "", "", "", "Extracted alternate contigs. Output is in SAM format.", -1, "Input/Output options");
+  argparser.AddArgument(&(parameters.raw_contigs_path), VALUE_TYPE_STRING, "", "raw", "", "Path to the raw contig sequences (output from the layout step). GFA, FASTA/FASTQ or SAM formats allowed.", -3, "Input/Output options");
+  argparser.AddArgument(&(parameters.aln_path), VALUE_TYPE_STRING, "", "aln", "", "Path to a SAM file with read-to-raw contig alignments.", -2, "Input/Output options");
+  argparser.AddArgument(&(parameters.alt_contig_path), VALUE_TYPE_STRING, "", "temp", "", "Extracted alternate contigs. Output is in SAM format.", -1, "Input/Output options");
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
 
   argparser.ProcessArguments(argc, argv);
