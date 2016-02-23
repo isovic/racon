@@ -168,7 +168,9 @@ int GetCigarBetweenPositions(const SingleSequence *seq_aln, int64_t start_seq_po
   first_op.count -= dist_start;
   if (is_cigar_read(first_op.op)) { first_op.pos_query += dist_start; }
   if (is_cigar_ref(first_op.op)) { first_op.pos_ref += dist_start; }
-  ret_cigar->push_back(first_op);
+  if (first_op.count > 0) {
+    ret_cigar->push_back(first_op);
+  }
 
   if (end_cig_id > (start_cig_id + 1)) {
     ret_cigar->insert(ret_cigar->end(), &seq_aln->get_aln().cigar[0] + start_cig_id + 1, &seq_aln->get_aln().cigar[0] + end_cig_id);
@@ -177,7 +179,9 @@ int GetCigarBetweenPositions(const SingleSequence *seq_aln, int64_t start_seq_po
   int64_t dist_end = end_seq_pos - seq_aln->get_aln().cigar[end_cig_id].pos_query + 1;
   CigarOp last_op = seq_aln->get_aln().cigar[end_cig_id];
   last_op.count = dist_end;
-  ret_cigar->push_back(last_op);
+  if (last_op.count > 0) {
+    ret_cigar->push_back(last_op);
+  }
 
   return 0;
 }
@@ -226,7 +230,7 @@ int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector
 
       CigarOp match_op;
       match_op.op = '=';  match_op.count = start_ref - prev_end_ref - 1;  match_op.pos_query = new_contig_seq.size();  match_op.pos_ref = prev_end_ref;
-      new_contig_aln.cigar.push_back(match_op);
+      if (match_op.count > 0) { new_contig_aln.cigar.push_back(match_op); }
 
       new_contig_seq.insert(new_contig_seq.end(), orig_contig.get_data() + prev_end_ref + 1 , orig_contig.get_data() + start_ref);
       LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
@@ -244,7 +248,7 @@ int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector
         LOG_DEBUG_NOHEADER("  [%ld] Fixing the end: (I) with contig_raw: start_ref = %ld, end_ref = %ld, prev_end_ref = %ld\n", i, start_ref, end_ref, prev_end_ref);
         CigarOp match_op;
         match_op.op = '=';  match_op.count = orig_contig.get_data_length() - end_ref - 1;  match_op.pos_query = new_contig_seq.size();  match_op.pos_ref = end_ref;
-        new_contig_aln.cigar.push_back(match_op);
+        if (match_op.count > 0) { new_contig_aln.cigar.push_back(match_op); }
         new_contig_seq.insert(new_contig_seq.end(), orig_contig.get_data() + end_ref + 1, orig_contig.get_data() + orig_contig.get_data_length());
         LOG_DEBUG_NOHEADER("  [%ld] match_op.count = %ld, orig_contig.get_data_length() = %ld, end_ref = %ld\n", i, match_op.count, orig_contig.get_data_length(), end_ref);
         LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
@@ -328,6 +332,9 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
       ConstructContigFromAlns(*rname_to_seq[ctg_names[i]], (const std::vector<const SingleSequence *> *) alt_contigs[j], aln_ref_lens, alt_contig_seqs[j]);
       max_alt_seq_len = std::max((int64_t) max_alt_seq_len, (int64_t) alt_contig_seqs[j].get_sequence_length());
       alt_contig_seqs[j].InitHeader(FormatString("AlternateContig_%d", j));
+
+      std::string cigar_string = alt_contig_seqs[j].get_aln().MakeCigarString(alt_contig_seqs[j].get_aln().cigar);
+      ((SequenceAlignment &) alt_contig_seqs[j].get_aln()).SplitCigar(cigar_string, ((SequenceAlignment &) alt_contig_seqs[j].get_aln()).cigar);
       // Debug output.
       // fprintf (fp_temp, "%s\n", new_contig.MakeFASTQLine().c_str());
       fprintf (fp_temp, "%s\n", alt_contig_seqs[j].MakeSAMLine().c_str());
@@ -337,6 +344,7 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
     /// At this point we have obtained all alternate contig sequences.
     /// Now we need to process them with a sliding (non-overlapping) window and POA.
     ///////////////////////////////////////
+//    FILE *fp1 = fopen("temp/test_window.fasta", "w");
     for (int64_t window_start = 0; window_start < current_contig->get_sequence_length(); window_start += parameters.window_len) {
       int64_t window_end = window_start + parameters.window_len;
       LOG_ALL("Processing window: %ld bp to %ld bp.\n", window_start, window_end);
@@ -357,12 +365,22 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
 
         sequences_for_poa.push_back(alt_contig_seqs[j].get_data() + start_seq);
         sequences_for_poa_lengths.push_back(end_seq - start_seq + 1);
+
+//        fprintf (fp1, ">%s__Window_%d_to_%d\n", alt_contig_seqs[j].get_header(), window_start, window_end);
+//        fprintf (fp1, "%s\n", GetSubstring((char *) sequences_for_poa.back(), sequences_for_poa_lengths.back()).c_str());
       }
 
+      /////////////////////////////////////////////
+      /////////////////////////////////////////////
+      // POA goes here!!!
       // Here we have a window of sequences prepared for POA.
       // Robert, please feed it here :-)
       // Pointers to sequences are located in sequences_for_poa, and their corresponding lengths in sequences_for_poa_lengths.
+      /////////////////////////////////////////////
+      /////////////////////////////////////////////
     }
+//    fclose(fp1);
+//    exit(1);
     ///////////////////////////////////////
 
     VerboseExtractedAlignments(alt_contigs, rejected_alns, "temp/alt_contigs.csv", "temp/rejected_alns.csv");

@@ -41,7 +41,7 @@ LD_LIBS = -lpthread -lgomp -lm -lz
 
 
 
-all: modules gcc_version_check linux
+all: gcc_version_check linux
 
 
 
