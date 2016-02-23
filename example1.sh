@@ -1,5 +1,8 @@
 #! /bin/sh
 
+git submodule update --init --recursive
+git submodule foreach git pull origin master
+
 mkdir temp
 mkdir tools; cd tools; git clone https://github.com/isovic/graphmap.git && cd graphmap && make -j extcigar && cd ..
 cd ..
