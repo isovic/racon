@@ -345,7 +345,8 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
     /// At this point we have obtained all alternate contig sequences.
     /// Now we need to process them with a sliding (non-overlapping) window and POA.
     ///////////////////////////////////////
-//    FILE *fp1 = fopen("temp/test_window.fasta", "w");
+    FILE *fp1 = fopen("temp/test_window.fasta", "a");
+    fprintf (fp1, ">Consensus_%d %s\n", i, ctg_names[i].c_str());
     for (int64_t window_start = 0; window_start < current_contig->get_sequence_length(); window_start += parameters.window_len) {
       int64_t window_end = window_start + parameters.window_len;
       LOG_ALL("Processing window: %ld bp to %ld bp.\n", window_start, window_end);
@@ -382,10 +383,12 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
           poa_sequences.emplace_back(sequences_for_poa[s], sequences_for_poa_lengths[s]);
       }
       auto consensus_sequence = POA::poa_consensus(poa_sequences);
+      fprintf (fp1, "%s", consensus_sequence.c_str());
       /////////////////////////////////////////////
       /////////////////////////////////////////////
     }
-//    fclose(fp1);
+    fprintf (fp1, "\n");
+    fclose(fp1);
 //    exit(1);
     ///////////////////////////////////////
 
