@@ -6,6 +6,7 @@ b * consensus.cc
  */
 
 #include "consensus/consensus.h"
+#include "../../codebase/poa/src/poa.hpp"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 #include <stdint.h>
@@ -349,7 +350,7 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
       int64_t window_end = window_start + parameters.window_len;
       LOG_ALL("Processing window: %ld bp to %ld bp.\n", window_start, window_end);
 
-      std::vector<const int8_t *> sequences_for_poa;
+      std::vector<const char *> sequences_for_poa;
       std::vector<int64_t> sequences_for_poa_lengths;
       for (int64_t j=0; j<alt_contigs.size(); j++) {
         const SequenceAlignment &aln = alt_contig_seqs[j].get_aln();
@@ -363,7 +364,7 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
 
         if ((end_seq - start_seq) <= 0) { continue; };
 
-        sequences_for_poa.push_back(alt_contig_seqs[j].get_data() + start_seq);
+        sequences_for_poa.push_back((const char*) (alt_contig_seqs[j].get_data() + start_seq));
         sequences_for_poa_lengths.push_back(end_seq - start_seq + 1);
 
 //        fprintf (fp1, ">%s__Window_%d_to_%d\n", alt_contig_seqs[j].get_header(), window_start, window_end);
@@ -376,6 +377,11 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
       // Here we have a window of sequences prepared for POA.
       // Robert, please feed it here :-)
       // Pointers to sequences are located in sequences_for_poa, and their corresponding lengths in sequences_for_poa_lengths.
+      std::vector<std::string> poa_sequences;
+      for (auto s = 0; s < sequences_for_poa.size(); ++s) {
+          poa_sequences.emplace_back(sequences_for_poa[s], sequences_for_poa_lengths[s]);
+      }
+      auto consensus_sequence = POA::poa_consensus(poa_sequences);
       /////////////////////////////////////////////
       /////////////////////////////////////////////
     }
