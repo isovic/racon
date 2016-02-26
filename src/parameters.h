@@ -13,10 +13,19 @@
 struct ProgramParameters {
   std::string raw_contigs_path = "";
   std::string aln_path = "";
-  std::string alt_contig_path = "";
+  std::string temp_alt_contig_path = "";
+  std::string consensus_path = "";
+  std::string temp_window_path = "";
   std::string out_fmt = "fasta";
-  int64_t window_len = 5000;
+  int64_t window_len = 1000;
   double qv_threshold = 10.0;
+  std::string msa = "mafft";
+  std::string mafft_folder = "../tools/mafft-7.273-with-extensions/";
+  std::string poav2_folder = "../tools/poaV2";
+
+  std::string program_bin;
+  std::string program_folder;
+  std::vector<std::string> cmd_arguments;
 };
 
 

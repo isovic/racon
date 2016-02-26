@@ -30,6 +30,7 @@ int AlignmentsToContigs(const SequenceFile &alns, std::vector<std::string> &ctg_
 int ExtractAltContigs(std::vector<const SingleSequence *> &ctg_alns, int64_t raw_ctg_len, double coverage_threshold, double percent_overlap, double qv_threshold, std::vector<std::vector<const SingleSequence *> *> &ret_alt_contigs, std::vector<const SingleSequence *> &rejected_alns);
 int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector<const SingleSequence *> *seq_alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, SingleSequence &new_contig);
 int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns);
+int RunMSAFromSystem(const ProgramParameters &parameters, std::string &cons);
 
 
 

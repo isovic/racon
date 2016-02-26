@@ -12,6 +12,7 @@ b * consensus.cc
 #include <stdint.h>
 #include <algorithm>
 #include <sstream>
+#include <stdlib.h>
 
 int AlignmentsToContigs(const SequenceFile &alns, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
   ctg_names.clear();
@@ -101,11 +102,13 @@ int ExtractAltContigs(std::vector<const SingleSequence *> &ctg_alns, int64_t raw
 
     // Check the threshold for the covered bases. If above threshold, accept the contig.
     if ((((float) new_ctg_bases) / ((float) new_ctg_bases + old_ctg_bases)) < coverage_threshold) {
+#ifdef EXTREME_DEBUG_
       printf ("[REJECTED]:\n");
       printf ("new_ctg_bases = %ld\n", new_ctg_bases);
       printf ("new_ctg_bases + old_ctg_bases = %ld\n", new_ctg_bases + old_ctg_bases);
       printf ("contig_coverage = %f\n", (((float) new_ctg_bases) / ((float) new_ctg_bases + old_ctg_bases)));
       printf ("\n");
+#endif
 
       unused_alns.clear();
       unused_alns.insert(unused_alns.end(), alns_to_process.begin() + 1, alns_to_process.end());
@@ -115,8 +118,10 @@ int ExtractAltContigs(std::vector<const SingleSequence *> &ctg_alns, int64_t raw
       new_alt_ctg_alns = NULL;
 
     } else {
+#ifdef EXTREME_DEBUG_
       printf ("\t[ACCEPTED]:\n");
       printf ("\tcontig_coverage = %f\n", (((float) new_ctg_bases) / ((float) new_ctg_bases + old_ctg_bases)));
+#endif
       ret_alt_contigs.push_back(new_alt_ctg_alns);
     }
 
@@ -189,7 +194,7 @@ int GetCigarBetweenPositions(const SingleSequence *seq_aln, int64_t start_seq_po
 
 int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector<const SingleSequence *> *seq_alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, SingleSequence &new_contig) {
   //, std::vector<int8_t> *new_contig, std::vector<CigarOp> *new_contig_cigar) {
-  LOG_ALL("Constructing the alternate contig sequence from a set of alignments.\n");
+  LOG_ALL("Constructing an alternate contig sequence from a set of alignments.\n");
 
   std::vector<int8_t> new_contig_seq;
   new_contig_seq.reserve(orig_contig.get_data_length());
@@ -221,54 +226,151 @@ int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector
     int64_t start_seq = seq_aln->get_aln().FindBasePositionOnRead(aln.cigar, start_ref, &start_cig_id);
     int64_t end_seq = seq_aln->get_aln().FindBasePositionOnRead(aln.cigar, end_ref, &end_cig_id);
 
+#ifdef EXTREME_DEBUG_
     LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
+#endif
 
     // If there was a gap between the current and the previous read, fill it with the corresponding part of the given contig_raw.
     // Also, if the first sam_line did not start at position 0, the leading chunk will be filled in.
     if (start_ref > prev_end_ref) {
+#ifdef EXTREME_DEBUG_
       LOG_DEBUG_NOHEADER("  [%ld] Filling gap: start_ref = %ld, end_ref = %ld, prev_end_ref = %ld, start_seq = %ld, end_seq = %ld\n", i, start_ref, end_ref, prev_end_ref, start_seq, end_seq);
       LOG_DEBUG_NOHEADER("      Inserting sequence from: %ld to: %ld\n", prev_end_ref, start_ref);
+#endif
 
       CigarOp match_op;
       match_op.op = '=';  match_op.count = start_ref - prev_end_ref - 1;  match_op.pos_query = new_contig_seq.size();  match_op.pos_ref = prev_end_ref;
       if (match_op.count > 0) { new_contig_aln.cigar.push_back(match_op); }
 
       new_contig_seq.insert(new_contig_seq.end(), orig_contig.get_data() + prev_end_ref + 1 , orig_contig.get_data() + start_ref);
+#ifdef EXTREME_DEBUG_
       LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
+#endif
     }
 
     // Copy the new sequence into the alternate contig.
+#ifdef EXTREME_DEBUG_
     LOG_DEBUG_NOHEADER("  [%ld] Adding SAM: start_ref = %ld, end_ref = %ld, prev_end_ref = %ld, start_seq = %ld, end_seq = %ld, new_contig_len (before) = %ld, new_contig_len (after) = %ld, len(ref) = %ld, len(seq) = %ld\n", i, start_ref, end_ref, prev_end_ref, start_seq, end_seq, new_contig_seq.size(), (new_contig_seq.size() + (end_seq - start_seq)), orig_contig.get_data_length(), seq_aln->get_data_length());
+#endif
     GetCigarBetweenPositions(seq_aln, start_seq, start_cig_id, end_seq, end_cig_id, &new_contig_aln.cigar);
     new_contig_seq.insert(new_contig_seq.end(), seq_aln->get_data() + start_seq, seq_aln->get_data() + end_seq + 1);
+#ifdef EXTREME_DEBUG_
     LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
+#endif
 
     // Check if this was the last sam_line. If it was, and it didn't end on the end of the reference, fill in the missing part on the back.
     if ((i + 1) == seq_alns->size()) {
       if (end_ref < orig_contig.get_data_length()) {
+#ifdef EXTREME_DEBUG_
         LOG_DEBUG_NOHEADER("  [%ld] Fixing the end: (I) with contig_raw: start_ref = %ld, end_ref = %ld, prev_end_ref = %ld\n", i, start_ref, end_ref, prev_end_ref);
+#endif
+
         CigarOp match_op;
         match_op.op = '=';  match_op.count = orig_contig.get_data_length() - end_ref - 1;  match_op.pos_query = new_contig_seq.size();  match_op.pos_ref = end_ref;
         if (match_op.count > 0) { new_contig_aln.cigar.push_back(match_op); }
         new_contig_seq.insert(new_contig_seq.end(), orig_contig.get_data() + end_ref + 1, orig_contig.get_data() + orig_contig.get_data_length());
+
+#ifdef EXTREME_DEBUG_
         LOG_DEBUG_NOHEADER("  [%ld] match_op.count = %ld, orig_contig.get_data_length() = %ld, end_ref = %ld\n", i, match_op.count, orig_contig.get_data_length(), end_ref);
         LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
+#endif
       } else {
+#ifdef EXTREME_DEBUG_
         LOG_DEBUG_NOHEADER("  [%ld] Fixing the end: (II) with contig_raw: start_ref = %ld, end_ref = %ld, prev_end_ref = %ld", i, start_ref, end_ref, prev_end_ref);
+#endif
         GetCigarBetweenPositions(seq_aln, end_seq, end_cig_id, seq_aln->get_data_length(), seq_aln->get_aln().cigar.size() - 1, &new_contig_aln.cigar);
         new_contig_seq.insert(new_contig_seq.end(), seq_aln->get_data() + end_seq + 1, seq_aln->get_data() + seq_aln->get_data_length());
+#ifdef EXTREME_DEBUG_
         LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
+#endif
       }
     }
     prev_end_ref = end_ref;
+#ifdef EXTREME_DEBUG_
     LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
     LOG_DEBUG_NOHEADER("\n");
+#endif
   }
 
   new_contig.InitDatafromAscii(&new_contig_seq[0], (uint64_t) new_contig_seq.size());
 
+  int64_t pos_ref = new_contig_aln.pos - 1, pos_query = 0;
+  for (int64_t i=0; i<new_contig_aln.cigar.size(); i++) {
+    new_contig_aln.cigar[i].pos_query = pos_query;
+    new_contig_aln.cigar[i].pos_ref = pos_ref;
+    if (is_cigar_ref(new_contig_aln.cigar[i].op)) pos_ref += new_contig_aln.cigar[i].count;
+    if (is_cigar_read(new_contig_aln.cigar[i].op)) pos_query += new_contig_aln.cigar[i].count;
+  }
+
+#ifdef EXTREME_DEBUG_
   LOG_DEBUG_NOHEADER("new_contig->size() = %ld\n", (new_contig_seq.size()));
-  LOG_DEBUG("Finished constructing the alternate contig sequence.\n\n");
+#endif
+
+  LOG_DEBUG("Finished constructing the alternate contig sequence.\n");
+
+  return 0;
+}
+
+
+int ConsensusFromMSA(std::string pir_path, std::string *cons) {
+  SequenceFile pir(SEQ_FORMAT_FASTQ, pir_path);
+
+  const SequenceVector& seqs = pir.get_sequences();
+
+  if (seqs.size() == 0) { return 1; }
+
+
+  for (int64_t i=1; i<pir.get_sequences().size(); i++) {
+    if (seqs[i]->get_data_length() != seqs[i-1]->get_data_length()) {
+      ERROR_REPORT(ERR_FILE_DEFORMED_FORMAT, "MSA sequences not of correct length in file %s!\n", pir_path.c_str());
+      return 2;
+    }
+  }
+
+  int64_t seq_len = seqs[0]->get_data_length();
+  *cons = "";
+  std::stringstream ss;
+
+  for (int64_t i=0; i<seq_len; i++) {
+    // Count occurances for the column.
+    int32_t base_counts[256] = {0};
+    for (int32_t j=0; j<seqs.size(); j++) {
+      base_counts[toupper(seqs[j]->get_data()[i])] += 1;
+    }
+    // Find the majority vote.
+    int8_t max_base = (int8_t) 'A';
+    for (int32_t j=0; j<256; j++) {
+      if (base_counts[j] > base_counts[max_base]) max_base = (char) j;
+    }
+
+    if (max_base != '.' && max_base != '-') {
+      ss << (char) max_base;
+    }
+  }
+
+  *cons = ss.str();
+
+  return 0;
+}
+
+int RunMSAFromSystem(const ProgramParameters &parameters, std::string &cons) {
+  std::string msa_path = FormatString("%s.msa", parameters.temp_window_path.c_str());
+  if (parameters.msa == "mafft") {
+//    system(FormatString("export MAFFT_BINARIES=/home/isovic/work/eclipse-workspace/git/consise/tools/mafft-7.273-with-extensions/binaries/; /home/isovic/work/eclipse-workspace/git/consise/tools/mafft-7.273-with-extensions/scripts/mafft --op 0 --ep 1 --quiet %s > %s",
+//                        parameters.temp_window_path.c_str(), msa_path.c_str()).c_str());
+    int32_t rc = system(FormatString("export MAFFT_BINARIES=%s/binaries/; %sscripts/mafft --op 0 --ep 1 --quiet %s > %s",
+                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.temp_window_path.c_str(), msa_path.c_str()).c_str());
+  } else if (parameters.msa == "poav2") {
+//    system(FormatString("/home/isovic/work/eclipse-workspace/git/consise/tools/poaV2/poa -do_global -do_progressive -read_fasta %s -pir %s /home/isovic/work/eclipse-workspace/git/consise/test-data/all1.mat",
+//                        parameters.temp_window_path.c_str(), msa_path.c_str()).c_str());
+    int32_t rc = system(FormatString("%s/%s/poa -do_global -do_progressive -read_fasta %s -pir %s %s/../settings/all1-poav2.mat",
+                        parameters.program_folder.c_str(), parameters.poav2_folder.c_str(), parameters.temp_window_path.c_str(), msa_path.c_str()).c_str());
+  } else {
+    ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Unrecognized MSA option '%s'! Exiting.",parameters. msa.c_str());
+    return 1;
+  }
+
+  ConsensusFromMSA(msa_path, &cons);
 
   return 0;
 }
@@ -301,12 +403,19 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
   }
 
   // Debug output of alternate contigs, aligned to the raw contig (input sequence), in SAM format.
-  FILE *fp_temp = fopen(parameters.alt_contig_path.c_str(), "w");
-  fprintf (fp_temp, "@HD\tVN:1.0\tSO:unknown\n");
-  for (int32_t i=0; i<ctg_names.size(); i++) {
-    fprintf (fp_temp, "@SQ\tSN:%s\tLN:%ld\n", ctg_names[i].c_str(), rname_to_seq[ctg_names[i]]->get_data_length());
+  FILE *fp_alt_contig_path = NULL;
+  if (parameters.temp_alt_contig_path != "") {
+    fp_alt_contig_path = fopen(parameters.temp_alt_contig_path.c_str(), "w");
+    fprintf (fp_alt_contig_path, "@HD\tVN:1.0\tSO:unknown\n");
+    for (int32_t i=0; i<ctg_names.size(); i++) {
+      fprintf (fp_alt_contig_path, "@SQ\tSN:%s\tLN:%ld\n", ctg_names[i].c_str(), rname_to_seq[ctg_names[i]]->get_data_length());
+    }
+    fprintf (fp_alt_contig_path, "@PG\tID:consise PN:consise\n");
   }
-  fprintf (fp_temp, "@PG\tID:consise PN:consise\n");
+
+  // Clear the output file.
+  FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "w");
+  fclose(fp_out_cons);
 
   // For each contig, process alignments to obtain alternate contigs.
   for (int32_t i=0; i<ctg_names.size(); i++) {
@@ -327,29 +436,39 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
 
     // Generate the alternate contig sequences from the sets of alignments (alt_contigs).
     SingleSequence alt_contig_seqs[alt_contigs.size()];
-    int64_t max_alt_seq_len = -1;
     for (int32_t j=0; j<alt_contigs.size(); j++) {
       LOG_DEBUG("Constructing contig %d / %d...\n", (j + 1), alt_contigs.size());
+
       ConstructContigFromAlns(*rname_to_seq[ctg_names[i]], (const std::vector<const SingleSequence *> *) alt_contigs[j], aln_ref_lens, alt_contig_seqs[j]);
-      max_alt_seq_len = std::max((int64_t) max_alt_seq_len, (int64_t) alt_contig_seqs[j].get_sequence_length());
       alt_contig_seqs[j].InitHeader(FormatString("AlternateContig_%d", j));
 
-      std::string cigar_string = alt_contig_seqs[j].get_aln().MakeCigarString(alt_contig_seqs[j].get_aln().cigar);
-      ((SequenceAlignment &) alt_contig_seqs[j].get_aln()).SplitCigar(cigar_string, ((SequenceAlignment &) alt_contig_seqs[j].get_aln()).cigar);
-      // Debug output.
-      // fprintf (fp_temp, "%s\n", new_contig.MakeFASTQLine().c_str());
-      fprintf (fp_temp, "%s\n", alt_contig_seqs[j].MakeSAMLine().c_str());
+      LOG_DEBUG("Done with construction of alternate contig %d / %d.\n\n", (j + 1), alt_contigs.size());
+
+      // Debug output. Verbose the alternate contigs with their alignments to an output temp FASTA file.
+      if (fp_alt_contig_path) {
+        LOG_DEBUG("Writing the alternate contigs to file: '%s'.\n", parameters.temp_alt_contig_path.c_str());
+        fprintf (fp_alt_contig_path, "%s\n", alt_contig_seqs[j].MakeSAMLine().c_str());
+      }
     }
+
+    LOG_DEBUG("Alternate contigs generated. Starting to process windows.\n");
+    LOG_NOHEADER("\n");
 
     ///////////////////////////////////////
     /// At this point we have obtained all alternate contig sequences.
     /// Now we need to process them with a sliding (non-overlapping) window and POA.
     ///////////////////////////////////////
-    FILE *fp1 = fopen("temp/test_window.fasta", "a");
-    fprintf (fp1, ">Consensus_%d %s\n", i, ctg_names[i].c_str());
+    FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
+    fprintf (fp_out_cons, ">Consensus_%d %s\n", i, ctg_names[i].c_str());
     for (int64_t window_start = 0; window_start < current_contig->get_sequence_length(); window_start += parameters.window_len) {
       int64_t window_end = window_start + parameters.window_len;
-      LOG_ALL("Processing window: %ld bp to %ld bp.\n", window_start, window_end);
+      LOG_ALL("\rProcessing window: %ld bp to %ld bp (%.2f%%)", window_start, window_end, 100.0 * ((float) window_start / (float) current_contig->get_data_length()));
+
+      FILE *fp_window = NULL;
+
+      if (parameters.temp_window_path != "") {
+        fp_window = fopen(parameters.temp_window_path.c_str(), "w");
+      }
 
       std::vector<const char *> sequences_for_poa;
       std::vector<int64_t> sequences_for_poa_lengths;
@@ -368,29 +487,36 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
         sequences_for_poa.push_back((const char*) (alt_contig_seqs[j].get_data() + start_seq));
         sequences_for_poa_lengths.push_back(end_seq - start_seq + 1);
 
-//        fprintf (fp1, ">%s__Window_%d_to_%d\n", alt_contig_seqs[j].get_header(), window_start, window_end);
-//        fprintf (fp1, "%s\n", GetSubstring((char *) sequences_for_poa.back(), sequences_for_poa_lengths.back()).c_str());
+        if (fp_window) {
+          fprintf (fp_window, ">%s__Window_%d_to_%d\n", alt_contig_seqs[j].get_header(), window_start, window_end);
+          fprintf (fp_window, "%s\n", GetSubstring((char *) sequences_for_poa.back(), sequences_for_poa_lengths.back()).c_str());
+        }
       }
 
-      /////////////////////////////////////////////
-      /////////////////////////////////////////////
-      // POA goes here!!!
-      // Here we have a window of sequences prepared for POA.
-      // Robert, please feed it here :-)
-      // Pointers to sequences are located in sequences_for_poa, and their corresponding lengths in sequences_for_poa_lengths.
-      std::vector<std::string> poa_sequences;
-      for (auto s = 0; s < sequences_for_poa.size(); ++s) {
-          poa_sequences.emplace_back(sequences_for_poa[s], sequences_for_poa_lengths[s]);
+      if (parameters.msa == "poa") {
+        std::vector<std::string> poa_sequences;
+        for (auto s = 0; s < sequences_for_poa.size(); ++s) {
+            poa_sequences.emplace_back(sequences_for_poa[s], sequences_for_poa_lengths[s]);
+        }
+        auto consensus_sequence = POA::poa_consensus(poa_sequences);
+        fprintf (fp_out_cons, "%s", consensus_sequence.c_str());
+
+      } else if (fp_window) {
+        fclose(fp_window);
+        std::string cons;
+        std::string a, b;
+        RunMSAFromSystem(parameters, cons);
+        fprintf (fp_out_cons, "%s", cons.c_str());
+      } else {
+        ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
       }
-      auto consensus_sequence = POA::poa_consensus(poa_sequences);
-      fprintf (fp1, "%s", consensus_sequence.c_str());
-      /////////////////////////////////////////////
-      /////////////////////////////////////////////
+
     }
-    fprintf (fp1, "\n");
-    fclose(fp1);
+    fprintf (fp_out_cons, "\n");
+    fclose(fp_out_cons);
 //    exit(1);
     ///////////////////////////////////////
+    LOG_NOHEADER("\n");
 
     VerboseExtractedAlignments(alt_contigs, rejected_alns, "temp/alt_contigs.csv", "temp/rejected_alns.csv");
 //    VerboseExtractedAlignments(alt_contigs1, rejected_alns1, "temp/alt_contigs1.csv", "temp/rejected_alns1.csv");
@@ -402,7 +528,7 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
     alt_contigs.clear();
   }
 
-  fclose(fp_temp);
+  if (fp_alt_contig_path) { fclose(fp_alt_contig_path); }
 
   return 0;
 }

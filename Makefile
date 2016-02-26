@@ -11,7 +11,7 @@ CODEBASE = codebase
 CODEBASE_SRC_FOLDERS = $(shell find $(CODEBASE) -maxdepth 2 -type d -name "src" -exec echo "-I"{} \;)
 
 # ? allows override by user using env var
-GCC ?= g++ -std=c++11
+GCC ?= g++
 # define variables for GCC version check here
 GCC_MAJOR_VERSION_GE_4 := $(shell expr `$(GCC) -dumpversion | cut -f1 -d.` \>= 4)
 GCC_MINOR_VERSION_GE_7 := $(shell expr `$(GCC) -dumpversion | cut -f2 -d.` \>= 7)
@@ -47,13 +47,26 @@ all: gcc_version_check linux
 
 modules:
 	git submodule update --init --recursive
+	git submodule foreach git pull origin master
+
+tools: tools/graphmap/bin/Linux-x64/graphmap tools/poaV2/poa tools/mafft-7.273-with-extensions/binaries/disttbfast
+	echo "All tools installed."
+
+tools/graphmap/bin/Linux-x64/graphmap:
+	mkdir -p tools && cd tools && git clone https://github.com/isovic/graphmap.git && cd graphmap && make -j extcigar
+
+tools/poaV2/poa:
+	mkdir -p tools && cd tools && wget http://netassist.dl.sourceforge.net/project/poamsa/poamsa/2.0/poaV2.tar.gz && tar -xvzf poaV2.tar.gz && cd poaV2 && make poa
+
+tools/mafft-7.273-with-extensions/binaries/disttbfast:
+	mkdir -p tools && cd tools && wget http://mafft.cbrc.jp/alignment/software/mafft-7.273-with-extensions-src.tgz && tar -xzvf mafft-7.273-with-extensions-src.tgz && cd mafft-7.273-with-extensions/core && make
 
 
 
 gcc_version_check:
 ifneq ($(GCC_MAJOR_VERSION_GE_4), 1)
 	$(warning "*** WARNING $(GCC) major version <4 ***")
-endif
+endif	
 ifneq ($(GCC_MINOR_VERSION_GE_7), 1)
 	$(warning "*** WARNING $(GCC) minor version <7 ***")
 endif
@@ -66,7 +79,7 @@ debug: $(OBJ_FILES_FOLDER_DEBUG)
 obj_debug/%.o: %.cc $(H_FILES)
 	mkdir -p $(dir $@)
 	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_DEBUG) -o $@ $<
-
+	
 obj_debug/%.o: %.cpp $(H_FILES)
 	mkdir -p $(dir $@)
 	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_DEBUG) -o $@ $<
@@ -76,11 +89,11 @@ obj_debug/%.o: %.cpp $(H_FILES)
 linux: $(OBJ_FILES_FOLDER_LINUX)
 	mkdir -p $(dir $(BIN_LINUX))
 	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN_LINUX) $(OBJ_FILES_FOLDER_LINUX) $(LD_LIBS)
-
+	
 obj_linux/%.o: %.cc $(H_FILES)
 	mkdir -p $(dir $@)
 	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_RELEASE) -o $@ $<
-
+	
 obj_linux/%.o: %.cpp $(H_FILES)
 	mkdir -p $(dir $@)
 	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_RELEASE) -o $@ $<
@@ -90,11 +103,11 @@ obj_linux/%.o: %.cpp $(H_FILES)
 mac: $(OBJ_FILES_FOLDER_MAC)
 	mkdir -p $(dir $(BIN_MAC))
 	$(GCC_MAC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN_MAC) $(OBJ_FILES_FOLDER_MAC) $(LD_LIBS)
-
+	
 obj_mac/%.o: %.cc $(H_FILES)
 	mkdir -p $(dir $@)
 	$(GCC_MAC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_RELEASE) -o $@ $<
-
+	
 obj_mac/%.o: %.cpp $(H_FILES)
 	mkdir -p $(dir $@)
 	$(GCC_MAC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_RELEASE) -o $@ $<
@@ -105,7 +118,7 @@ deps:
 	cd libs; cd libdivsufsort-2.0.1; make clean; rm -rf build; ./configure; mkdir build ;cd build; cmake -DBUILD_DIVSUFSORT64:BOOL=ON -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="/usr/local" .. ; make
 
 
-
+	
 clean: cleanall
 
 cleandebug:
@@ -134,3 +147,4 @@ rebuildmac: cleanmac mac
 
 divsufsort:
 	cd libs; ./build-libdivsufsort.sh
+

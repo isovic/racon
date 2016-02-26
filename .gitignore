@@ -13,3 +13,6 @@ test-data/lambda/*
 !test-data/lambda/layout-miniasm.gfa
 !test-data/lambda/NC_001416.fa
 !test-data/lambda/reads.fastq
+test-data/DATASETS_FOR_CONSENSUS/
+results/
+tools1/
