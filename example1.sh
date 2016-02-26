@@ -11,7 +11,7 @@ reads=test-data/lambda/reads.fastq
 sam=test-data/lambda/alignments.sam
 dataset=lambda
 consensus=temp/consensus-${dataset}.fasta
-reference=/home/isovic/work/eclipse-workspace/git/consise/temp/NC_001416.fa
+reference=test-data/lambda/NC_001416.fa
 tools/graphmap/bin/Linux-x64/graphmap -a anchor -z 0 -c 40 -B 0 -r ${contigs} -d ${reads} -o ${sam}
 memtime=temp/consensus-${dataset}.memtime
 mkdir -p temp
