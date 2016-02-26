@@ -14,7 +14,7 @@ reference=/home/isovic/work/eclipse-workspace/git/consise/temp/NC_001416.fa
 tools/graphmap/bin/Linux-x64/graphmap -a anchor -z 0 -c 40 -B 0 -r ${contigs} -d ${reads} -o ${sam}
 memtime=temp/consensus-${dataset}.memtime
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o $memtime \
-	bin/consise -w 500 --msa poa --winpath temp/window.fasta ${contigs} ${sam} ${consensus}
+	bin/consise -w 500 --msa mafft --winpath temp/window.fasta ${contigs} ${sam} ${consensus}
 mkdir -p temp/dnadiff-${dataset}
 dnadiff -p temp/dnadiff-${dataset}/consise-mafft-all ${reference} ${consensus}
 grep "AlignedBases" temp/dnadiff-${dataset}/consise-mafft-all.report
