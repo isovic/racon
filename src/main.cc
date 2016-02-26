@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.msa), VALUE_TYPE_STRING, "", "msa", "mafft", "Choose the MSA algorithm to use. Available options: 'maff', 'poa', 'poav2'.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.msa), VALUE_TYPE_STRING, "", "msa", "poa", "Choose the MSA algorithm to use. Available options: 'maff', 'poa', 'poav2'.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.mafft_folder), VALUE_TYPE_STRING, "", "mafft", "../tools/mafft-7.273-with-extensions/", "Relative path to the folder containing MAFFT. Relative to the folder this binary resides in.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.poav2_folder), VALUE_TYPE_STRING, "", "poav2", "../tools/poaV2/", "Relative path to the folder containing POAv2. Relative to the folder this binary resides in.", 0, "Algorithm");
 
