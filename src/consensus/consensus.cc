@@ -517,6 +517,8 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
 //    exit(1);
     ///////////////////////////////////////
     LOG_NOHEADER("\n");
+    LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", current_contig->get_data_length(), current_contig->get_data_length());
+    LOG_NOHEADER("\n");
 
     VerboseExtractedAlignments(alt_contigs, rejected_alns, "temp/alt_contigs.csv", "temp/rejected_alns.csv");
 //    VerboseExtractedAlignments(alt_contigs1, rejected_alns1, "temp/alt_contigs1.csv", "temp/rejected_alns1.csv");
