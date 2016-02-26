@@ -1,7 +1,7 @@
 /**
  * @file alignment.cpp
  * @author Marko Culinovic <marko.culinovic@gmail.com>
- * @brief Alignment class implementation file 
+ * @brief Alignment class implementation file
  * @details Implementation file for Alignment class used for
  * calculating local alignment between graph and sequence. Class is
  * based on https://github.com/ljdursi/poapy/blob/master/seqgraphalignment.py
@@ -31,10 +31,10 @@ using std::vector;
 
 namespace POA {
 
-    int Alignment::match_score_ = 4;
-    int Alignment::mismatch_score_ = -2;
-    int Alignment::open_gap_score_ = -4;
-    int Alignment::extend_gap_score_ = -2;
+    int Alignment::match_score_ = 1;//4;
+    int Alignment::mismatch_score_ = -1;//-2;
+    int Alignment::open_gap_score_ = -1;//-4;
+    int Alignment::extend_gap_score_ = -1;//-2;
 
 
     Alignment::Alignment(const string& sequence,
@@ -92,7 +92,23 @@ namespace POA {
 
 
     void Alignment::backtrack() {
-        while (dp(max_i_, max_j_).score > 0 && !(max_i_ == 0 && max_j_ == 0)) {
+
+        // find end node with highest score
+        max_i_ = valid_nodes_num_;
+        max_j_ = dp_width_;
+        int max_score = dp(max_i_, max_j_).score;
+        for (const auto& node: graph_.getNodes()) {
+            if (node->getOutEdges().size() == 0) {
+                auto i = nodeID_to_index_[node->id()];
+                auto score = dp(i, max_j_).score;
+                if (score > max_score) {
+                    max_score = score;
+                    max_i_ = i;
+                }
+            }
+        }
+
+        while (/*dp(max_i_, max_j_).score > 0 &&*/ !(max_i_ == 0 && max_j_ == 0)) {
             int next_i = dp(max_i_, max_j_).prev_graph_idx;
             int next_j = dp(max_i_, max_j_).prev_seq_idx;
             uint32_t seq_idx = max_j_ - 1;
@@ -203,7 +219,7 @@ namespace POA {
 
 
                 // because of local alignment minimum score should be zero
-                if (dp(i + 1, j + 1).score < 0) {
+                /*if (dp(i + 1, j + 1).score < 0) {
                     dp(i + 1, j + 1).score = 0;
                     dp(i + 1, j + 1).prev_graph_idx = -1;
                     dp(i + 1, j + 1).prev_seq_idx = -1;
@@ -215,7 +231,7 @@ namespace POA {
                     max_i_ = i + 1;
                     max_j_ = j + 1;
                     max_score_ = dp(i + 1, j + 1).score;
-                }
+                }*/
             }
         }
 
@@ -270,6 +286,18 @@ namespace POA {
 
         // init dynamic programming smith waterman matrix
         dp_.resize((valid_nodes_num_ + 1)*(dp_width_ + 1), dp_el(0, -1, -1, open_gap_score_, open_gap_score_));
+
+        // NW fill first row and collumn with penalties and updated predecessors
+        for (uint32_t i = 1; i < dp_width_ + 1; ++i) {
+            dp_[i].score = i * extend_gap_score_;
+            dp_[i].prev_graph_idx = 0;
+            dp_[i].prev_seq_idx = i - 1;
+        }
+        for (uint32_t i = 1; i < valid_nodes_num_ + 1; ++i) {
+            dp_[i * (dp_width_ + 1)].score = i * extend_gap_score_;
+            dp_[i * (dp_width_ + 1)].prev_graph_idx = i - 1;
+            dp_[i * (dp_width_ + 1)].prev_seq_idx = 0;
+        }
     }
 
     int Alignment::index_from_node_id(const uint32_t node_id) const {

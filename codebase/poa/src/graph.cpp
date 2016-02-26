@@ -1,7 +1,7 @@
 /**
  * @file graph.cpp
  * @author Marko Culinovic <marko.culinovic@gmail.com>
- * @brief Graph class implementation file 
+ * @brief Graph class implementation file
  * @details Implementation file for Graph class used for
  * partial order alignment algorithm. Class is
  * based on https://github.com/ljdursi/poapy/blob/master/poagraph.py
@@ -312,13 +312,21 @@ namespace POA {
             } else {
                 // otherwise, for each outgoing edge(u, v) compute w(e) + d(v)
                 // and set d(u) to be the largest value attained this way
-                for (auto& e : out_edges) {
+                dp[id] = 0;
+                int max_edge = -1;
+                for (const auto& e: out_edges) {
                     int weight = e.second->getLabels().size();
-                    if (weight + dp[e.first] > dp[id]) {
+                    /*if (weight + dp[e.first] > dp[id]) {
                         dp[id] = weight + dp[e.first];
                         next_node[id] = e.first;
+                    }*/
+                    if (weight > dp[id] || (weight == dp[id] && dp[e.first] > dp[id])) {
+                        dp[id] = weight;
+                        max_edge = e.first;
                     }
                 }
+                dp[id] += dp[max_edge];
+                next_node[id] = max_edge;
 
                 // update max
                 if (dp[id] > max_weight) {
