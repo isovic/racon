@@ -358,13 +358,13 @@ int RunMSAFromSystem(const ProgramParameters &parameters, std::string &cons) {
   if (parameters.msa == "mafft") {
 //    system(FormatString("export MAFFT_BINARIES=/home/isovic/work/eclipse-workspace/git/consise/tools/mafft-7.273-with-extensions/binaries/; /home/isovic/work/eclipse-workspace/git/consise/tools/mafft-7.273-with-extensions/scripts/mafft --op 0 --ep 1 --quiet %s > %s",
 //                        parameters.temp_window_path.c_str(), msa_path.c_str()).c_str());
-    int32_t rc = system(FormatString("export MAFFT_BINARIES=%s/binaries/; %sscripts/mafft --op 0 --ep 1 --quiet %s > %s",
+    int32_t rc = system(FormatString("export MAFFT_BINARIES=%s/%s/binaries/; %s/%s/scripts/mafft --op 0 --ep 1 --quiet %s > %s",
                         parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.temp_window_path.c_str(), msa_path.c_str()).c_str());
   } else if (parameters.msa == "poav2") {
 //    system(FormatString("/home/isovic/work/eclipse-workspace/git/consise/tools/poaV2/poa -do_global -do_progressive -read_fasta %s -pir %s /home/isovic/work/eclipse-workspace/git/consise/test-data/all1.mat",
 //                        parameters.temp_window_path.c_str(), msa_path.c_str()).c_str());
     int32_t rc = system(FormatString("%s/%s/poa -do_global -do_progressive -read_fasta %s -pir %s %s/../settings/all1-poav2.mat",
-                        parameters.program_folder.c_str(), parameters.poav2_folder.c_str(), parameters.temp_window_path.c_str(), msa_path.c_str()).c_str());
+                        parameters.program_folder.c_str(), parameters.poav2_folder.c_str(), parameters.temp_window_path.c_str(), msa_path.c_str(), parameters.program_folder.c_str()).c_str());
   } else {
     ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Unrecognized MSA option '%s'! Exiting.",parameters. msa.c_str());
     return 1;
