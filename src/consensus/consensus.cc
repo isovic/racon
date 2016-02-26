@@ -436,7 +436,7 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
       LOG_DEBUG("Constructing contig %d / %d...\n", (j + 1), alt_contigs.size());
 
       ConstructContigFromAlns(*rname_to_seq[ctg_names[i]], (const std::vector<const SingleSequence *> *) alt_contigs[j], aln_ref_lens, alt_contig_seqs[j]);
-      alt_contig_seqs[j].InitHeader(FormatString("AlternateContig_%d", j));
+      alt_contig_seqs[j].InitHeader(FormatString("AlternateContig_%d %s", j, current_contig->get_header()));
 
       LOG_DEBUG("Done with construction of alternate contig %d / %d.\n\n", (j + 1), alt_contigs.size());
 
@@ -484,7 +484,7 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
         sequences_for_poa_lengths.push_back(end_seq - start_seq + 1);
 
         if (fp_window) {
-          fprintf (fp_window, ">%s__Window_%d_to_%d\n", alt_contig_seqs[j].get_header(), window_start, window_end);
+          fprintf (fp_window, ">%s Window_%d_to_%d\n", alt_contig_seqs[j].get_header(), window_start, window_end);
           fprintf (fp_window, "%s\n", GetSubstring((char *) sequences_for_poa.back(), sequences_for_poa_lengths.back()).c_str());
         }
       }
@@ -506,8 +506,8 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
       } else {
         ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
       }
-
     }
+
     fprintf (fp_out_cons, "\n");
     fclose(fp_out_cons);
 //    exit(1);
