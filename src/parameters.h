@@ -22,6 +22,7 @@ struct ProgramParameters {
   std::string msa = "mafft";
   std::string mafft_folder = "../tools/mafft-7.273-with-extensions/";
   std::string poav2_folder = "../tools/poaV2";
+  int32_t num_threads = 4;
 
   std::string program_bin;
   std::string program_folder;

@@ -37,6 +37,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.temp_window_path), VALUE_TYPE_STRING, "", "winpath", "temp.window.fasta", "A window of alternate contigs, used to feed MSA tools from disk.", 0, "Input/Output options");
 //  argparser.AddArgument(&(parameters.temp_window_path), VALUE_TYPE_STRING, "", "winpath", "", "A window of alternate contigs.", 0, "Input/Output options");
 
+  argparser.AddArgument(&(parameters.num_threads), VALUE_TYPE_INT32, "t", "threads", "4", "Number of threads to use.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.msa), VALUE_TYPE_STRING, "", "msa", "poa", "Choose the MSA algorithm to use. Available options: 'maff', 'poa', 'poav2'.", 0, "Algorithm");

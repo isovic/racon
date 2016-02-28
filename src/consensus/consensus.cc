@@ -13,6 +13,7 @@ b * consensus.cc
 #include <algorithm>
 #include <sstream>
 #include <stdlib.h>
+#include <omp.h>
 
 int AlignmentsToContigs(const SequenceFile &alns, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
   ctg_names.clear();
@@ -353,14 +354,14 @@ int ConsensusFromMSA(std::string pir_path, std::string *cons) {
   return 0;
 }
 
-int RunMSAFromSystem(const ProgramParameters &parameters, std::string &cons) {
-  std::string msa_path = FormatString("%s.msa", parameters.temp_window_path.c_str());
+int RunMSAFromSystem(const ProgramParameters &parameters, std::string window_path, std::string &cons) {
+  std::string msa_path = FormatString("%s.msa", window_path.c_str());
   if (parameters.msa == "mafft") {
     int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --op 0 --ep 1 --quiet %s > %s",
-                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.temp_window_path.c_str(), msa_path.c_str()).c_str());
+                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
   } else if (parameters.msa == "poav2") {
     int32_t rc = system(FormatString("%s/%s/poa -do_global -do_progressive -read_fasta %s -pir %s %s/../settings/all1-poav2.mat",
-                        parameters.program_folder.c_str(), parameters.poav2_folder.c_str(), parameters.temp_window_path.c_str(), msa_path.c_str(), parameters.program_folder.c_str()).c_str());
+                        parameters.program_folder.c_str(), parameters.poav2_folder.c_str(), window_path.c_str(), msa_path.c_str(), parameters.program_folder.c_str()).c_str());
   } else {
     ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Unrecognized MSA option '%s'! Exiting.",parameters. msa.c_str());
     return 1;
@@ -456,55 +457,86 @@ int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, 
     ///////////////////////////////////////
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     fprintf (fp_out_cons, ">Consensus_%d %s\n", i, ctg_names[i].c_str());
-    for (int64_t window_start = 0; window_start < current_contig->get_sequence_length(); window_start += parameters.window_len) {
-      int64_t window_end = window_start + parameters.window_len;
-      LOG_ALL("\rProcessing window: %ld bp to %ld bp (%.2f%%)", window_start, window_end, 100.0 * ((float) window_start / (float) current_contig->get_data_length()));
+//    for (int64_t window_start = 0; window_start < current_contig->get_sequence_length(); window_start += parameters.window_len) {
+    // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
+    // then the results are collected and output to file. After that, a new batch is loaded.
+    int64_t window_batch_size = 200;
+    int64_t num_windows = ceil((float) current_contig->get_sequence_length() / (float) parameters.window_len);
+    printf ("current_contig->get_sequence_length() = %ld, parameters.window_len = %ld, num_windows = %ld\n", current_contig->get_sequence_length(), parameters.window_len, num_windows);
 
-      FILE *fp_window = NULL;
+    for (int64_t window_id = 0; window_id < num_windows; window_id += window_batch_size) {
 
-      if (parameters.temp_window_path != "") {
-        fp_window = fopen(parameters.temp_window_path.c_str(), "w");
+//      #pragma omp parallel for num_threads(parameters.num_threads) firstprivate(num_reads_processed_in_thread_0, evalue_params) shared(reads, parameters, last_time, sam_lines, num_mapped, num_unmapped, num_ambiguous, num_errors, fp_out) schedule(dynamic, 1)
+
+      std::vector<std::string> consensus_windows;
+      consensus_windows.resize(window_batch_size);
+      int64_t windows_to_process = std::min(window_batch_size, num_windows - window_id);
+      //      for (int64_t start_window_id = window_id; start_window_id <; start_window_id += 1) {
+      printf ("\nwindows_to_process = %ld\n", windows_to_process);
+      #pragma omp parallel for num_threads(parameters.num_threads)
+      for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
+//        int64_t id_in_batch = window_id + id_in_batch - window_id;
+        int64_t window_start = (window_id + id_in_batch) * parameters.window_len;
+        int64_t window_end = window_start + parameters.window_len;
+        int32_t thread_id = omp_get_thread_num();
+
+        if (thread_id == 1) {
+          LOG_ALL("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) current_contig->get_data_length()));
+        }
+//        LOG_ALL("(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)\n", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) current_contig->get_data_length()));
+
+        FILE *fp_window = NULL;
+
+        std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
+        if (parameters.temp_window_path != "") {
+          fp_window = fopen(window_path.c_str(), "w");
+        }
+
+        std::vector<const char *> sequences_for_poa;
+        std::vector<int64_t> sequences_for_poa_lengths;
+        for (int64_t j=0; j<alt_contigs.size(); j++) {
+          const SequenceAlignment &aln = alt_contig_seqs[j].get_aln();
+          int64_t start_seq = aln.FindBasePositionOnRead(aln.cigar, window_start);
+          int64_t end_seq = aln.FindBasePositionOnRead(aln.cigar, window_end);
+
+          // If the last requested position was out of bounds of the sequence, position it at the last base.
+          if (end_seq == -1) {
+            end_seq = (aln.pos - 1) + aln.GetReferenceLengthFromCigar() - 1;  // The extra -1 is to point to the last base (and not one after it).
+          }
+
+          if ((end_seq - start_seq) <= 0) { continue; };
+
+          sequences_for_poa.push_back((const char*) (alt_contig_seqs[j].get_data() + start_seq));
+          sequences_for_poa_lengths.push_back(end_seq - start_seq + 1);
+
+          if (fp_window) {
+            fprintf (fp_window, ">%s Window_%d_to_%d\n", alt_contig_seqs[j].get_header(), window_start, window_end);
+            fprintf (fp_window, "%s\n", GetSubstring((char *) sequences_for_poa.back(), sequences_for_poa_lengths.back()).c_str());
+          }
+        }
+
+        if (parameters.msa == "poa") {
+          std::vector<std::string> poa_sequences;
+          for (auto s = 0; s < sequences_for_poa.size(); ++s) {
+              poa_sequences.emplace_back(sequences_for_poa[s], sequences_for_poa_lengths[s]);
+          }
+          consensus_windows[id_in_batch] = POA::poa_consensus(poa_sequences);
+//          fprintf (fp_out_cons, "%s", consensus_sequence.c_str());
+
+        } else if (fp_window) {
+          fclose(fp_window);
+//          std::string cons;
+          std::string a, b;
+          RunMSAFromSystem(parameters, window_path, consensus_windows[id_in_batch]);
+//          fprintf (fp_out_cons, "%s", cons.c_str());
+        } else {
+          ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
+        }
       }
 
-      std::vector<const char *> sequences_for_poa;
-      std::vector<int64_t> sequences_for_poa_lengths;
-      for (int64_t j=0; j<alt_contigs.size(); j++) {
-        const SequenceAlignment &aln = alt_contig_seqs[j].get_aln();
-        int64_t start_seq = aln.FindBasePositionOnRead(aln.cigar, window_start);
-        int64_t end_seq = aln.FindBasePositionOnRead(aln.cigar, window_end);
-
-        // If the last requested position was out of bounds of the sequence, position it at the last base.
-        if (end_seq == -1) {
-          end_seq = (aln.pos - 1) + aln.GetReferenceLengthFromCigar() - 1;  // The extra -1 is to point to the last base (and not one after it).
-        }
-
-        if ((end_seq - start_seq) <= 0) { continue; };
-
-        sequences_for_poa.push_back((const char*) (alt_contig_seqs[j].get_data() + start_seq));
-        sequences_for_poa_lengths.push_back(end_seq - start_seq + 1);
-
-        if (fp_window) {
-          fprintf (fp_window, ">%s Window_%d_to_%d\n", alt_contig_seqs[j].get_header(), window_start, window_end);
-          fprintf (fp_window, "%s\n", GetSubstring((char *) sequences_for_poa.back(), sequences_for_poa_lengths.back()).c_str());
-        }
-      }
-
-      if (parameters.msa == "poa") {
-        std::vector<std::string> poa_sequences;
-        for (auto s = 0; s < sequences_for_poa.size(); ++s) {
-            poa_sequences.emplace_back(sequences_for_poa[s], sequences_for_poa_lengths[s]);
-        }
-        auto consensus_sequence = POA::poa_consensus(poa_sequences);
-        fprintf (fp_out_cons, "%s", consensus_sequence.c_str());
-
-      } else if (fp_window) {
-        fclose(fp_window);
-        std::string cons;
-        std::string a, b;
-        RunMSAFromSystem(parameters, cons);
-        fprintf (fp_out_cons, "%s", cons.c_str());
-      } else {
-        ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
+      for (int64_t start_window_id = window_id; start_window_id < (window_id + window_batch_size) && start_window_id < num_windows; start_window_id += 1) {
+        int64_t id_in_batch = start_window_id - window_id;
+        fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
       }
     }
 
