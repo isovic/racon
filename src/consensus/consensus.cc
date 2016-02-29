@@ -313,7 +313,7 @@ int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector
 }
 
 
-int ConsensusFromMSA(std::string pir_path, std::string *cons) {
+int MajorityVoteFromMSA(std::string pir_path, std::string *cons) {
   SequenceFile pir(SEQ_FORMAT_FASTQ, pir_path);
 
   const SequenceVector& seqs = pir.get_sequences();
@@ -338,15 +338,27 @@ int ConsensusFromMSA(std::string pir_path, std::string *cons) {
     for (int32_t j=0; j<seqs.size(); j++) {
       base_counts[toupper(seqs[j]->get_data()[i])] += 1;
     }
-    // Find the majority vote.
-    int8_t max_base = (int8_t) 'A';
-    for (int32_t j=0; j<256; j++) {
-      if (base_counts[j] > base_counts[max_base]) max_base = (char) j;
-    }
 
-    if (max_base != '.' && max_base != '-') {
+    int64_t sum_base_counts = base_counts['A'] + base_counts['C'] + base_counts['T'] + base_counts['G'];
+    int64_t sum_gap_counts = base_counts['-'] + base_counts['.'];
+    if (sum_base_counts > sum_gap_counts) {
+      std::vector<int8_t> bases = {'A', 'C', 'T', 'G'};
+      int8_t max_base = 'A';
+      for (int32_t j=0; j<bases.size(); j++) {
+        if (base_counts[bases[j]] > base_counts[max_base]) max_base = bases[j];
+      }
       ss << (char) max_base;
     }
+
+//    // Find the majority vote.
+//    int8_t max_base = (int8_t) 'A';
+//    for (int32_t j=0; j<256; j++) {
+//      if (base_counts[j] > base_counts[max_base]) max_base = (char) j;
+//    }
+//
+//    if (max_base != '.' && max_base != '-') {
+//      ss << (char) max_base;
+//    }
   }
 
   *cons = ss.str();
@@ -367,7 +379,7 @@ int RunMSAFromSystem(const ProgramParameters &parameters, std::string window_pat
     return 1;
   }
 
-  ConsensusFromMSA(msa_path, &cons);
+  MajorityVoteFromMSA(msa_path, &cons);
 
   return 0;
 }
