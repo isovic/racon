@@ -85,7 +85,8 @@ int main(int argc, char* argv[]) {
 
   std::string alt_contig_path = argv[3];
 
-  Consensus(parameters, seqs_gfa, seqs_sam);
+//  Consensus(parameters, seqs_gfa, seqs_sam);
+  ConsensusDirectFromAln(parameters, seqs_gfa, seqs_sam);
 
 	return 0;
 }

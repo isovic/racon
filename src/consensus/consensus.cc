@@ -312,7 +312,6 @@ int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector
   return 0;
 }
 
-
 int MajorityVoteFromMSA(std::string pir_path, std::string *cons) {
   SequenceFile pir(SEQ_FORMAT_FASTQ, pir_path);
 
