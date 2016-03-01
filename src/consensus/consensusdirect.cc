@@ -188,23 +188,23 @@ int MajorityVoteFromMSALocal(std::string pir_path, std::string *cons) {
   int64_t seq_len = seqs[0]->get_data_length();
   *cons = "";
   std::stringstream ss;
-  std::vector<int64_t> offset_start;
-  std::vector<int64_t> offset_end;
-  offset_start.resize(seqs.size());
-  offset_end.resize(seqs.size());
-  for (int64_t i=0; i<seqs.size(); i++) {
-    offset_start[i] = 0;
-    offset_end[i] = seq_len;
-
-//    for (int64_t j=0; j<seq_len; j++) {
-//      if (seqs[i]->get_data()[j] != '-' && seqs[i]->get_data()[j] != '.') break;
-//      offset_start[i] += 1;
-//    }
-//    for (int64_t j=(seq_len-1); j>=0; j--) {
-//      if (seqs[i]->get_data()[j] != '-' && seqs[i]->get_data()[j] != '.') break;
-//      offset_end[i] -= 1;
-//    }
-  }
+//  std::vector<int64_t> offset_start;
+//  std::vector<int64_t> offset_end;
+//  offset_start.resize(seqs.size());
+//  offset_end.resize(seqs.size());
+//  for (int64_t i=0; i<seqs.size(); i++) {
+//    offset_start[i] = 0;
+//    offset_end[i] = seq_len;
+//
+////    for (int64_t j=0; j<seq_len; j++) {
+////      if (seqs[i]->get_data()[j] != '-' && seqs[i]->get_data()[j] != '.') break;
+////      offset_start[i] += 1;
+////    }
+////    for (int64_t j=(seq_len-1); j>=0; j--) {
+////      if (seqs[i]->get_data()[j] != '-' && seqs[i]->get_data()[j] != '.') break;
+////      offset_end[i] -= 1;
+////    }
+//  }
 
 //  printf ("seq_len = %ld\n", seq_len);
 //  for (int64_t i=0; i<seqs.size(); i++) {
@@ -217,7 +217,7 @@ int MajorityVoteFromMSALocal(std::string pir_path, std::string *cons) {
     // Count occurances for the column.
     int32_t base_counts[256] = {0};
     for (int32_t j=0; j<seqs.size(); j++) {
-      if (i < offset_start[j] || i >= offset_end[j]) { continue; }
+//      if (i < offset_start[j] || i >= offset_end[j]) { continue; }
       base_counts[toupper(seqs[j]->get_data()[i])] += 1;
     }
 
@@ -245,7 +245,13 @@ int RunMSAFromSystemLocal(const ProgramParameters &parameters, std::string windo
 //    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --maxiterate 1000 --quiet %s > %s", // AlignedBases           48306(99.60%)       47762(100.00%)  AvgIdentity                    96.33                96.33
 //    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --op 0 --ep 1 --maxiterate 1000 --quiet %s > %s", // AlignedBases           48306(99.60%)       47353(100.00%)  AvgIdentity                    97.03                97.03
 //    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --lop 0 --lexp 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
-    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+// Ovaj je dobar    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --globalpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+
+ // Trenutno najbolji rezultat:
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --genafpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+
+    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --genafpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
                         parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
   } else if (parameters.msa == "poav2") {
     int32_t rc = system(FormatString("%s/%s/poa -do_local -do_progressive -read_fasta %s -pir %s %s/../settings/all1-poav2.mat",
