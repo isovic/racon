@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <omp.h>
 
-void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> window_seqs, FILE *fp_window) {
+void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, FILE *fp_window) {
   std::vector<SingleSequence *> candidates;
   for (int64_t i=0; i<alns.size(); i++) {
     auto aln = alns[i]->get_aln();
