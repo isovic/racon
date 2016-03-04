@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <omp.h>
 
-void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, FILE *fp_window) {
+void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, FILE *fp_window) {
   std::vector<SingleSequence *> candidates;
   for (int64_t i=0; i<alns.size(); i++) {
     auto aln = alns[i]->get_aln();
@@ -32,8 +32,14 @@ void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, cons
       if (end_seq < 0) { end_seq = alns[i]->get_data_length() - 1; }
 
       window_seqs.push_back(GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1));
+      if (alns[i]->get_quality() != NULL) {
+        window_qv.push_back(GetSubstring((char *) (alns[i]->get_quality() + start_seq), end_seq - start_seq + 1));
+      }
+
       if (fp_window) {
         fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+//        fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+//        fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
       }
 
     }
@@ -129,8 +135,9 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
          // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
          std::vector<std::string> windows_for_msa;
+         std::vector<std::string> quals_for_msa;
 //         ExtractWindow(alt_contig_seqs, window_start, window_end, windows_for_msa, fp_window);
-         ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, fp_window);
+         ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, fp_window);
 
          // Chosing the MSA algorithm, and running the consensus on the window.
          if (parameters.msa == "poa") {
