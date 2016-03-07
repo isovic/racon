@@ -126,28 +126,27 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
          if (thread_id == 1) { LOG_ALL("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length())); }
 
-         FILE *fp_window = NULL;
-
-         std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
-         if (parameters.temp_window_path != "") {
-           fp_window = fopen(window_path.c_str(), "w");
-         }
-
          // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
          std::vector<std::string> windows_for_msa;
          std::vector<std::string> quals_for_msa;
 //         ExtractWindow(alt_contig_seqs, window_start, window_end, windows_for_msa, fp_window);
-         ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, fp_window);
 
          // Chosing the MSA algorithm, and running the consensus on the window.
          if (parameters.msa == "poa") {
+           ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, NULL);
            consensus_windows[id_in_batch] = POA::poa_consensus(windows_for_msa);
-         } else if (fp_window) {
-           fclose(fp_window);
-           std::string a, b;
-           RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
          } else {
-           ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
+           FILE *fp_window = NULL;
+           std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
+           if (parameters.temp_window_path != "") {
+             fp_window = fopen(window_path.c_str(), "w");
+           }
+           if (fp_window == NULL) {
+             ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
+           }
+           ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, fp_window);
+           fclose(fp_window);
+           RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
          }
        }
 
