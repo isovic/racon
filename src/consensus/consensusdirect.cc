@@ -156,7 +156,7 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
                for (uint32_t w = 1; w < windows_for_msa.size(); ++w) {
                    //auto alignment = createAlignment(windows_for_msa[w], graph,
                    auto alignment = createAlignment(windows_for_msa[indices[w]], graph,
-                       AlignmentParams(1, -1, -1, -1, AlignmentType::kNW));
+                       AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, (AlignmentType) parameters.aln_type));
                    alignment->align_sequence_to_graph();
                    alignment->backtrack();
                    graph->add_alignment(alignment->alignment_node_ids(),
