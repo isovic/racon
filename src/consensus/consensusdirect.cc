@@ -201,11 +201,11 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
            graph->topological_sort();
            printf ("%s\n\n", trimmed_window.c_str());
 
-           auto alignment = createAlignment(trimmed_window, graph,
+           auto alignment = createAlignment(consensus_windows[id_in_batch], graph,
                AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, AlignmentType::kOV));
            alignment->align_sequence_to_graph();
            alignment->backtrack();
-           graph->add_alignment(alignment->alignment_node_ids(), alignment->alignment_seq_ids(), consensus_windows[id_in_batch]);
+//           graph->add_alignment(alignment->alignment_node_ids(), alignment->alignment_seq_ids(), consensus_windows[id_in_batch]);
 //           consensus_windows[id_in_batch] = graph->generate_consensus();
            std::vector<std::string> msa;
            graph->generate_msa(msa);
