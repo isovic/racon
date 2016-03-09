@@ -6,7 +6,7 @@
  */
 
 #include "consensus/consensus.h"
-#include "../../codebase/poa/src/poa.hpp"
+#include "../../codebase/spoa/src/poa.hpp"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 #include <stdint.h>
@@ -14,6 +14,17 @@
 #include <sstream>
 #include <stdlib.h>
 #include <omp.h>
+
+std::vector<size_t> soort(const std::vector<std::string>& windows) {
+    std::vector<size_t> indices(windows.size());
+    std::iota(begin(indices), end(indices), static_cast<size_t>(0));
+
+    std::sort(
+        begin(indices), end(indices),
+        [&](size_t a, size_t b) { return windows[a].size() > windows[b].size(); }
+    );
+    return indices;
+}
 
 void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, FILE *fp_window) {
   std::vector<SingleSequence *> candidates;
@@ -134,7 +145,26 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
          // Chosing the MSA algorithm, and running the consensus on the window.
          if (parameters.msa == "poa") {
            ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, NULL);
-           consensus_windows[id_in_batch] = POA::poa_consensus(windows_for_msa);
+           if (windows_for_msa.size() == 0) {
+               consensus_windows[id_in_batch] = "";
+           } else {
+               auto indices = soort(windows_for_msa);
+
+               GraphSharedPtr graph = createGraph(windows_for_msa[indices[0]], quals_for_msa[indices[0]]);
+               //GraphSharedPtr graph = createGraph(windows_for_msa[0], quals_for_msa[0]);
+               graph->topological_sort();
+               for (uint32_t w = 1; w < windows_for_msa.size(); ++w) {
+                   //auto alignment = createAlignment(windows_for_msa[w], graph,
+                   auto alignment = createAlignment(windows_for_msa[indices[w]], graph,
+                       AlignmentParams(1, -1, -1, -1, AlignmentType::kNW));
+                   alignment->align_sequence_to_graph();
+                   alignment->backtrack();
+                   graph->add_alignment(alignment->alignment_node_ids(),
+                       alignment->alignment_seq_ids(), windows_for_msa[indices[w]], quals_for_msa[indices[w]]);
+                       //alignment->alignment_seq_ids(), windows_for_msa[w], quals_for_msa[w]);
+               }
+               consensus_windows[id_in_batch] = graph->generate_consensus();
+           }
          } else {
            FILE *fp_window = NULL;
            std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
