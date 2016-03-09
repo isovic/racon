@@ -131,11 +131,11 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
       #pragma omp parallel for num_threads(parameters.num_threads)
        for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
-         int64_t window_start = (window_batch_start + id_in_batch) * parameters.window_len;
-         int64_t window_end = window_start + parameters.window_len;
+         int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
+         int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
          int32_t thread_id = omp_get_thread_num();
 
-         if (thread_id == 1) { LOG_ALL("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length())); }
+         if (thread_id == 0) { LOG_ALL("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length())); }
 
          // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
          std::vector<std::string> windows_for_msa;
@@ -180,11 +180,50 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
          }
        }
 
-       for (int64_t start_window_id = window_batch_start; start_window_id < (window_batch_start + parameters.batch_of_windows) && start_window_id < num_windows; start_window_id += 1) {
-         int64_t id_in_batch = start_window_id - window_batch_start;
-         fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
-         fflush(fp_out_cons);
+       // This worked for non-overlapping windows.
+//       for (int64_t start_window_id = window_batch_start; start_window_id < (window_batch_start + parameters.batch_of_windows) && start_window_id < num_windows; start_window_id += 1) {
+//         int64_t id_in_batch = start_window_id - window_batch_start;
+//         fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+//         fflush(fp_out_cons);
+//         printf ("\nTu sam 1!\n");
+//       }
+       printf ("\n");
+
+       for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
+         if (id_in_batch == 0) {
+           fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+           fflush(fp_out_cons);
+         } else {
+//           fprintf (fp_out_cons, "\n>Window2\n%s", consensus_windows[id_in_batch].c_str());
+//           fflush(fp_out_cons);
+           std::string trimmed_window = consensus_windows[id_in_batch-1].substr((1.0 - parameters.win_ovl_margin * 2) * consensus_windows[id_in_batch-1].size());
+           GraphSharedPtr graph = createGraph(trimmed_window);
+           graph->topological_sort();
+           printf ("%s\n\n", trimmed_window.c_str());
+
+           auto alignment = createAlignment(trimmed_window, graph,
+               AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, AlignmentType::kOV));
+           alignment->align_sequence_to_graph();
+           alignment->backtrack();
+           graph->add_alignment(alignment->alignment_node_ids(), alignment->alignment_seq_ids(), consensus_windows[id_in_batch]);
+//           consensus_windows[id_in_batch] = graph->generate_consensus();
+           std::vector<std::string> msa;
+           graph->generate_msa(msa);
+           printf ("msa.size() = %ld\n", msa.size());
+           printf ("Sequence %d:\n%s\n", 0, msa[0].c_str());
+           for (int32_t i1=0; i1<(msa[0].size()-1); i1++) {
+             if (msa[0][i1] == '-' || msa[1][i1] == '-') { printf (" "); }
+             else if (msa[0][i1] == msa[1][i1]) { printf ("|"); }
+             else { printf ("X"); }
+           }
+           printf ("\n");
+           printf ("Sequence %d:\n%s\n", 1, msa[1].c_str());
+           printf ("\n");
+           exit(1);
+
+         }
        }
+       fflush(stdout);
 
        LOG_NOHEADER("\n");
        LOG_ALL("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
