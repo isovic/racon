@@ -6,7 +6,7 @@
  */
 
 #include "consensus/consensus.h"
-#include "../../codebase/poa/src/poa.hpp"
+#include "../../codebase/spoa/src/poa.hpp"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 #include <stdint.h>
@@ -15,7 +15,18 @@
 #include <stdlib.h>
 #include <omp.h>
 
-void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> window_seqs, FILE *fp_window) {
+std::vector<size_t> soort(const std::vector<std::string>& windows) {
+    std::vector<size_t> indices(windows.size());
+    std::iota(begin(indices), end(indices), static_cast<size_t>(0));
+
+    std::sort(
+        begin(indices), end(indices),
+        [&](size_t a, size_t b) { return windows[a].size() > windows[b].size(); }
+    );
+    return indices;
+}
+
+void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, FILE *fp_window) {
   std::vector<SingleSequence *> candidates;
   for (int64_t i=0; i<alns.size(); i++) {
     auto aln = alns[i]->get_aln();
@@ -32,8 +43,14 @@ void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, cons
       if (end_seq < 0) { end_seq = alns[i]->get_data_length() - 1; }
 
       window_seqs.push_back(GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1));
+      if (alns[i]->get_quality() != NULL) {
+        window_qv.push_back(GetSubstring((char *) (alns[i]->get_quality() + start_seq), end_seq - start_seq + 1));
+      }
+
       if (fp_window) {
         fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+//        fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+//        fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
       }
 
     }
@@ -120,27 +137,46 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
          if (thread_id == 1) { LOG_ALL("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length())); }
 
-         FILE *fp_window = NULL;
-
-         std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
-         if (parameters.temp_window_path != "") {
-           fp_window = fopen(window_path.c_str(), "w");
-         }
-
          // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
          std::vector<std::string> windows_for_msa;
+         std::vector<std::string> quals_for_msa;
 //         ExtractWindow(alt_contig_seqs, window_start, window_end, windows_for_msa, fp_window);
-         ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, fp_window);
 
          // Chosing the MSA algorithm, and running the consensus on the window.
          if (parameters.msa == "poa") {
-           consensus_windows[id_in_batch] = POA::poa_consensus(windows_for_msa);
-         } else if (fp_window) {
-           fclose(fp_window);
-           std::string a, b;
-           RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
+           ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, NULL);
+           if (windows_for_msa.size() == 0) {
+               consensus_windows[id_in_batch] = "";
+           } else {
+               auto indices = soort(windows_for_msa);
+
+               GraphSharedPtr graph = createGraph(windows_for_msa[indices[0]], quals_for_msa[indices[0]]);
+               //GraphSharedPtr graph = createGraph(windows_for_msa[0], quals_for_msa[0]);
+               graph->topological_sort();
+               for (uint32_t w = 1; w < windows_for_msa.size(); ++w) {
+                   //auto alignment = createAlignment(windows_for_msa[w], graph,
+                   auto alignment = createAlignment(windows_for_msa[indices[w]], graph,
+                       AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, (AlignmentType) parameters.aln_type));
+                   alignment->align_sequence_to_graph();
+                   alignment->backtrack();
+                   graph->add_alignment(alignment->alignment_node_ids(),
+                       alignment->alignment_seq_ids(), windows_for_msa[indices[w]], quals_for_msa[indices[w]]);
+                       //alignment->alignment_seq_ids(), windows_for_msa[w], quals_for_msa[w]);
+               }
+               consensus_windows[id_in_batch] = graph->generate_consensus();
+           }
          } else {
-           ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
+           FILE *fp_window = NULL;
+           std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
+           if (parameters.temp_window_path != "") {
+             fp_window = fopen(window_path.c_str(), "w");
+           }
+           if (fp_window == NULL) {
+             ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
+           }
+           ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, fp_window);
+           fclose(fp_window);
+           RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
          }
        }
 

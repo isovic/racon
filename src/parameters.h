@@ -10,6 +10,7 @@
 
 #include <string>
 
+
 struct ProgramParameters {
   std::string raw_contigs_path = "";
   std::string aln_path = "";
@@ -31,6 +32,12 @@ struct ProgramParameters {
   std::string program_bin;
   std::string program_folder;
   std::vector<std::string> cmd_arguments;
+
+  int32_t match = 1;
+  int32_t mismatch = -1;
+  int32_t gap_open = -1;
+  int32_t gap_ext = -1;
+  int32_t aln_type = 1;     // SW 0, NW 1, OV 2
 };
 
 
