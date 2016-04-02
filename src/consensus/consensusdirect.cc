@@ -52,53 +52,12 @@ void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, cons
       int64_t end_seq = aln.FindBasePositionOnRead(aln.cigar, window_end, &end_cig_id);
 
       if (start_seq == -1) { start_seq = 0; }
-      else if (start_seq < 0) {
-        fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq);
-//        fprintf (stderr, "window_start = %ld, aln.pos = %ld\n", window_start, aln.pos);
-//        fprintf (stderr, "aln_ref_len = %ld\n", aln_ref_len);
-//        fprintf (stderr, "aln_start = %ld\n", aln_start);
-//        fprintf (stderr, "aln_end = %ld\n", aln_end);
-//        fflush(stderr);
-//
-//        int64_t aligned_pos = (aln.pos > 0) ? (aln.pos - 1) : 0;      // pos field of the SAM file is 1-based. If the value is <= 0, then something is not set right, and ignore this value.
-//
-//        for (int64_t i1=0; i1<5; i1++) {
-//          fprintf (stderr, "aln.cigar[%ld].count = %ld, aln.cigar[%ld].op = %c, aln.cigar[%ld].pos_query = %ld, aln.cigar[%ld].pos_ref = %ld\n", i1, aln.cigar[i1].count, i1, aln.cigar[i1].op, i1, aln.cigar[i1].pos_query, i1, aln.cigar[i1].pos_ref + aligned_pos);
-//        }
-//        fprintf (stderr, "\n");
-//        for (int64_t i1=(aln.cigar.size()-5); i1<aln.cigar.size(); i1++) {
-//          fprintf (stderr, "aln.cigar[%ld].count = %ld, aln.cigar[%ld].op = %c, aln.cigar[%ld].pos_query = %ld, aln.cigar[%ld].pos_ref = %ld\n", i1, aln.cigar[i1].count, i1, aln.cigar[i1].op, i1, aln.cigar[i1].pos_query, i1, aln.cigar[i1].pos_ref + aligned_pos);
-//        }
-//
-//        if (aln.cigar.size() > 0 && (window_start < (aln.cigar[0].pos_ref + aligned_pos))) {
-//          fprintf (stderr, "Would have returned a -1!\n");
-//        }
-//
-//        int64_t i=0;
-//        for (i=0; i<aln.cigar.size(); i++) {
-//          char op = aln.cigar[i].op;
-//          int64_t cig_pos_ref = aln.cigar[i].pos_ref + aligned_pos;
-//          if (is_cigar_match(op) || is_cigar_del(op)) {
-//            if (window_start >= cig_pos_ref && window_start < (cig_pos_ref + aln.cigar[i].count)) {
-//              if (is_cigar_match(op)) { fprintf (stderr, "is_cigar_match(op) == true, %ld\n", (aln.cigar[i].pos_query + (window_start - cig_pos_ref))); }
-//              else { fprintf (stderr, "else condition, %ld\n", (aln.cigar[i].pos_query)); }
-//            }
-//          }
-//        }
-//        fprintf (stderr, "i = %ld, aln.cigar.size = %ld\n", i, aln.cigar.size());
-//        if (i == aln.cigar.size()) {
-//          fprintf (stderr, "Would have returned a -2!\n");
-//        }
-//
-//        fflush(stderr);
-
-        exit(1);
-      }
+      else if (start_seq < 0) { fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1); }
 
       if (end_seq == -2) { end_seq = alns[i]->get_data_length() - 1; }
       else if (end_seq < 0) { fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1); }
 
-      if ((end_seq - start_seq) < 0.10f * (window_end - window_start)) { continue; }
+//      if ((end_seq - start_seq) < 0.10f * (window_end - window_start)) { continue; }
 
       window_seqs.push_back(GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1));
       if (alns[i]->get_quality() != NULL) {
