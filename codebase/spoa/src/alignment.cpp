@@ -12,77 +12,78 @@
 #include "graph.hpp"
 #include "alignment.hpp"
 
-
 AlignmentParams::AlignmentParams(int16_t m, int16_t mm, int16_t gap_opn,
     int16_t gap_ext, AlignmentType t) :
         match(m), mismatch(mm), insertion_open(gap_opn), insertion_extend(gap_ext),
         deletion_open(gap_opn), deletion_extend(gap_ext), type(t) {
+
+    assert(type == AlignmentType::kNW || type == AlignmentType::kSW || type == AlignmentType::kOV);
 }
 
 AlignmentParams::AlignmentParams(int16_t m, int16_t mm, int16_t ins_opn,
     int16_t ins_ext, int16_t del_opn, int16_t del_ext, AlignmentType t) :
         match(m), mismatch(mm), insertion_open(ins_opn), insertion_extend(ins_ext),
         deletion_open(del_opn), deletion_extend(del_ext), type(t) {
+
+    assert(type == AlignmentType::kNW || type == AlignmentType::kSW || type == AlignmentType::kOV);
 }
 
 AlignmentParams::~AlignmentParams() {
 }
 
-Alignment::MatrixElement::MatrixElement(int32_t s, int32_t p_i, int32_t p_j,
-    int16_t del, int16_t ins) :
-        score(s), prev_i(p_i), prev_j(p_j), deletion_cost(del), insertion_cost(ins) {
-}
-
-Alignment::MatrixElement::~MatrixElement() {
-}
-
-Alignment::MatrixMove::MatrixMove(int32_t s, int32_t k, int32_t l, int32_t t) :
-        score(s), i(k), j(l), type(t) {
-}
-
-Alignment::MatrixMove::~MatrixMove() {
-}
-
 std::unique_ptr<Alignment> createAlignment(const std::string& sequence,
-    GraphSharedPtr graph, AlignmentParams params) {
+    std::shared_ptr<Graph> graph, AlignmentParams params) {
+
+    assert(sequence.size() != 0);
 
     return std::unique_ptr<Alignment>(new Alignment(sequence, graph,
         std::move(params)));
 }
 
-Alignment::Alignment(const std::string& sequence, GraphSharedPtr graph,
+Alignment::Alignment(const std::string& sequence, std::shared_ptr<Graph> graph,
     AlignmentParams params) :
-        sequence_(sequence), graph_(graph), params_(std::move(params)) {
+        sequence_profile_(256), graph_(graph), params_(std::move(params)),
+        matrix_width_(sequence.size() + 1),
+        matrix_height_(graph->nodes().size() + 1),
+        H_(matrix_width_ * matrix_height_, 0),
+        F_(matrix_width_ * matrix_height_, 0),
+        E_(matrix_width_ * matrix_height_, 0),
+        is_aligned_(false),
+        max_i_(-1), max_j_(-1), max_score_(0),
+        node_id_to_graph_id_(),
+        is_backtracked_(false),
+        alignment_node_ids_(),
+        alignment_seq_ids_() {
 
-    assert(sequence_.size() != 0);
+    for (const auto& c: graph->alphabet()) {
+        sequence_profile_[c].reserve(sequence.size());
+        for (const auto& s: sequence) {
+            sequence_profile_[c].push_back(c == s ? params_.match : params_.mismatch);
+        }
+    }
 
-    matrix_width_ = sequence_.size() + 1;
-    matrix_height_ = graph_->nodes().size() + 1;
-
-    matrix_.resize(matrix_width_ * matrix_height_, MatrixElement(0, -1, -1,
-        params_.insertion_open, params_.deletion_open));
-
-    is_aligned_ = false;
-    max_i_ = -1;
-    max_j_ = -1;
-    max_score_ = params.type == AlignmentType::kNW ? std::numeric_limits<int32_t>::min() : 0;
+    int32_t big_negative_value = std::numeric_limits<int32_t>::min() + 1000;
+    for (uint32_t j = 1; j < matrix_width_; ++j) {
+        F_[j] = big_negative_value;
+    }
+    for (uint32_t i = 1; i < matrix_height_; ++i) {
+        E_[i * matrix_width_] = big_negative_value;
+    }
 
     graph_->topological_sort();
     const auto& sorted_nodes_ids = graph_->sorted_nodes_ids();
-    node_id_to_graph_id_.resize(sorted_nodes_ids.size());
 
+    node_id_to_graph_id_.resize(sorted_nodes_ids.size());
     for (uint32_t i = 0; i < sorted_nodes_ids.size(); ++i) {
         node_id_to_graph_id_[sorted_nodes_ids[i]] = i;
     }
 
-    is_backtracked_ = false;
-
     if (params_.type == AlignmentType::kNW) {
+        max_score_ = big_negative_value;
 
         for (uint32_t j = 1; j < matrix_width_; ++j) {
-            matrix(0, j).score = params_.insertion_open + (j - 1) * params_.insertion_extend;
-            matrix(0, j).prev_i = 0;
-            matrix(0, j).prev_j = j - 1;
+            H_[j] = params_.insertion_open + (j - 1) * params_.insertion_extend;
+            E_[j] = H_[j];
         }
 
         for (uint32_t node_id: sorted_nodes_ids) {
@@ -90,25 +91,20 @@ Alignment::Alignment(const std::string& sequence, GraphSharedPtr graph,
             uint32_t i = node_id_to_graph_id_[node_id] + 1;
 
             if (node->in_edges().size() == 0) {
-                matrix(i, 0).score = params_.deletion_open;
-                matrix(i, 0).prev_i = 0;
-                matrix(i, 0).prev_j = 0;
+                H_[i * matrix_width_] = params_.deletion_open;
             } else {
-                matrix(i, 0).score = std::numeric_limits<int32_t>::min();
+                int32_t max_score = big_negative_value;
                 for (const auto& edge: node->in_edges()) {
                     uint32_t pred_i = node_id_to_graph_id_[edge->begin_node_id()] + 1;
-                    if (matrix(i, 0).score < matrix(pred_i, 0).score) {
-                        matrix(i, 0).score = matrix(pred_i, 0).score;
-                        matrix(i, 0).prev_i = pred_i;
-                    }
+                    max_score = std::max(max_score, H_[pred_i * matrix_width_]);
                 }
-                matrix(i, 0).prev_j = 0;
-                matrix(i, 0).score += params_.deletion_extend;
+                H_[i * matrix_width_] = max_score + params_.deletion_extend;
             }
+            F_[i * matrix_width_] = H_[i * matrix_width_];
         }
     }
 
-    //print_matrix();
+    // print_matrix();
 }
 
 Alignment::~Alignment() {
@@ -123,94 +119,60 @@ void Alignment::align_sequence_to_graph() {
     graph_->topological_sort();
     const auto& sorted_nodes_ids = graph_->sorted_nodes_ids();
 
-    std::vector<MatrixMove> possible_moves;
-
     for (uint32_t node_id: sorted_nodes_ids) {
         const auto& node = graph_->node(node_id);
-        char graph_letter = node->letter();
+        const auto& char_profile = sequence_profile_[node->letter()];
         uint32_t i = node_id_to_graph_id_[node_id] + 1;
 
+        int32_t* H_row = &H_[i * matrix_width_];
+        int32_t* F_row = &F_[i * matrix_width_];
+
+        uint32_t pred_i = node->in_edges().empty() ? 0 :
+            node_id_to_graph_id_[node->in_edges().front()->begin_node_id()] + 1;
+
+        int32_t* H_pred_row = &H_[pred_i * matrix_width_];
+        int32_t* F_pred_row = &F_[pred_i * matrix_width_];
+
         for (uint32_t j = 1; j < matrix_width_; ++j) {
-            int32_t match_cost = graph_letter == sequence_[j - 1] ? params_.match : params_.mismatch;
+            // update F
+            F_row[j] = std::max(H_pred_row[j] + params_.insertion_open, F_pred_row[j] + params_.insertion_extend);
+            // update H
+            H_row[j] = std::max(H_pred_row[j - 1] + char_profile[j - 1], F_row[j]);
+        }
 
-            possible_moves.clear();
+        // check other predeccessors
+        for (uint32_t p = 1; p < node->in_edges().size(); ++p) {
+            pred_i = node_id_to_graph_id_[node->in_edges()[p]->begin_node_id()] + 1;
 
-            if (node->in_edges().size() == 0) {
-                // match/mismatch
-                possible_moves.emplace_back(matrix(0, j - 1).score + match_cost,
-                    0, j - 1, 0);
-                // insertion to sequence
-                possible_moves.emplace_back(matrix(0, j).score + matrix(0, j).insertion_cost,
-                    0, j, 1);
+            H_pred_row = &H_[pred_i * matrix_width_];
+            F_pred_row = &F_[pred_i * matrix_width_];
 
-            } else {
-                for (const auto& edge: node->in_edges()) {
-                    uint32_t pred_i = node_id_to_graph_id_[edge->begin_node_id()] + 1;
-
-                    // match/mismatch
-                    possible_moves.emplace_back(matrix(pred_i, j - 1).score + match_cost,
-                        pred_i, j - 1, 0);
-                    // insertion to sequence
-                    possible_moves.emplace_back(matrix(pred_i, j).score + matrix(pred_i, j).insertion_cost,
-                        pred_i, j, 1);
-                }
+            for (uint32_t j = 1; j < matrix_width_; ++j) {
+                // update F
+                F_row[j] = std::max(F_row[j], std::max(H_pred_row[j] + params_.insertion_open, F_pred_row[j] + params_.insertion_extend));
+                // update H
+                H_row[j] = std::max(H_row[j], std::max(H_pred_row[j - 1] + char_profile[j - 1], F_row[j]));
             }
+        }
 
-            // deletion from graph
-            possible_moves.emplace_back(matrix(i, j - 1).score + matrix(i, j - 1).deletion_cost,
-                i, j - 1, 2);
+        int32_t* E_row = &E_[i * matrix_width_];
 
-            // find best move
-            int32_t max_idx = 0;
-            for (uint32_t idx = 1; idx < possible_moves.size(); ++idx) {
-                if (possible_moves[max_idx].score < possible_moves[idx].score) {
-                    max_idx = idx;
-                }
-            }
-
-            // update matrix field (i, j)
-            matrix(i, j).score = possible_moves[max_idx].score;
-            matrix(i, j).prev_i = possible_moves[max_idx].i;
-            matrix(i, j).prev_j = possible_moves[max_idx].j;
-
-            if (possible_moves[max_idx].type == 1) {
-                matrix(i, j).insertion_cost = params_.insertion_extend;
-            } else if (possible_moves[max_idx].type == 2) {
-                matrix(i, j).deletion_cost = params_.deletion_extend;
-            }
+        for (uint32_t j = 1; j < matrix_width_; ++j) {
+            // update E
+            E_row[j] = std::max(H_row[j - 1] + params_.deletion_open, E_row[j - 1] + params_.deletion_extend);
+            // update H
+            H_row[j] = std::max(H_row[j], E_row[j]);
 
             if (params_.type == AlignmentType::kSW) {
-
-                if (matrix(i, j).score < 0) {
-                    matrix(i, j).score = 0;
-                    matrix(i, j).prev_i = -1;
-                    matrix(i, j).prev_j = -1;
-                }
-
-                if (max_score_ < matrix(i, j).score) {
-                    max_score_ = matrix(i, j).score;
-                    max_i_ = i;
-                    max_j_ = j;
-                }
-
+                H_row[j] = std::max(H_row[j], 0);
+                update_max_score(H_row, i, j);
             } else if (params_.type == AlignmentType::kNW) {
-
                 if (j == matrix_width_ - 1 && node->out_edges().size() == 0) {
-                    if (max_score_ < matrix(i, j).score) {
-                        max_score_ = matrix(i, j).score;
-                        max_i_ = i;
-                        max_j_ = j;
-                    }
+                    update_max_score(H_row, i, j);
                 }
-
             } else if (params_.type == AlignmentType::kOV) {
-
                 if (j == matrix_width_ - 1 || node->out_edges().size() == 0) {
-                    if (max_score_ < matrix(i, j).score) {
-                        max_score_ = matrix(i, j).score;
-                        max_i_ = i;
-                        max_j_ = j;
-                    }
+                    update_max_score(H_row, i, j);
                 }
             }
         }
@@ -218,10 +180,10 @@ void Alignment::align_sequence_to_graph() {
 
     is_aligned_ = true;
 
-    //print_matrix();
+    // print_matrix();
 }
 
-int32_t Alignment::alignment_score() const {
+int32_t Alignment::score() const {
     assert(is_aligned_ == true && "No alignment done!");
     return max_score_;
 }
@@ -242,20 +204,65 @@ void Alignment::backtrack() {
     uint32_t j = max_j_;
     // fprintf(stderr, "Score, i, j = %d, %d, %d\n", max_score_, i, j);
 
-    auto sw_condition = [&]() { return (matrix(i, j).score == 0) ? false : true; };
+    auto sw_condition = [&]() { return (H_[i * matrix_width_ + j] == 0) ? false : true; };
     auto nw_condition = [&]() { return (i == 0 && j == 0) ? false : true; };
     auto ov_condition = [&]() { return (i == 0 || j == 0) ? false : true; };
 
     const auto& graph_id_to_node_id = graph_->sorted_nodes_ids();
 
-    //while ((params_.type != AlignmentType::kSW || matrix(i, j).score > 0)
-    //    && !(i == 0 && j == 0)) {
+    uint32_t prev_i = 0, prev_j = 0;
+
     while ((params_.type == AlignmentType::kSW && sw_condition()) ||
         (params_.type == AlignmentType::kNW && nw_condition()) ||
         (params_.type == AlignmentType::kOV && ov_condition())) {
 
-        uint32_t prev_i = matrix(i, j).prev_i;
-        uint32_t prev_j = matrix(i, j).prev_j;
+        // bloody backtrack
+        auto H_ij = H_[i * matrix_width_ + j];
+        bool predecessor_found = false;
+
+        if (i != 0) {
+            const auto& node = graph_->node(graph_id_to_node_id[i - 1]);
+            int32_t match_cost = j != 0 ? sequence_profile_[node->letter()][j - 1] : 0;
+
+            uint32_t pred_i = node->in_edges().empty() ? 0 :
+                node_id_to_graph_id_[node->in_edges().front()->begin_node_id()] + 1;
+
+            if (j != 0 && H_ij == H_[pred_i * matrix_width_ + (j - 1)] + match_cost) {
+                prev_i = pred_i;
+                prev_j = j - 1;
+                predecessor_found = true;
+            } else if ((H_ij == F_[pred_i * matrix_width_ + j] + params_.insertion_extend) ||
+                (H_ij == H_[pred_i * matrix_width_ + j] + params_.insertion_open)) {
+                prev_i = pred_i;
+                prev_j = j;
+                predecessor_found = true;
+            }
+
+            if (!predecessor_found) {
+                const auto& edges = node->in_edges();
+                for (uint32_t p = 1; p < edges.size(); ++p) {
+                    uint32_t pred_i = node_id_to_graph_id_[edges[p]->begin_node_id()] + 1;
+                    if (j != 0 && H_ij == H_[pred_i * matrix_width_ + (j - 1)] + match_cost) {
+                        prev_i = pred_i;
+                        prev_j = j - 1;
+                        predecessor_found = true;
+                        break;
+                    }
+                    if ((H_ij == F_[pred_i * matrix_width_ + j] + params_.insertion_extend) ||
+                        (H_ij == H_[pred_i * matrix_width_ + j] + params_.insertion_open)){
+                        prev_i = pred_i;
+                        prev_j = j;
+                        predecessor_found = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!predecessor_found && H_ij == E_[i * matrix_width_ + j]) {
+            prev_i = i;
+            prev_j = j - 1;
+        }
 
         alignment_node_ids_.emplace_back(i == prev_i ? -1 : graph_id_to_node_id[i - 1]);
         alignment_seq_ids_.emplace_back(j == prev_j ? -1 : j - 1);
@@ -270,12 +277,20 @@ void Alignment::backtrack() {
     is_backtracked_ = true;
 }
 
+inline void Alignment::update_max_score(int32_t* H_row, uint32_t i, uint32_t j) {
+    if (max_score_ < H_row[j]) {
+        max_score_ = H_row[j];
+        max_i_ = i;
+        max_j_ = j;
+    }
+}
+
 void Alignment::print_matrix() {
     for (uint32_t i = 0; i < matrix_height_; ++i) {
         for (uint32_t j = 0; j < matrix_width_; ++j) {
-            printf("(%3d, %3d, %3d) ", matrix(i, j).score, matrix(i, j).prev_i,
-                matrix(i, j).prev_j);
-            }
+            printf("(%3d %3d %3d) ", H_[i * matrix_width_ + j],
+                E_[i * matrix_width_ + j], F_[i * matrix_width_ + j]);
+        }
         printf("\n");
     }
     printf("\n");

@@ -6,7 +6,7 @@
  */
 
 #include "consensus/consensus.h"
-#include "../../codebase/spoa/src/poa.hpp"
+//#include "../../codebase/spoa/src/poa.hpp"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 #include <stdint.h>
@@ -14,6 +14,8 @@
 #include <sstream>
 #include <stdlib.h>
 #include <omp.h>
+#include "spoa.hpp"
+#include "graph.hpp"
 
 std::vector<size_t> soort(const std::vector<std::string>& windows) {
     std::vector<size_t> indices(windows.size());
@@ -27,20 +29,76 @@ std::vector<size_t> soort(const std::vector<std::string>& windows) {
 }
 
 void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, FILE *fp_window) {
+  if (window_start > window_end) {
+    return;
+  }
+
   std::vector<SingleSequence *> candidates;
   for (int64_t i=0; i<alns.size(); i++) {
     auto aln = alns[i]->get_aln();
     int64_t aln_ref_len = aln_ref_lens.find(alns[i])->second;
-    if ((aln.pos - 1) > window_end) {
+    int64_t aln_start = aln.pos - 1;
+    int64_t aln_end = aln_start + aln_ref_len - 1;
+    if (aln_start > window_end) {
       break;
-    } else if ((aln.pos - 1) <= window_start && (aln.pos - 1 + aln_ref_len) >= window_end) {
+
+    } else if (aln_end < window_start) {
+      continue;
+
+    } else {
 
       int64_t start_cig_id = 0, end_cig_id = 0;
       int64_t start_seq = aln.FindBasePositionOnRead(aln.cigar, window_start, &start_cig_id);
       int64_t end_seq = aln.FindBasePositionOnRead(aln.cigar, window_end, &end_cig_id);
 
-      if (start_seq < 0) { start_seq = 0; }
-      if (end_seq < 0) { end_seq = alns[i]->get_data_length() - 1; }
+      if (start_seq == -1) { start_seq = 0; }
+      else if (start_seq < 0) {
+        fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq);
+//        fprintf (stderr, "window_start = %ld, aln.pos = %ld\n", window_start, aln.pos);
+//        fprintf (stderr, "aln_ref_len = %ld\n", aln_ref_len);
+//        fprintf (stderr, "aln_start = %ld\n", aln_start);
+//        fprintf (stderr, "aln_end = %ld\n", aln_end);
+//        fflush(stderr);
+//
+//        int64_t aligned_pos = (aln.pos > 0) ? (aln.pos - 1) : 0;      // pos field of the SAM file is 1-based. If the value is <= 0, then something is not set right, and ignore this value.
+//
+//        for (int64_t i1=0; i1<5; i1++) {
+//          fprintf (stderr, "aln.cigar[%ld].count = %ld, aln.cigar[%ld].op = %c, aln.cigar[%ld].pos_query = %ld, aln.cigar[%ld].pos_ref = %ld\n", i1, aln.cigar[i1].count, i1, aln.cigar[i1].op, i1, aln.cigar[i1].pos_query, i1, aln.cigar[i1].pos_ref + aligned_pos);
+//        }
+//        fprintf (stderr, "\n");
+//        for (int64_t i1=(aln.cigar.size()-5); i1<aln.cigar.size(); i1++) {
+//          fprintf (stderr, "aln.cigar[%ld].count = %ld, aln.cigar[%ld].op = %c, aln.cigar[%ld].pos_query = %ld, aln.cigar[%ld].pos_ref = %ld\n", i1, aln.cigar[i1].count, i1, aln.cigar[i1].op, i1, aln.cigar[i1].pos_query, i1, aln.cigar[i1].pos_ref + aligned_pos);
+//        }
+//
+//        if (aln.cigar.size() > 0 && (window_start < (aln.cigar[0].pos_ref + aligned_pos))) {
+//          fprintf (stderr, "Would have returned a -1!\n");
+//        }
+//
+//        int64_t i=0;
+//        for (i=0; i<aln.cigar.size(); i++) {
+//          char op = aln.cigar[i].op;
+//          int64_t cig_pos_ref = aln.cigar[i].pos_ref + aligned_pos;
+//          if (is_cigar_match(op) || is_cigar_del(op)) {
+//            if (window_start >= cig_pos_ref && window_start < (cig_pos_ref + aln.cigar[i].count)) {
+//              if (is_cigar_match(op)) { fprintf (stderr, "is_cigar_match(op) == true, %ld\n", (aln.cigar[i].pos_query + (window_start - cig_pos_ref))); }
+//              else { fprintf (stderr, "else condition, %ld\n", (aln.cigar[i].pos_query)); }
+//            }
+//          }
+//        }
+//        fprintf (stderr, "i = %ld, aln.cigar.size = %ld\n", i, aln.cigar.size());
+//        if (i == aln.cigar.size()) {
+//          fprintf (stderr, "Would have returned a -2!\n");
+//        }
+//
+//        fflush(stderr);
+
+        exit(1);
+      }
+
+      if (end_seq == -2) { end_seq = alns[i]->get_data_length() - 1; }
+      else if (end_seq < 0) { fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1); }
+
+      if ((end_seq - start_seq) < 0.10f * (window_end - window_start)) { continue; }
 
       window_seqs.push_back(GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1));
       if (alns[i]->get_quality() != NULL) {
@@ -149,21 +207,9 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
                consensus_windows[id_in_batch] = "";
            } else {
                auto indices = soort(windows_for_msa);
+               consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, AlignmentParams(parameters.match,
+                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (AlignmentType) parameters.aln_type), true);
 
-               GraphSharedPtr graph = createGraph(windows_for_msa[indices[0]], quals_for_msa[indices[0]]);
-               //GraphSharedPtr graph = createGraph(windows_for_msa[0], quals_for_msa[0]);
-               graph->topological_sort();
-               for (uint32_t w = 1; w < windows_for_msa.size(); ++w) {
-                   //auto alignment = createAlignment(windows_for_msa[w], graph,
-                   auto alignment = createAlignment(windows_for_msa[indices[w]], graph,
-                       AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, (AlignmentType) parameters.aln_type));
-                   alignment->align_sequence_to_graph();
-                   alignment->backtrack();
-                   graph->add_alignment(alignment->alignment_node_ids(),
-                       alignment->alignment_seq_ids(), windows_for_msa[indices[w]], quals_for_msa[indices[w]]);
-                       //alignment->alignment_seq_ids(), windows_for_msa[w], quals_for_msa[w]);
-               }
-               consensus_windows[id_in_batch] = graph->generate_consensus();
            }
          } else {
            FILE *fp_window = NULL;
@@ -180,66 +226,50 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
          }
        }
 
-       // This worked for non-overlapping windows.
-//       for (int64_t start_window_id = window_batch_start; start_window_id < (window_batch_start + parameters.batch_of_windows) && start_window_id < num_windows; start_window_id += 1) {
-//         int64_t id_in_batch = start_window_id - window_batch_start;
-//         fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
-//         fflush(fp_out_cons);
-//         printf ("\nTu sam 1!\n");
-//       }
-
+       // This works for non-overlapping windows.
        for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
-         if (id_in_batch == 0) {
-           fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
-           fflush(fp_out_cons);
-         } else {
-           std::string trimmed_window = consensus_windows[id_in_batch-1].substr((1.0 - parameters.win_ovl_margin * 2) * consensus_windows[id_in_batch-1].size());
-//           std::string trimmed_window = consensus_windows[id_in_batch-1];
-           GraphSharedPtr graph = createGraph(trimmed_window);
-           graph->topological_sort();
-
-           auto alignment = createAlignment(consensus_windows[id_in_batch], graph,
-               AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, AlignmentType::kOV));
-           alignment->align_sequence_to_graph();
-           alignment->backtrack();
-           graph->add_alignment(alignment->alignment_node_ids(), alignment->alignment_seq_ids(), consensus_windows[id_in_batch]);
-           std::vector<std::string> msa;
-           graph->generate_msa(msa);
-
-           std::stringstream ss_clipped_window;
-           int32_t clip_pos = 0;
-           for (clip_pos=(msa[0].size()-1); clip_pos>=0 && msa[0][clip_pos] == '-'; clip_pos--);
-           for (clip_pos++; clip_pos<msa[1].size(); clip_pos++) {
-             if (msa[1][clip_pos] != '-') { ss_clipped_window << msa[1][clip_pos]; }
-           }
-           std::string clipped_window = ss_clipped_window.str();
-           if (clipped_window.size() > 0) {
-             fprintf (fp_out_cons, "%s", clipped_window.c_str());
-             fflush(fp_out_cons);
-           }
-
-//           printf ("msa.size() = %ld\n", msa.size());
-//           printf ("Sequence %d:\n%s\n", 0, msa[0].c_str());
-//           for (int32_t i1=0; i1<(msa[0].size()); i1++) {
-//             if (msa[0][i1] == '-' || msa[1][i1] == '-') { printf (" "); }
-//             else if (msa[0][i1] == msa[1][i1]) { printf ("|"); }
-//             else { printf ("X"); }
-//           }
-//           printf ("\n");
-//           printf ("Sequence %d:\n%s\n", 1, msa[1].c_str());
-//           printf ("\n");
-//           printf ("%s\n", clipped_window.c_str());
-//           printf ("\n");
-
-         }
+         fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+         fflush(fp_out_cons);
        }
-//       fflush(stdout);
-//       exit(1);
+
+//       for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
+//         if (id_in_batch == 0) {
+//           fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+//           fflush(fp_out_cons);
+//         } else {
+//           std::string trimmed_window = consensus_windows[id_in_batch-1].substr((1.0 - parameters.win_ovl_margin * 2) * consensus_windows[id_in_batch-1].size());
+////           consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, (AlignmentType) parameters.aln_type), true);
+//
+//
+////           std::string trimmed_window = consensus_windows[id_in_batch-1];
+//           GraphSharedPtr graph = createGraph(trimmed_window);
+//           graph->topological_sort();
+//
+//           auto alignment = createAlignment(consensus_windows[id_in_batch], graph,
+//               AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, AlignmentType::kOV));
+//           alignment->align_sequence_to_graph();
+//           alignment->backtrack();
+//           graph->add_alignment(alignment->alignment_node_ids(), alignment->alignment_seq_ids(), consensus_windows[id_in_batch]);
+//           std::vector<std::string> msa;
+//           graph->generate_msa(msa);
+//
+//           std::stringstream ss_clipped_window;
+//           int32_t clip_pos = 0;
+//           for (clip_pos=(msa[0].size()-1); clip_pos>=0 && msa[0][clip_pos] == '-'; clip_pos--);
+//           for (clip_pos++; clip_pos<msa[1].size(); clip_pos++) {
+//             if (msa[1][clip_pos] != '-') { ss_clipped_window << msa[1][clip_pos]; }
+//           }
+//           std::string clipped_window = ss_clipped_window.str();
+//           if (clipped_window.size() > 0) {
+//             fprintf (fp_out_cons, "%s", clipped_window.c_str());
+//             fflush(fp_out_cons);
+//           }
+//
+//         }
+//       }
 
        LOG_NOHEADER("\n");
        LOG_ALL("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
-//       LOG_ALL("Debug exiting.\n");
-//       exit(1);
     }
 
     fprintf (fp_out_cons, "\n");

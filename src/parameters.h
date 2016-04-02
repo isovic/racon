@@ -39,7 +39,7 @@ struct ProgramParameters {
   int32_t gap_ext = -1;
   int32_t aln_type = 1;     // SW 0, NW 1, OV 2
 
-  double win_ovl_margin = 0.05;
+  double win_ovl_margin = 0.00; // 0.05;
 };
 
 
