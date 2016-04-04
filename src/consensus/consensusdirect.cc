@@ -6,7 +6,6 @@
  */
 
 #include "consensus/consensus.h"
-//#include "../../codebase/spoa/src/poa.hpp"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 #include <stdint.h>
@@ -16,6 +15,8 @@
 #include <omp.h>
 #include "spoa.hpp"
 #include "graph.hpp"
+
+// #define WINDOW_OUTPUT_IN_FASTQ
 
 std::vector<size_t> soort(const std::vector<std::string>& windows) {
     std::vector<size_t> indices(windows.size());
@@ -65,9 +66,12 @@ void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, cons
       }
 
       if (fp_window) {
-        fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
-//        fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
-//        fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
+        #ifndef WINDOW_OUTPUT_IN_FASTQ
+          fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+        #else
+          fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+          fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
+        #endif
       }
 
     }
@@ -141,7 +145,7 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
     // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
     // then the results are collected and output to file. After that, a new batch is loaded.
-    for (int64_t window_batch_start = 0; window_batch_start < num_windows; window_batch_start += parameters.batch_of_windows) {
+    for (int64_t window_batch_start = parameters.start_window, num_batches = 0; window_batch_start < num_windows && (parameters.num_batches < 0 || num_batches < parameters.num_batches); window_batch_start += parameters.batch_of_windows, num_batches++) {
       std::vector<std::string> consensus_windows;
       consensus_windows.resize(parameters.batch_of_windows);
       int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
@@ -157,7 +161,6 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
          // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
          std::vector<std::string> windows_for_msa;
          std::vector<std::string> quals_for_msa;
-//         ExtractWindow(alt_contig_seqs, window_start, window_end, windows_for_msa, fp_window);
 
          // Chosing the MSA algorithm, and running the consensus on the window.
          if (parameters.msa == "poa") {
@@ -186,7 +189,7 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
        }
 
        // This works for non-overlapping windows.
-       for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
+       for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
          fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
          fflush(fp_out_cons);
        }
@@ -246,7 +249,7 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 }
 
 int MajorityVoteFromMSALocal(std::string pir_path, std::string *cons) {
-  SequenceFile pir(SEQ_FORMAT_FASTQ, pir_path);
+  SequenceFile pir(SEQ_FORMAT_FASTQ, pir_path, false);
 
   const SequenceVector& seqs = pir.get_sequences();
 
@@ -263,36 +266,11 @@ int MajorityVoteFromMSALocal(std::string pir_path, std::string *cons) {
   int64_t seq_len = seqs[0]->get_data_length();
   *cons = "";
   std::stringstream ss;
-//  std::vector<int64_t> offset_start;
-//  std::vector<int64_t> offset_end;
-//  offset_start.resize(seqs.size());
-//  offset_end.resize(seqs.size());
-//  for (int64_t i=0; i<seqs.size(); i++) {
-//    offset_start[i] = 0;
-//    offset_end[i] = seq_len;
-//
-////    for (int64_t j=0; j<seq_len; j++) {
-////      if (seqs[i]->get_data()[j] != '-' && seqs[i]->get_data()[j] != '.') break;
-////      offset_start[i] += 1;
-////    }
-////    for (int64_t j=(seq_len-1); j>=0; j--) {
-////      if (seqs[i]->get_data()[j] != '-' && seqs[i]->get_data()[j] != '.') break;
-////      offset_end[i] -= 1;
-////    }
-//  }
-
-//  printf ("seq_len = %ld\n", seq_len);
-//  for (int64_t i=0; i<seqs.size(); i++) {
-//    printf ("offset_start[%ld] = %ld, offset_end[%ld] = %ld\n", i, offset_start[i], i, offset_end[i]);
-//  }
-
-
 
   for (int64_t i=0; i<seq_len; i++) {
-    // Count occurances for the column.
+    // Count occurrences for the column.
     int32_t base_counts[256] = {0};
     for (int32_t j=0; j<seqs.size(); j++) {
-//      if (i < offset_start[j] || i >= offset_end[j]) { continue; }
       base_counts[toupper(seqs[j]->get_data()[i])] += 1;
     }
 
@@ -326,8 +304,11 @@ int RunMSAFromSystemLocal(const ProgramParameters &parameters, std::string windo
  // Trenutno najbolji rezultat:
 //    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --genafpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
 
-    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+//                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
+    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
                         parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
+
   } else if (parameters.msa == "poav2") {
     int32_t rc = system(FormatString("%s/%s/poa -do_local -do_progressive -read_fasta %s -pir %s %s/../settings/all1-poav2.mat",
                         parameters.program_folder.c_str(), parameters.poav2_folder.c_str(), window_path.c_str(), msa_path.c_str(), parameters.program_folder.c_str()).c_str());
