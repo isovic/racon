@@ -12,9 +12,9 @@
 #include <vector>
 
 enum class AlignmentType {
-    kSW = 0, // Smith Waterman
-    kNW = 1, // Needleman Wunsch
-    kOV = 2 // Overlap
+    kSW, // Smith Waterman
+    kNW, // Needleman Wunsch
+    kOV // Overlap
 };
 
 class AlignmentParams {
@@ -37,11 +37,10 @@ public:
 };
 
 class Graph;
-using GraphSharedPtr = std::shared_ptr<Graph>;
 
 class Alignment;
 std::unique_ptr<Alignment> createAlignment(const std::string& sequence,
-    GraphSharedPtr graph, AlignmentParams params);
+    std::shared_ptr<Graph> graph, AlignmentParams params);
 
 class Alignment {
 public:
@@ -52,75 +51,43 @@ public:
 
     void backtrack();
 
-    int32_t alignment_score() const;
+    int32_t score() const;
 
-    const std::vector<int32_t>& alignment_node_ids() const {
+    const std::vector<int32_t>& node_ids() const {
         assert(is_backtracked_ == true && "No backtrack done!");
         return alignment_node_ids_;
     }
 
-    const std::vector<int32_t>& alignment_seq_ids() const {
+    const std::vector<int32_t>& seq_ids() const {
         assert(is_backtracked_ == true && "No backtrack done!");
         return alignment_seq_ids_;
     }
 
     friend std::unique_ptr<Alignment> createAlignment(const std::string& sequence,
-        GraphSharedPtr graph, AlignmentParams params);
+        std::shared_ptr<Graph> graph, AlignmentParams params);
 
 private:
 
-    Alignment(const std::string& sequence, GraphSharedPtr graph,
+    Alignment(const std::string& sequence, std::shared_ptr<Graph> graph,
         AlignmentParams params);
     Alignment(const Alignment&) = delete;
     const Alignment& operator=(const Alignment&) = delete;
 
-    class MatrixElement {
-    public:
-
-        MatrixElement(int32_t score, int32_t prev_i, int32_t prev_j,
-            int16_t insertion_cost, int16_t deletion_cost);
-        ~MatrixElement();
-
-        int32_t score;
-        int32_t prev_i;
-        int32_t prev_j;
-        int16_t deletion_cost;
-        int16_t insertion_cost;
-    };
-
-    class MatrixMove {
-    public:
-
-        MatrixMove(int32_t score, int32_t i, int32_t j, int32_t type);
-        ~MatrixMove();
-
-        int32_t score;
-        int32_t i;
-        int32_t j;
-        int32_t type; // 0 - diagonal, 1 - insertion, 2 - deletion
-    };
-
-    inline MatrixElement& matrix(uint32_t i, uint32_t j) {
-        assert(i < matrix_height_);
-        assert(j < matrix_width_);
-        return matrix_[i * matrix_width_ + j];
-    }
-
-    inline const MatrixElement& matrix(uint32_t i, uint32_t j) const {
-        assert(i < matrix_height_);
-        assert(j < matrix_width_);
-        return matrix_[i * matrix_width_ + j];
-    }
+    inline void update_max_score(int32_t* H_row, uint32_t i, uint32_t j);
 
     void print_matrix();
 
-    std::string sequence_;
-    GraphSharedPtr graph_;
+    //std::string sequence_;
+    std::vector<std::vector<int32_t>> sequence_profile_;
+    std::shared_ptr<Graph> graph_;
     AlignmentParams params_;
 
     uint32_t matrix_width_;
     uint32_t matrix_height_;
-    std::vector<MatrixElement> matrix_;
+
+    std::vector<int32_t> H_;
+    std::vector<int32_t> F_;
+    std::vector<int32_t> E_;
 
     bool is_aligned_;
     int32_t max_i_;

@@ -7,12 +7,13 @@
 #pragma once
 
 #include <assert.h>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
+#include <unordered_set>
 
 class Node;
-using NodeSharedPtr = std::shared_ptr<Node>;
+class Alignment;
 
 class Graph;
 std::unique_ptr<Graph> createGraph(const std::string& sequence, float weight = 1.0);
@@ -28,28 +29,32 @@ public:
         return num_sequences_;
     }
 
-    const NodeSharedPtr node(uint32_t id) const {
+    const std::shared_ptr<Node> node(uint32_t id) const {
         assert(id < num_nodes_);
         return nodes_[id];
     }
 
-    const std::vector<NodeSharedPtr>& nodes() const {
+    const std::vector<std::shared_ptr<Node>>& nodes() const {
         return nodes_;
     }
 
-    const std::vector<uint32_t> sorted_nodes_ids() const {
+    const std::vector<uint32_t>& sorted_nodes_ids() const {
         assert(is_sorted_ == true);
         return sorted_nodes_ids_;
     }
 
+    const std::unordered_set<uint8_t>& alphabet() const {
+        return alphabet_;
+    }
+
     void topological_sort();
 
-    void add_alignment(const std::vector<int32_t>& node_ids, const std::vector<int32_t>& seq_ids,
-        const std::string& sequence, float weight = 1.0);
-    void add_alignment(const std::vector<int32_t>& node_ids, const std::vector<int32_t>& seq_ids,
-        const std::string& sequence, const std::string& quality);
-    void add_alignment(const std::vector<int32_t>& node_ids, const std::vector<int32_t>& seq_ids,
-        const std::string& sequence, const std::vector<float>& weights);
+    void add_alignment(std::shared_ptr<Alignment> alignment, const std::string& sequence,
+        float weight = 1.0);
+    void add_alignment(std::shared_ptr<Alignment> alignment, const std::string& sequence,
+        const std::string& quality);
+    void add_alignment(std::shared_ptr<Alignment> alignment, const std::string& sequence,
+        const std::vector<float>& weights);
 
     void generate_msa(std::vector<std::string>& dst);
 
@@ -84,7 +89,9 @@ private:
 
     uint32_t num_sequences_;
     uint32_t num_nodes_;
-    std::vector<NodeSharedPtr> nodes_;
+    std::vector<std::shared_ptr<Node>> nodes_;
+
+    std::unordered_set<uint8_t> alphabet_;
 
     bool is_sorted_;
     std::vector<uint32_t> sorted_nodes_ids_;
