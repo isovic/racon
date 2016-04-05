@@ -28,9 +28,6 @@ struct ProgramParameters {
   std::string poav2_folder = "../tools/poaV2";
   int32_t num_threads = 4;
 
-  double new_seq_percent = 0.80;
-  double percent_overlap = 0.01;
-
   std::string program_bin;
   std::string program_folder;
   std::vector<std::string> cmd_arguments;

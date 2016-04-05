@@ -35,13 +35,11 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.aln_path), VALUE_TYPE_STRING, "", "alnpath", "", "Path to a SAM file with read-to-raw contig alignments.", -2, "Input/Output options");
   argparser.AddArgument(&(parameters.consensus_path), VALUE_TYPE_STRING, "", "out", "", "Output consensus sequence.", -1, "Input/Output options");
   argparser.AddArgument(&(parameters.temp_window_path), VALUE_TYPE_STRING, "", "winpath", "temp.window.fasta", "A window of alternate contigs, used to feed MSA tools from disk.", 0, "Input/Output options");
-//  argparser.AddArgument(&(parameters.temp_window_path), VALUE_TYPE_STRING, "", "winpath", "", "A window of alternate contigs.", 0, "Input/Output options");
 
   argparser.AddArgument(&(parameters.num_threads), VALUE_TYPE_INT32, "t", "threads", "4", "Number of threads to use.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.new_seq_percent), VALUE_TYPE_DOUBLE, "", "minnewseq", "0.80", "Minimum percentage of new sequence included in an alternate contig. E.g. 0.80 would mean there can be at least 80% of bases obtained from alternate reads aligned to the contig, and 20% used from the input raw draft contig.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.percent_overlap), VALUE_TYPE_DOUBLE, "", "maxovl", "0.01", "When generating alternate contigs, take alignments of sequences which overlap at most this much.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.win_ovl_margin), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "200", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.start_window), VALUE_TYPE_INT64, "", "start-window", "0", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
