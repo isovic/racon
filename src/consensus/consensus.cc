@@ -1,12 +1,11 @@
 /*
-b * consensus.cc
+ * consensusdirect.cc
  *
- *  Created on: Feb 15, 2016
+ *  Created on: Feb 29, 2016
  *      Author: isovic
  */
 
 #include "consensus/consensus.h"
-#include "../../codebase/poa/src/poa.hpp"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 #include <stdint.h>
@@ -14,575 +13,378 @@ b * consensus.cc
 #include <sstream>
 #include <stdlib.h>
 #include <omp.h>
+#include "spoa.hpp"
+#include "graph.hpp"
 
-//int AlignmentsToContigs(const SequenceFile &alns, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
-//  ctg_names.clear();
-//  ctg_alns.clear();
+// #define WINDOW_OUTPUT_IN_FASTQ
+
+//std::vector<size_t> soort(const std::vector<std::string>& windows) {
+//    std::vector<size_t> indices(windows.size());
+//    std::iota(begin(indices), end(indices), static_cast<size_t>(0));
 //
-//  for (int64_t i=0; i<alns.get_sequences().size(); i++) {
-//    if (alns.get_sequences()[i]->get_aln().IsMapped() == false) continue;
-//
-//    auto it = ctg_alns.find(alns.get_sequences()[i]->get_aln().rname);
-//    if (it != ctg_alns.end()) {
-//      it->second.push_back((const SingleSequence *) (alns.get_sequences()[i]));
-//    } else {
-//      ctg_alns[alns.get_sequences()[i]->get_aln().rname] = std::vector<const SingleSequence *> {(const SingleSequence *) alns.get_sequences()[i]};
-//      ctg_names.push_back(alns.get_sequences()[i]->get_aln().rname);
-//    }
-//  }
-//
-//  return 0;
+//    std::sort(
+//        begin(indices), end(indices),
+//        [&](size_t a, size_t b) { return windows[a].size() > windows[b].size(); }
+//    );
+//    return indices;
 //}
 
-//int ExtractAltContigs(std::vector<const SingleSequence *> &ctg_alns, int64_t raw_ctg_len, double coverage_threshold, double percent_overlap, double qv_threshold, std::vector<std::vector<const SingleSequence *> *> &ret_alt_contigs, std::vector<const SingleSequence *> &rejected_alns) {
-//  ret_alt_contigs.clear();
-//
-//  // This sorts ascending by the pos field.
-//  std::sort(ctg_alns.begin(), ctg_alns.end(), seqaln_sort_key());
-//
-//  // Initialize the current set of alignments to process the full set of mapped reads.
-//  // Skip the unmapped reads. Also, skip reads with base qualities below some threshold.
-//  std::vector<const SingleSequence *> alns_to_process;
-//  alns_to_process.reserve(ctg_alns.size());
-//  for (int64_t i=0; i<ctg_alns.size(); i++) {
-//    double average_bq = ctg_alns[i]->CalcAverageBQ();
-//    if (average_bq >= 0 && average_bq < qv_threshold) { continue; }
-////    printf ("ctg_alns[i]->CalcAverageBQ() = %f\n", ctg_alns[i]->CalcAverageBQ());
-//
-//    if (ctg_alns[i]->get_aln().IsMapped()) { alns_to_process.push_back(ctg_alns[i]); }
-//  }
-//
-//  // Hash all the alignment lengths (which will be used a lot).
-//  std::map<const SingleSequence *, int64_t> aln_ref_lens;
-//  for (int64_t i=0; i<alns_to_process.size(); i++) {
-//    aln_ref_lens[alns_to_process[i]] = alns_to_process[i]->get_aln().GetReferenceLengthFromCigar();
-//  }
-//
-//  int32_t coverage = 0;
-//
-//  while ((MAX_COV <= 0 || (MAX_COV > 0 && coverage < MAX_COV)) and alns_to_process.size() > 0) {
-//    coverage += 1;
-//    LOG_ALL("Coverage: %ld, alns_to_process.size() = %ld\n", coverage, alns_to_process.size());
-//
-//    // Reserve space for the alternate contig.
-//    std::vector<const SingleSequence *> *new_alt_ctg_alns = new std::vector<const SingleSequence *>;
-//    new_alt_ctg_alns->reserve(ctg_alns.size());
-//
-//    // Alignments which weren't used in this iteration.
-//    std::vector<const SingleSequence *> unused_alns;
-//    unused_alns.reserve(ctg_alns.size());
-//
-//    // Initialize some counters.
-//    int64_t aln_ref_len = aln_ref_lens[alns_to_process[0]];
-//    int64_t new_ctg_bases = aln_ref_len;                // Number of bases on the reference (original raw contig) covered by new alignments.
-//    int64_t old_ctg_bases = alns_to_process[0]->get_aln().pos - 1;         // Number of bases in between alignments (or, those comming from the original raw contig).
-//    int64_t previous_start = alns_to_process[0]->get_aln().pos - 1;
-//    int64_t previous_end = previous_start + aln_ref_len;
-//    int64_t prev_ref_len = aln_ref_len;
-//    int64_t prev_candidate_id = 0;
-//    new_alt_ctg_alns->push_back(alns_to_process[0]);
-//
-//    for (int64_t i=0; i<alns_to_process.size(); i++) {
-//      const SingleSequence *candidate = alns_to_process[i];
-//      const SequenceAlignment &candidate_aln = alns_to_process[i]->get_aln();
-//      aln_ref_len = aln_ref_lens[alns_to_process[i]];
-//
-//      if ((candidate_aln.pos - 1) >= (previous_end - prev_ref_len * percent_overlap) and ((candidate_aln.pos - 1) + aln_ref_len) > previous_end) {
-//        new_ctg_bases += ((candidate_aln.pos - 1) >= previous_end) ? (aln_ref_len) : (aln_ref_len - (previous_end - candidate_aln.pos + 1));
-//        old_ctg_bases += ((candidate_aln.pos - 1) >= previous_end) ? (candidate_aln.pos - 1 - previous_end) : 0;
-//        unused_alns.insert(unused_alns.end(), alns_to_process.begin() + (prev_candidate_id + 1), alns_to_process.begin() + i);
-//        prev_candidate_id = i;
-//        previous_start = candidate_aln.pos - 1;
-//        previous_end = previous_start + aln_ref_len;
-//        prev_ref_len = aln_ref_len;
-//        new_alt_ctg_alns->push_back(candidate);
-//      }
-//    }
-//    unused_alns.insert(unused_alns.end(), alns_to_process.begin() + (prev_candidate_id + 1), alns_to_process.end());
-//    old_ctg_bases += raw_ctg_len - previous_end;
-//
-//    // Check the threshold for the covered bases. If above threshold, accept the contig.
-//    if ((((float) new_ctg_bases) / ((float) new_ctg_bases + old_ctg_bases)) < coverage_threshold) {
-//#ifdef EXTREME_DEBUG_
-//      printf ("[REJECTED]:\n");
-//      printf ("new_ctg_bases = %ld\n", new_ctg_bases);
-//      printf ("new_ctg_bases + old_ctg_bases = %ld\n", new_ctg_bases + old_ctg_bases);
-//      printf ("contig_coverage = %f\n", (((float) new_ctg_bases) / ((float) new_ctg_bases + old_ctg_bases)));
-//      printf ("\n");
-//#endif
-//
-//      unused_alns.clear();
-//      unused_alns.insert(unused_alns.end(), alns_to_process.begin() + 1, alns_to_process.end());
-//      rejected_alns.push_back(alns_to_process[0]);
-//      new_alt_ctg_alns->clear();
-//      if (new_alt_ctg_alns) delete new_alt_ctg_alns;
-//      new_alt_ctg_alns = NULL;
-//
-//    } else {
-//#ifdef EXTREME_DEBUG_
-//      printf ("\t[ACCEPTED]:\n");
-//      printf ("\tcontig_coverage = %f\n", (((float) new_ctg_bases) / ((float) new_ctg_bases + old_ctg_bases)));
-//#endif
-//      ret_alt_contigs.push_back(new_alt_ctg_alns);
-//    }
-//
-//    alns_to_process = unused_alns;
-//    unused_alns.clear();
-//
-//  }
-//
-//  return 0;
-//}
+int AlignmentsToContigs(const SequenceFile &alns, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
+  ctg_names.clear();
+  ctg_alns.clear();
 
-//void VerboseExtractedAlignments(std::vector<std::vector<const SingleSequence *> *> &alt_contigs, std::vector<const SingleSequence *> rejected_alns, std::string out_alt_ctg_path, std::string out_rejected_path) {
-//
-//  FILE *fp_alt_contigs = fopen(out_alt_ctg_path.c_str(), "w");
-//  for (int64_t j=0; j<alt_contigs.size(); j++) {
-//    fprintf (fp_alt_contigs, "Contig %ld\n", j);
-//    for (int64_t k=0; k<alt_contigs[j]->size(); k++) {
-//      const SingleSequence *seq = (*alt_contigs[j])[k];
-////        fprintf (fp_alt_contigs, "%s\n", seq->MakeSAMLine().c_str());
-//      fprintf (fp_alt_contigs, "%s\t%ld\t%ld\n", seq->get_header(), (seq->get_aln().pos - 1), (seq->get_aln().pos - 1 + seq->get_aln().GetReferenceLengthFromCigar()));
-//    }
-//    fprintf (fp_alt_contigs, "\n");
-//  }
-//  fclose(fp_alt_contigs);
-//
-//  FILE *fp_rejected_alns = fopen(out_rejected_path.c_str(), "w");
-//  for (int64_t j=0; j<rejected_alns.size(); j++) {
-//    const SingleSequence *seq = (rejected_alns[j]);
-////        fprintf (fp_rejected_alns, "%s\n", seq->MakeSAMLine().c_str());
-//    fprintf (fp_rejected_alns, "%s\t%ld\t%ld\n", seq->get_header(), (seq->get_aln().pos - 1), (seq->get_aln().pos - 1 + seq->get_aln().GetReferenceLengthFromCigar()));
-//  }
-//  fclose(fp_rejected_alns);
-//}
+  for (int64_t i=0; i<alns.get_sequences().size(); i++) {
+    if (alns.get_sequences()[i]->get_aln().IsMapped() == false) continue;
 
-//int GetCigarBetweenPositions(const SingleSequence *seq_aln, int64_t start_seq_pos, int64_t start_cig_id, int64_t end_seq_pos, int64_t end_cig_id, std::vector<CigarOp> *ret_cigar) {
-//  // Check if the beginning CIGAR operation is fully captured, or we need to split it and take only the right part.
-//  if (start_cig_id == end_cig_id) {
-//    int64_t dist_start = start_seq_pos - seq_aln->get_aln().cigar[start_cig_id].pos_query;
-//    int64_t dist_end = end_seq_pos - seq_aln->get_aln().cigar[end_cig_id].pos_query;
-//    CigarOp partial_op = seq_aln->get_aln().cigar[start_cig_id];
-//    partial_op.count = (end_seq_pos - start_seq_pos);
-//    if (is_cigar_read(partial_op.op)) { partial_op.pos_query += dist_start; }
-//    if (is_cigar_ref(partial_op.op)) { partial_op.pos_ref += dist_start; }
-//    ret_cigar->insert(ret_cigar->end(), &seq_aln->get_aln().cigar[0] + start_cig_id + 1, &seq_aln->get_aln().cigar[0] + end_cig_id - 1);
-//    return 0;
-//  }
-//
-//  int64_t dist_start = start_seq_pos - seq_aln->get_aln().cigar[start_cig_id].pos_query;
-//  CigarOp first_op = seq_aln->get_aln().cigar[start_cig_id];
-//  first_op.count -= dist_start;
-//  if (is_cigar_read(first_op.op)) { first_op.pos_query += dist_start; }
-//  if (is_cigar_ref(first_op.op)) { first_op.pos_ref += dist_start; }
-//  if (first_op.count > 0) {
-//    ret_cigar->push_back(first_op);
-//  }
-//
-//  if (end_cig_id > (start_cig_id + 1)) {
-//    ret_cigar->insert(ret_cigar->end(), &seq_aln->get_aln().cigar[0] + start_cig_id + 1, &seq_aln->get_aln().cigar[0] + end_cig_id);
-//  }
-//
-//  int64_t dist_end = end_seq_pos - seq_aln->get_aln().cigar[end_cig_id].pos_query + 1;
-//  CigarOp last_op = seq_aln->get_aln().cigar[end_cig_id];
-//  last_op.count = dist_end;
-//  if (last_op.count > 0) {
-//    ret_cigar->push_back(last_op);
-//  }
-//
-//  return 0;
-//}
+    auto it = ctg_alns.find(alns.get_sequences()[i]->get_aln().rname);
+    if (it != ctg_alns.end()) {
+      it->second.push_back((const SingleSequence *) (alns.get_sequences()[i]));
+    } else {
+      ctg_alns[alns.get_sequences()[i]->get_aln().rname] = std::vector<const SingleSequence *> {(const SingleSequence *) alns.get_sequences()[i]};
+      ctg_names.push_back(alns.get_sequences()[i]->get_aln().rname);
+    }
+  }
 
-//int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector<const SingleSequence *> *seq_alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, SingleSequence &new_contig) {
-//  //, std::vector<int8_t> *new_contig, std::vector<CigarOp> *new_contig_cigar) {
-//  LOG_ALL("Constructing an alternate contig sequence from a set of alignments.\n");
-//
-//  std::vector<int8_t> new_contig_seq;
-//  new_contig_seq.reserve(orig_contig.get_data_length());
-//
-//  SequenceAlignment &new_contig_aln = (SequenceAlignment &) new_contig.get_aln();
-//
-//  new_contig.Clear();
-//  new_contig.InitHeader(std::string("AlternateContig"));
-//  new_contig_aln.rname = TrimToFirstSpace(orig_contig.get_header()).c_str();
-//  new_contig_aln.pos = 1;
-//  new_contig_aln.flag = 0;
-//  new_contig_aln.cigar.clear();
-//  new_contig_aln.as = orig_contig.get_sequence_length();
-//  new_contig_aln.mapq = 40;
-//  new_contig_aln.evalue = 0.0;
-//
-//  new_contig_aln.cigar.reserve(orig_contig.get_data_length()/2 + 1);
-//
-//  int64_t prev_end_ref = 0;
-//  for (int64_t i=0; i<seq_alns->size(); i++) {
-//    const SingleSequence *seq_aln = seq_alns->at(i);
-//    const SequenceAlignment &aln = seq_aln->get_aln();
-//    int64_t pos = aln.pos;
-//
-//    int64_t start_ref = ((pos - 1) < prev_end_ref) ? (prev_end_ref) : (pos - 1);
-//    int64_t end_ref = (pos - 1) + aln_ref_lens.find(seq_alns->at(i))->second - 1;
-//
-//    int64_t start_cig_id = 0, end_cig_id = 0;
-//    int64_t start_seq = seq_aln->get_aln().FindBasePositionOnRead(aln.cigar, start_ref, &start_cig_id);
-//    int64_t end_seq = seq_aln->get_aln().FindBasePositionOnRead(aln.cigar, end_ref, &end_cig_id);
-//
-//#ifdef EXTREME_DEBUG_
-//    LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
-//#endif
-//
-//    // If there was a gap between the current and the previous read, fill it with the corresponding part of the given contig_raw.
-//    // Also, if the first sam_line did not start at position 0, the leading chunk will be filled in.
-//    if (start_ref > prev_end_ref) {
-//#ifdef EXTREME_DEBUG_
-//      LOG_DEBUG_NOHEADER("  [%ld] Filling gap: start_ref = %ld, end_ref = %ld, prev_end_ref = %ld, start_seq = %ld, end_seq = %ld\n", i, start_ref, end_ref, prev_end_ref, start_seq, end_seq);
-//      LOG_DEBUG_NOHEADER("      Inserting sequence from: %ld to: %ld\n", prev_end_ref, start_ref);
-//#endif
-//
-//      CigarOp match_op;
-//      match_op.op = '=';  match_op.count = start_ref - prev_end_ref - 1;  match_op.pos_query = new_contig_seq.size();  match_op.pos_ref = prev_end_ref;
-//      if (match_op.count > 0) { new_contig_aln.cigar.push_back(match_op); }
-//
-//      new_contig_seq.insert(new_contig_seq.end(), orig_contig.get_data() + prev_end_ref + 1 , orig_contig.get_data() + start_ref);
-//#ifdef EXTREME_DEBUG_
-//      LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
-//#endif
-//    }
-//
-//    // Copy the new sequence into the alternate contig.
-//#ifdef EXTREME_DEBUG_
-//    LOG_DEBUG_NOHEADER("  [%ld] Adding SAM: start_ref = %ld, end_ref = %ld, prev_end_ref = %ld, start_seq = %ld, end_seq = %ld, new_contig_len (before) = %ld, new_contig_len (after) = %ld, len(ref) = %ld, len(seq) = %ld\n", i, start_ref, end_ref, prev_end_ref, start_seq, end_seq, new_contig_seq.size(), (new_contig_seq.size() + (end_seq - start_seq)), orig_contig.get_data_length(), seq_aln->get_data_length());
-//#endif
-//    GetCigarBetweenPositions(seq_aln, start_seq, start_cig_id, end_seq, end_cig_id, &new_contig_aln.cigar);
-//    new_contig_seq.insert(new_contig_seq.end(), seq_aln->get_data() + start_seq, seq_aln->get_data() + end_seq + 1);
-//#ifdef EXTREME_DEBUG_
-//    LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
-//#endif
-//
-//    // Check if this was the last sam_line. If it was, and it didn't end on the end of the reference, fill in the missing part on the back.
-//    if ((i + 1) == seq_alns->size()) {
-//      if (end_ref < orig_contig.get_data_length()) {
-//#ifdef EXTREME_DEBUG_
-//        LOG_DEBUG_NOHEADER("  [%ld] Fixing the end: (I) with contig_raw: start_ref = %ld, end_ref = %ld, prev_end_ref = %ld\n", i, start_ref, end_ref, prev_end_ref);
-//#endif
-//
-//        CigarOp match_op;
-//        match_op.op = '=';  match_op.count = orig_contig.get_data_length() - end_ref - 1;  match_op.pos_query = new_contig_seq.size();  match_op.pos_ref = end_ref;
-//        if (match_op.count > 0) { new_contig_aln.cigar.push_back(match_op); }
-//        new_contig_seq.insert(new_contig_seq.end(), orig_contig.get_data() + end_ref + 1, orig_contig.get_data() + orig_contig.get_data_length());
-//
-//#ifdef EXTREME_DEBUG_
-//        LOG_DEBUG_NOHEADER("  [%ld] match_op.count = %ld, orig_contig.get_data_length() = %ld, end_ref = %ld\n", i, match_op.count, orig_contig.get_data_length(), end_ref);
-//        LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
-//#endif
-//      } else {
-//#ifdef EXTREME_DEBUG_
-//        LOG_DEBUG_NOHEADER("  [%ld] Fixing the end: (II) with contig_raw: start_ref = %ld, end_ref = %ld, prev_end_ref = %ld", i, start_ref, end_ref, prev_end_ref);
-//#endif
-//        GetCigarBetweenPositions(seq_aln, end_seq, end_cig_id, seq_aln->get_data_length(), seq_aln->get_aln().cigar.size() - 1, &new_contig_aln.cigar);
-//        new_contig_seq.insert(new_contig_seq.end(), seq_aln->get_data() + end_seq + 1, seq_aln->get_data() + seq_aln->get_data_length());
-//#ifdef EXTREME_DEBUG_
-//        LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
-//#endif
-//      }
-//    }
-//    prev_end_ref = end_ref;
-//#ifdef EXTREME_DEBUG_
-//    LOG_DEBUG_NOHEADER("  [%ld] new_contig->size() = %ld\n", i, new_contig_seq.size());
-//    LOG_DEBUG_NOHEADER("\n");
-//#endif
-//  }
-//
-//  new_contig.InitDatafromAscii(&new_contig_seq[0], (uint64_t) new_contig_seq.size());
-//
-//  int64_t pos_ref = new_contig_aln.pos - 1, pos_query = 0;
-//  for (int64_t i=0; i<new_contig_aln.cigar.size(); i++) {
-//    new_contig_aln.cigar[i].pos_query = pos_query;
-//    new_contig_aln.cigar[i].pos_ref = pos_ref;
-//    if (is_cigar_ref(new_contig_aln.cigar[i].op)) pos_ref += new_contig_aln.cigar[i].count;
-//    if (is_cigar_read(new_contig_aln.cigar[i].op)) pos_query += new_contig_aln.cigar[i].count;
-//  }
-//
-//#ifdef EXTREME_DEBUG_
-//  LOG_DEBUG_NOHEADER("new_contig->size() = %ld\n", (new_contig_seq.size()));
-//#endif
-//
-//  LOG_DEBUG("Finished constructing the alternate contig sequence.\n");
-//
-//  return 0;
-//}
+  return 0;
+}
 
-//int MajorityVoteFromMSA(std::string pir_path, std::string *cons) {
-//  SequenceFile pir(SEQ_FORMAT_FASTQ, pir_path);
-//
-//  const SequenceVector& seqs = pir.get_sequences();
-//
-//  if (seqs.size() == 0) { return 1; }
-//
-//
-//  for (int64_t i=1; i<pir.get_sequences().size(); i++) {
-//    if (seqs[i]->get_data_length() != seqs[i-1]->get_data_length()) {
-//      ERROR_REPORT(ERR_FILE_DEFORMED_FORMAT, "MSA sequences not of correct length in file %s!\n", pir_path.c_str());
-//      return 2;
-//    }
-//  }
-//
-//  int64_t seq_len = seqs[0]->get_data_length();
-//  *cons = "";
-//  std::stringstream ss;
-//
-//  for (int64_t i=0; i<seq_len; i++) {
-//    // Count occurances for the column.
-//    int32_t base_counts[256] = {0};
-//    for (int32_t j=0; j<seqs.size(); j++) {
-//      base_counts[toupper(seqs[j]->get_data()[i])] += 1;
-//    }
-//
-//    int64_t sum_base_counts = base_counts['A'] + base_counts['C'] + base_counts['T'] + base_counts['G'];
-//    int64_t sum_gap_counts = base_counts['-'] + base_counts['.'];
-//    if (sum_base_counts > sum_gap_counts) {
-//      std::vector<int8_t> bases = {'A', 'C', 'T', 'G'};
-//      int8_t max_base = 'A';
-//      for (int32_t j=0; j<bases.size(); j++) {
-//        if (base_counts[bases[j]] > base_counts[max_base]) max_base = bases[j];
-//      }
-//      ss << (char) max_base;
-//    }
-//
-////    // Find the majority vote.
-////    int8_t max_base = (int8_t) 'A';
-////    for (int32_t j=0; j<256; j++) {
-////      if (base_counts[j] > base_counts[max_base]) max_base = (char) j;
-////    }
-////
-////    if (max_base != '.' && max_base != '-') {
-////      ss << (char) max_base;
-////    }
-//  }
-//
-//  *cons = ss.str();
-//
-//  return 0;
-//}
+void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, FILE *fp_window) {
+  if (window_start > window_end) {
+    return;
+  }
 
-//int RunMSAFromSystem(const ProgramParameters &parameters, std::string window_path, std::string &cons) {
-//  std::string msa_path = FormatString("%s.msa", window_path.c_str());
-//  if (parameters.msa == "mafft") {
-//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --op 0 --ep 1 --quiet %s > %s",
+  std::vector<SingleSequence *> candidates;
+  for (int64_t i=0; i<alns.size(); i++) {
+    auto aln = alns[i]->get_aln();
+    int64_t aln_ref_len = aln_ref_lens.find(alns[i])->second;
+    int64_t aln_start = aln.pos - 1;
+    int64_t aln_end = aln_start + aln_ref_len - 1;
+    if (aln_start > window_end) {
+      break;
+
+    } else if (aln_end < window_start) {
+      continue;
+
+    } else {
+
+      int64_t start_cig_id = 0, end_cig_id = 0;
+      int64_t start_seq = aln.FindBasePositionOnRead(aln.cigar, window_start, &start_cig_id);
+      int64_t end_seq = aln.FindBasePositionOnRead(aln.cigar, window_end, &end_cig_id);
+
+      if (start_seq == -1) { start_seq = 0; }
+      else if (start_seq < 0) { fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1); }
+
+      if (end_seq == -2) { end_seq = alns[i]->get_data_length() - 1; }
+      else if (end_seq < 0) { fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1); }
+
+//      if ((end_seq - start_seq) < 0.10f * (window_end - window_start)) { continue; }
+
+      window_seqs.push_back(GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1));
+      if (alns[i]->get_quality() != NULL) {
+        window_qv.push_back(GetSubstring((char *) (alns[i]->get_quality() + start_seq), end_seq - start_seq + 1));
+      }
+
+      if (fp_window) {
+        #ifndef WINDOW_OUTPUT_IN_FASTQ
+          fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+        #else
+          fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+          fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
+        #endif
+      }
+
+    }
+  }
+}
+
+int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
+  LOG_ALL("Running consensus - directly from alignments.\n");
+
+  std::vector<std::string> ctg_names;
+  std::map<std::string, std::vector<const SingleSequence *> > all_ctg_alns;
+
+  // Separate alignments into groups for each contig.
+  // Alignments which are called unmapped will be skipped in this step.
+  LOG_ALL("Separating alignments to individual contigs.\n");
+  AlignmentsToContigs(alns, ctg_names, all_ctg_alns);
+
+  // Verbose.
+  LOG_ALL("In total, there are %ld contigs, each containing:\n", ctg_names.size());
+  for (int32_t i=0; i<ctg_names.size(); i++) {
+    LOG_ALL("\t[%ld] %s %ld alignments\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size());
+  }
+
+  // Hash the sequences by their name.
+  std::map<std::string, const SingleSequence *> rname_to_seq;
+  for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
+    rname_to_seq[contigs.get_sequences()[i]->get_header()] = contigs.get_sequences()[i];
+    rname_to_seq[TrimToFirstSpace(contigs.get_sequences()[i]->get_header())] = contigs.get_sequences()[i];
+  }
+
+  // Hash all the alignment lengths (which will be used a lot).
+  std::map<const SingleSequence *, int64_t> aln_ref_lens;
+  for (int64_t i=0; i<alns.get_sequences().size(); i++) {
+    aln_ref_lens[alns.get_sequences()[i]] = alns.get_sequences()[i]->get_aln().GetReferenceLengthFromCigar();
+  }
+
+  // Debug output of alternate contigs, aligned to the raw contig (input sequence), in SAM format.
+  FILE *fp_alt_contig_path = NULL;
+  if (parameters.temp_alt_contig_path != "") {
+    fp_alt_contig_path = fopen(parameters.temp_alt_contig_path.c_str(), "w");
+    fprintf (fp_alt_contig_path, "@HD\tVN:1.0\tSO:unknown\n");
+    for (int32_t i=0; i<ctg_names.size(); i++) {
+      fprintf (fp_alt_contig_path, "@SQ\tSN:%s\tLN:%ld\n", ctg_names[i].c_str(), rname_to_seq[ctg_names[i]]->get_data_length());
+    }
+    fprintf (fp_alt_contig_path, "@PG\tID:consise PN:consise\n");
+  }
+
+  // Clear the output file for consensus.
+  FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "w");
+  fclose(fp_out_cons);
+
+  // For each contig (draft can contain multiple contigs), process alignments to obtain alternate contigs.
+  for (int32_t i=0; i<ctg_names.size(); i++) {
+    const SingleSequence *contig = rname_to_seq[ctg_names[i]];
+    auto it = all_ctg_alns.find(ctg_names[i]);
+    if (it == all_ctg_alns.end()) {
+      FATAL_REPORT(ERR_UNEXPECTED_VALUE, "Something strange happened. Contig name, which was extracted from alignments, cannot be found in the std::map containing those same alignments.");
+      // Exits.
+    }
+    // Get alignments for current contig.
+    std::vector<const SingleSequence *> &ctg_alns = it->second;
+
+    // This sorts ascending by the pos field.
+    std::sort(ctg_alns.begin(), ctg_alns.end(), seqaln_sort_key());
+
+    FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
+    fprintf (fp_out_cons, ">Consensus_%d %s\n", i, ctg_names[i].c_str());
+
+    int64_t num_windows = ceil((float) contig->get_sequence_length() / (float) parameters.window_len);
+    LOG_DEBUG ("current_contig->get_sequence_length() = %ld, parameters.window_len = %ld, num_windows = %ld\n", contig->get_sequence_length(), parameters.window_len, num_windows);
+
+    // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
+    // then the results are collected and output to file. After that, a new batch is loaded.
+    for (int64_t window_batch_start = parameters.start_window, num_batches = 0; window_batch_start < num_windows && (parameters.num_batches < 0 || num_batches < parameters.num_batches); window_batch_start += parameters.batch_of_windows, num_batches++) {
+      std::vector<std::string> consensus_windows;
+      consensus_windows.resize(parameters.batch_of_windows);
+      int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
+
+      #pragma omp parallel for num_threads(parameters.num_threads)
+       for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
+         int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
+         int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
+         int32_t thread_id = omp_get_thread_num();
+
+         if (thread_id == 0) { LOG_ALL("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length())); }
+
+         // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
+         std::vector<std::string> windows_for_msa;
+         std::vector<std::string> quals_for_msa;
+
+         // Chosing the MSA algorithm, and running the consensus on the window.
+         if (parameters.msa == "poa") {
+           ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, NULL);
+           if (windows_for_msa.size() == 0) {
+               consensus_windows[id_in_batch] = "";
+           } else {
+               consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, SPOA::AlignmentParams(parameters.match,
+                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
+
+           }
+         } else {
+           FILE *fp_window = NULL;
+           std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
+           if (parameters.temp_window_path != "") {
+             fp_window = fopen(window_path.c_str(), "w");
+           }
+           if (fp_window == NULL) {
+             ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
+           }
+           ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, fp_window);
+           fclose(fp_window);
+           RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
+         }
+       }
+
+       // This works for non-overlapping windows.
+//       for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
+//         fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+//         fflush(fp_out_cons);
+//       }
+
+       for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
+         int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
+         int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
+
+         if (id_in_batch == 0) {
+           fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+           fflush(fp_out_cons);
+         } else {
+           if (parameters.win_ovl_margin <= 0.0) {
+             fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+             fflush(fp_out_cons);
+           } else {
+             fprintf (stderr, "Overlapping windows.\n");
+             fflush(stderr);
+
+             std::string trimmed_window = consensus_windows[id_in_batch-1].substr((1.0 - parameters.win_ovl_margin * 3) * consensus_windows[id_in_batch-1].size());
+  //           consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, (AlignmentType) parameters.aln_type), true);
+
+             std::vector<std::string> windows_for_alignment = {trimmed_window, consensus_windows[id_in_batch]};
+             std::vector<std::string> msa;
+//             printf ("\n");
+//             for (int32_t i2=0; i2<windows_for_alignment.size(); i2++) {
+//               printf ("%s\n\n", windows_for_alignment[i2].c_str());
+//             }
+//             printf ("\n");
+//             printf ("Alignment:\n\n");
+//             fflush(stdout);
+//             SPOA::generate_msa(msa, windows_for_alignment, SPOA::AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, SPOA::AlignmentType::kOV), true);
+             SPOA::generate_msa(msa, windows_for_alignment, SPOA::AlignmentParams(1, -1, -1, -1, SPOA::AlignmentType::kOV), false);
+//             for (int32_t i2=0; i2<msa.size(); i2++) {
+//               printf ("%s\n\n", msa[i2].c_str());
+//             }
+//             printf ("\n");
+
+  ////           std::string trimmed_window = consensus_windows[id_in_batch-1];
+  //           GraphSharedPtr graph = createGraph(trimmed_window);
+  //           graph->topological_sort();
+  //
+  //           auto alignment = createAlignment(consensus_windows[id_in_batch], graph,
+  //               AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, AlignmentType::kOV));
+  //           alignment->align_sequence_to_graph();
+  //           alignment->backtrack();
+  //           graph->add_alignment(alignment->alignment_node_ids(), alignment->alignment_seq_ids(), consensus_windows[id_in_batch]);
+  //           std::vector<std::string> msa;
+  //           graph->generate_msa(msa);
+
+             std::stringstream ss_clipped_window;
+             int32_t clip_pos = 0;
+             int32_t trimmed_id = 0, curr_window_id = 1;
+             for (clip_pos=(msa[trimmed_id].size()-1); clip_pos>=0 && msa[trimmed_id][clip_pos] == '-'; clip_pos--);
+//             printf ("clip_pos = %d\n", clip_pos);
+             for (clip_pos++; clip_pos<msa[curr_window_id].size(); clip_pos++) {
+               if (msa[curr_window_id][clip_pos] != '-') { ss_clipped_window << msa[curr_window_id][clip_pos]; }
+             }
+             std::string clipped_window = ss_clipped_window.str();
+
+             if (clipped_window.size() > 0) {
+               fprintf (fp_out_cons, "%s", clipped_window.c_str());
+               fflush(fp_out_cons);
+//               printf ("[good] window_start = %ld, window_end = %ld, clipped_window.size() = %ld\n", window_start, window_end, clipped_window.size());
+//               fflush(stdout);
+             } else {
+               printf ("\n");
+               printf ("[bad] window_start = %ld, window_end = %ld, clipped_window.size() = %ld\n", window_start, window_end, clipped_window.size());
+               printf ("\n");
+               for (int32_t i2=0; i2<windows_for_alignment.size(); i2++) {
+                 printf ("%s\n\n", windows_for_alignment[i2].c_str());
+               }
+               printf ("\n");
+               printf ("Alignment:\n\n");
+               fflush(stdout);
+               for (int32_t i2=0; i2<msa.size(); i2++) {
+                 printf ("%s\n\n", msa[i2].c_str());
+               }
+               printf ("\n");
+
+               fflush(stdout);
+               exit(1);
+             }
+
+//             exit(1);
+           }
+         }
+       }
+
+       LOG_NOHEADER("\n");
+       LOG_ALL("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
+    }
+
+    fprintf (fp_out_cons, "\n");
+    fclose(fp_out_cons);
+
+    ///////////////////////////////////////
+    LOG_NOHEADER("\n");
+    LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
+    LOG_NOHEADER("\n");
+  }
+
+  if (fp_alt_contig_path) { fclose(fp_alt_contig_path); }
+
+  return 0;
+}
+
+int MajorityVoteFromMSALocal(std::string pir_path, std::string *cons) {
+  SequenceFile pir(SEQ_FORMAT_FASTQ, pir_path, false);
+
+  const SequenceVector& seqs = pir.get_sequences();
+
+  if (seqs.size() == 0) { return 1; }
+
+
+  for (int64_t i=1; i<pir.get_sequences().size(); i++) {
+    if (seqs[i]->get_data_length() != seqs[i-1]->get_data_length()) {
+      ERROR_REPORT(ERR_FILE_DEFORMED_FORMAT, "MSA sequences not of correct length in file %s!\n", pir_path.c_str());
+      return 2;
+    }
+  }
+
+  int64_t seq_len = seqs[0]->get_data_length();
+  *cons = "";
+  std::stringstream ss;
+
+  for (int64_t i=0; i<seq_len; i++) {
+    // Count occurrences for the column.
+    int32_t base_counts[256] = {0};
+    for (int32_t j=0; j<seqs.size(); j++) {
+      base_counts[toupper(seqs[j]->get_data()[i])] += 1;
+    }
+
+    int64_t sum_base_counts = base_counts['A'] + base_counts['C'] + base_counts['T'] + base_counts['G'];
+    int64_t sum_gap_counts = base_counts['-'] + base_counts['.'];
+    if (sum_base_counts > sum_gap_counts) {
+      std::vector<int8_t> bases = {'A', 'C', 'T', 'G'};
+      int8_t max_base = 'A';
+      for (int32_t j=0; j<bases.size(); j++) {
+        if (base_counts[bases[j]] > base_counts[max_base]) max_base = bases[j];
+      }
+      ss << (char) max_base;
+    }
+  }
+
+  *cons = ss.str();
+
+  return 0;
+}
+
+int RunMSAFromSystemLocal(const ProgramParameters &parameters, std::string window_path, std::string &cons) {
+  std::string msa_path = FormatString("%s.msa", window_path.c_str());
+  if (parameters.msa == "mafft") {
+    //
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --maxiterate 1000 --quiet %s > %s", // AlignedBases           48306(99.60%)       47762(100.00%)  AvgIdentity                    96.33                96.33
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --op 0 --ep 1 --maxiterate 1000 --quiet %s > %s", // AlignedBases           48306(99.60%)       47353(100.00%)  AvgIdentity                    97.03                97.03
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --lop 0 --lexp 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+// Ovaj je dobar    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --globalpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+
+ // Trenutno najbolji rezultat:
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --genafpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
 //                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
-//  } else if (parameters.msa == "poav2") {
-//    int32_t rc = system(FormatString("%s/%s/poa -do_global -do_progressive -read_fasta %s -pir %s %s/../settings/all1-poav2.mat",
-//                        parameters.program_folder.c_str(), parameters.poav2_folder.c_str(), window_path.c_str(), msa_path.c_str(), parameters.program_folder.c_str()).c_str());
-//  } else {
-//    ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Unrecognized MSA option '%s'! Exiting.",parameters. msa.c_str());
-//    return 1;
-//  }
-//
-//  MajorityVoteFromMSA(msa_path, &cons);
-//
-//  return 0;
-//}
+    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
 
-//// Given a set of alignments to the original draft contig, where the alignments are sorted and are supposed to make the alternate contig, join the sequences of alignments into a new alternate contig sequence.
-//// If the alignments are overlapping, they will be trimmed according to their CIGAR strings. If the alignments are not overlapping, the gap in between will be filled with the original draft contig.
-//void ConstructAltContigs(const ProgramParameters &parameters, const SingleSequence *current_contig, const std::vector<std::vector<const SingleSequence *> *> &alt_contigs, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, std::vector<SingleSequence> &alt_contig_seqs, FILE *fp_alt_contig_path) {
-//  alt_contig_seqs.clear();
-//  for (int32_t j=0; j<alt_contigs.size(); j++) {
-//    LOG_DEBUG("Constructing contig %d / %d...\n", (j + 1), alt_contigs.size());
-//
-//    ConstructContigFromAlns(*current_contig, (const std::vector<const SingleSequence *> *) (alt_contigs[j]), aln_ref_lens, alt_contig_seqs[j]);
-//    alt_contig_seqs[j].InitHeader(FormatString("AlternateContig_%d %s", j, current_contig->get_header()));
-//
-//    LOG_DEBUG("Done with construction of alternate contig %d / %d.\n\n", (j + 1), alt_contigs.size());
-//
-//    // Debug output. Verbose the alternate contigs with their alignments to an output temp FASTA file.
-//    if (fp_alt_contig_path) {
-//      LOG_DEBUG("Writing the alternate contigs to file: '%s'.\n", parameters.temp_alt_contig_path.c_str());
-//      fprintf (fp_alt_contig_path, "%s\n", alt_contig_seqs[j].MakeSAMLine().c_str());
-//    }
-//  }
-//}
+  } else if (parameters.msa == "poav2") {
+    int32_t rc = system(FormatString("%s/%s/poa -do_local -do_progressive -read_fasta %s -pir %s %s/../settings/all1-poav2.mat",
+                        parameters.program_folder.c_str(), parameters.poav2_folder.c_str(), window_path.c_str(), msa_path.c_str(), parameters.program_folder.c_str()).c_str());
+  } else {
+    ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Unrecognized MSA option '%s'! Exiting.",parameters. msa.c_str());
+    return 1;
+  }
 
-//// Takes a vector of sequences with their respective alignments to a reference (e.g. raw contig), and extracts a subsequence of each of those between given start and end positions.
-//void ExtractWindow(std::vector<SingleSequence> &seqs, int64_t window_start, int64_t window_end, std::vector<std::string> &windows_for_msa, FILE *fp_window) {
-//  for (int64_t j=0; j<seqs.size(); j++) {
-//    const SequenceAlignment &aln = seqs[j].get_aln();
-//    int64_t start_seq = aln.FindBasePositionOnRead(aln.cigar, window_start);
-//    int64_t end_seq = aln.FindBasePositionOnRead(aln.cigar, window_end);
-//
-//    // If the last requested position was out of bounds of the sequence, position it at the last base.
-//    if (end_seq == -1) {
-//      end_seq = (aln.pos - 1) + aln.GetReferenceLengthFromCigar() - 1;  // The extra -1 is to point to the last base (and not one after it).
-//    }
-//
-//    if ((end_seq - start_seq) <= 0) { continue; };
-//
-//    windows_for_msa.push_back(GetSubstring((char *) (seqs[j].get_data() + start_seq), (end_seq - start_seq + 1)));
-//
-//    if (fp_window) {
-//      fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", seqs[j].get_header(), window_start, window_end, windows_for_msa.back().c_str());
-//    }
-//  }
-//}
+  MajorityVoteFromMSALocal(msa_path, &cons);
 
-//int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
-//  LOG_ALL("Running consensus.\n");
-//
-//  std::vector<std::string> ctg_names;
-//  std::map<std::string, std::vector<const SingleSequence *> > all_ctg_alns;
-//
-//  // Separate alignments into groups for each contig.
-//  LOG_ALL("Separating alignments to individual contigs.\n");
-//  AlignmentsToContigs(alns, ctg_names, all_ctg_alns);
-//  LOG_ALL("In total, there are %ld contigs, each containing:\n", ctg_names.size());
-//  for (int32_t i=0; i<ctg_names.size(); i++) {
-//    LOG_ALL("\t[%ld] %s %ld alignments\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size());
-//  }
-//
-//  // Hash the sequences by their name.
-//  std::map<std::string, const SingleSequence *> rname_to_seq;
-//  for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
-//    rname_to_seq[contigs.get_sequences()[i]->get_header()] = contigs.get_sequences()[i];
-//    rname_to_seq[TrimToFirstSpace(contigs.get_sequences()[i]->get_header())] = contigs.get_sequences()[i];
-//  }
-//
-//  // Hash all the alignment lengths (which will be used a lot).
-//  std::map<const SingleSequence *, int64_t> aln_ref_lens;
-//  for (int64_t i=0; i<alns.get_sequences().size(); i++) {
-//    aln_ref_lens[alns.get_sequences()[i]] = alns.get_sequences()[i]->get_aln().GetReferenceLengthFromCigar();
-//  }
-//
-//  // Debug output of alternate contigs, aligned to the raw contig (input sequence), in SAM format.
-//  FILE *fp_alt_contig_path = NULL;
-//  if (parameters.temp_alt_contig_path != "") {
-//    fp_alt_contig_path = fopen(parameters.temp_alt_contig_path.c_str(), "w");
-//    fprintf (fp_alt_contig_path, "@HD\tVN:1.0\tSO:unknown\n");
-//    for (int32_t i=0; i<ctg_names.size(); i++) {
-//      fprintf (fp_alt_contig_path, "@SQ\tSN:%s\tLN:%ld\n", ctg_names[i].c_str(), rname_to_seq[ctg_names[i]]->get_data_length());
-//    }
-//    fprintf (fp_alt_contig_path, "@PG\tID:consise PN:consise\n");
-//  }
-//
-//  // Clear the output file for consensus.
-//  FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "w");
-//  fclose(fp_out_cons);
-//
-//  // For each contig (draft can contain multiple contigs), process alignments to obtain alternate contigs.
-//  for (int32_t i=0; i<ctg_names.size(); i++) {
-//    auto it = all_ctg_alns.find(ctg_names[i]);
-//    if (it == all_ctg_alns.end()) {
-//      FATAL_REPORT(ERR_UNEXPECTED_VALUE, "Something strange happened. Contig name, which was extracted from alignments, cannot be found in the std::map containing those same alignments.");
-//      // Exits.
-//    }
-//
-//    const SingleSequence *current_contig = rname_to_seq[ctg_names[i]];
-//
-//    // Get alternate contigs in form of vectors of alignments. Each vector presents one alternate contig.
-//    std::vector<const SingleSequence *> &ctg_alns = it->second;
-//    std::vector<std::vector<const SingleSequence *> *> alt_contigs;
-//    std::vector<const SingleSequence *> rejected_alns;
-//
-//    ExtractAltContigs(ctg_alns, rname_to_seq.find(it->first)->second->get_sequence_length(), parameters.new_seq_percent, parameters.percent_overlap, parameters.qv_threshold, alt_contigs, rejected_alns);
-//
-//    // Generate the alternate contig sequences from the sets of alignments (alt_contigs).
-//    std::vector<SingleSequence> alt_contig_seqs;
-//    alt_contig_seqs.resize(alt_contigs.size());
-//    for (int32_t j=0; j<alt_contigs.size(); j++) {
-//      LOG_DEBUG("Constructing contig %d / %d...\n", (j + 1), alt_contigs.size());
-//
-//      ConstructContigFromAlns(*rname_to_seq[ctg_names[i]], (const std::vector<const SingleSequence *> *) alt_contigs[j], aln_ref_lens, alt_contig_seqs[j]);
-//      alt_contig_seqs[j].InitHeader(FormatString("AlternateContig_%d %s", j, current_contig->get_header()));
-//
-//      LOG_DEBUG("Done with construction of alternate contig %d / %d.\n\n", (j + 1), alt_contigs.size());
-//
-//      // Debug output. Verbose the alternate contigs with their alignments to an output temp FASTA file.
-//      if (fp_alt_contig_path) {
-//        LOG_DEBUG("Writing the alternate contigs to file: '%s'.\n", parameters.temp_alt_contig_path.c_str());
-//        fprintf (fp_alt_contig_path, "%s\n", alt_contig_seqs[j].MakeSAMLine().c_str());
-//      }
-//    }
-////    ConstructAltContigs(parameters, current_contig, alt_contigs, aln_ref_lens, alt_contig_seqs, fp_alt_contig_path);
-//
-//    LOG_DEBUG("Alternate contigs generated. Starting to process windows.\n");
-//    LOG_NOHEADER("\n");
-//
-//    ///////////////////////////////////////
-//    /// At this point we have obtained all alternate contig sequences.
-//    /// Now we need to process them with a sliding (non-overlapping) window and POA.
-//    ///////////////////////////////////////
-//    FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
-//    fprintf (fp_out_cons, ">Consensus_%d %s\n", i, ctg_names[i].c_str());
-//
-//    int64_t num_windows = ceil((float) current_contig->get_sequence_length() / (float) parameters.window_len);
-//    LOG_DEBUG ("current_contig->get_sequence_length() = %ld, parameters.window_len = %ld, num_windows = %ld\n", current_contig->get_sequence_length(), parameters.window_len, num_windows);
-//
-//    // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
-//    // then the results are collected and output to file. After that, a new batch is loaded.
-//    for (int64_t window_batch_start = 0; window_batch_start < num_windows; window_batch_start += parameters.batch_of_windows) {
-//      std::vector<std::string> consensus_windows;
-//      consensus_windows.resize(parameters.batch_of_windows);
-//      int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
-//
-//      //      #pragma omp parallel for num_threads(parameters.num_threads) firstprivate(num_reads_processed_in_thread_0, evalue_params) shared(reads, parameters, last_time, sam_lines, num_mapped, num_unmapped, num_ambiguous, num_errors, fp_out) schedule(dynamic, 1)
-//     #pragma omp parallel for num_threads(parameters.num_threads)
-//      for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
-//        int64_t window_start = (window_batch_start + id_in_batch) * parameters.window_len;
-//        int64_t window_end = window_start + parameters.window_len;
-//        int32_t thread_id = omp_get_thread_num();
-//
-//        if (thread_id == 1) { LOG_ALL("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) current_contig->get_data_length())); }
-//
-//        FILE *fp_window = NULL;
-//
-//        std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
-//        if (parameters.temp_window_path != "") {
-//          fp_window = fopen(window_path.c_str(), "w");
-//        }
-//
-//        // Cut a window out of all sequences. This will be fed to an MSA algorithm.
-//        std::vector<std::string> windows_for_msa;
-//        ExtractWindow(alt_contig_seqs, window_start, window_end, windows_for_msa, fp_window);
-//
-//        // Chosing the MSA algorithm, and running the consensus on the window.
-//        if (parameters.msa == "poa") {
-//          consensus_windows[id_in_batch] = POA::poa_consensus(windows_for_msa);
-//        } else if (fp_window) {
-//          fclose(fp_window);
-//          std::string a, b;
-//          RunMSAFromSystem(parameters, window_path, consensus_windows[id_in_batch]);
-//        } else {
-//          ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
-//        }
-//      }
-//
-//      for (int64_t start_window_id = window_batch_start; start_window_id < (window_batch_start + parameters.batch_of_windows) && start_window_id < num_windows; start_window_id += 1) {
-//        int64_t id_in_batch = start_window_id - window_batch_start;
-//        fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
-//      }
-//
-//      LOG_NOHEADER("\n");
-//      LOG_ALL("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
-//    }
-//
-//    fprintf (fp_out_cons, "\n");
-//    fclose(fp_out_cons);
-////    exit(1);
-//    ///////////////////////////////////////
-//    LOG_NOHEADER("\n");
-//    LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", current_contig->get_data_length(), current_contig->get_data_length());
-//    LOG_NOHEADER("\n");
-//
-//    VerboseExtractedAlignments(alt_contigs, rejected_alns, "temp/alt_contigs.csv", "temp/rejected_alns.csv");
-////    VerboseExtractedAlignments(alt_contigs1, rejected_alns1, "temp/alt_contigs1.csv", "temp/rejected_alns1.csv");
-//
-//    for (int64_t j=0; j<alt_contigs.size(); j++) {
-//      if (alt_contigs[j]) delete alt_contigs[j];
-//      alt_contigs[j] = NULL;
-//    }
-//    alt_contigs.clear();
-//  }
-//
-//  if (fp_alt_contig_path) { fclose(fp_alt_contig_path); }
-//
-//  return 0;
-//}
+  return 0;
+}
