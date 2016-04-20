@@ -53,7 +53,7 @@ tools: tools/graphmap/bin/Linux-x64/graphmap tools/poaV2/poa tools/mafft-7.273-w
 	echo "All tools installed."
 
 tools/graphmap/bin/Linux-x64/graphmap:
-	mkdir -p tools && cd tools && git clone https://github.com/isovic/graphmap.git && cd graphmap && make -j extcigar
+	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd tools/graphmap && make modules && make -j
 
 tools/poaV2/poa:
 	mkdir -p tools && cd tools && wget http://netassist.dl.sourceforge.net/project/poamsa/poamsa/2.0/poaV2.tar.gz && tar -xvzf poaV2.tar.gz && cd poaV2 && make poa
