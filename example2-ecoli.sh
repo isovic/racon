@@ -19,7 +19,7 @@ reference=test-data/DATASETS_FOR_CONSENSUS/ecoli_map006_ont/ecoli_K12_MG1655_U00
 tools/graphmap/bin/Linux-x64/graphmap align -a anchor -z 0 -c 40 -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar
 mkdir -p temp
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o $memtime \
-	bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 -w 500 --ovl-margin 0.15 --msa ${msa} -b 200 -t 4 --winpath temp/window.fasta ${contigs} ${sam} ${consensus}
+	bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 -w 500 --ovl-margin 0.00 --msa ${msa} -b 200 -t 4 --winpath temp/window.fasta ${contigs} ${sam} ${consensus}
 	# bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 -w 500 --msa ${msa} -b 200 -t 4 --winpath temp/window.fasta ${contigs} ${sam} ${consensus}
 mkdir -p temp/dnadiff-${dataset}
 rm temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
