@@ -17,3 +17,9 @@ test-data/DATASETS_FOR_CONSENSUS/
 results/
 tools1/
 testing/
+scripts/*
+!scripts/test-leftalign/
+scripts/test-leftalign/*.pyc
+scripts/test-leftalign/data/
+!scripts/test-leftalign/data/msa1.txt
+!scripts/test-leftalign/data/msa2.txt
