@@ -48,10 +48,15 @@ int AlignmentsToContigs(const SequenceFile &alns, std::vector<std::string> &ctg_
   return 0;
 }
 
-void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, FILE *fp_window) {
+void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, FILE *fp_window) {
   if (window_start > window_end) {
     return;
   }
+
+  int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
+  window_seqs.push_back(GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1)));
+  std::string dummy_quals((temp_window_end - window_start + 1), 'A');
+  window_qv.push_back(dummy_quals);
 
   std::vector<SingleSequence *> candidates;
   for (int64_t i=0; i<alns.size(); i++) {
@@ -77,7 +82,7 @@ void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, cons
       if (end_seq == -2) { end_seq = alns[i]->get_data_length() - 1; }
       else if (end_seq < 0) { fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1); }
 
-//      if ((end_seq - start_seq) < 0.10f * (window_end - window_start)) { continue; }
+//      if ((end_seq - start_seq) < 0.50f * (window_end - window_start)) { continue; }
 
       window_seqs.push_back(GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1));
       if (alns[i]->get_quality() != NULL) {
@@ -183,12 +188,14 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
          // Chosing the MSA algorithm, and running the consensus on the window.
          if (parameters.msa == "poa") {
-           ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, NULL);
+           ExtractWindowFromAlns(contig, ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, NULL);
            if (windows_for_msa.size() == 0) {
                consensus_windows[id_in_batch] = "";
            } else {
                consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, SPOA::AlignmentParams(parameters.match,
-                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
+                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), false);
+//               consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
+//                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), false);
 
            }
          } else {
@@ -200,7 +207,7 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
            if (fp_window == NULL) {
              ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
            }
-           ExtractWindowFromAlns(ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, fp_window);
+           ExtractWindowFromAlns(contig, ctg_alns, aln_ref_lens, window_start, window_end, windows_for_msa, quals_for_msa, fp_window);
            fclose(fp_window);
            RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
          }
@@ -373,8 +380,14 @@ int RunMSAFromSystemLocal(const ProgramParameters &parameters, std::string windo
 
 //    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
 //                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
+
     int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
                         parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
+
+//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --op 0 --ep 1 --quiet %s > %s.noleft", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
+//                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
+//    int32_t rc1 = system(FormatString("scripts/test-leftalign/convert_msa2sam.py %s.noleft %s",
+//                        msa_path.c_str(), msa_path.c_str()).c_str());
 
   } else if (parameters.msa == "poav2") {
     int32_t rc = system(FormatString("%s/%s/poa -do_local -do_progressive -read_fasta %s -pir %s %s/../settings/all1-poav2.mat",
