@@ -54,9 +54,9 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
   }
 
   int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
-  window_seqs.push_back(GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1)));
+  // window_seqs.push_back(GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1)));
   std::string dummy_quals((temp_window_end - window_start + 1), 'A');
-  window_qv.push_back(dummy_quals);
+  // window_qv.push_back(dummy_quals);
 
   std::vector<SingleSequence *> candidates;
   for (int64_t i=0; i<alns.size(); i++) {
@@ -193,7 +193,7 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
                consensus_windows[id_in_batch] = "";
            } else {
                consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, SPOA::AlignmentParams(parameters.match,
-                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), false);
+                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
 //               consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
 //                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), false);
 
