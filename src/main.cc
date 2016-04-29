@@ -5,11 +5,11 @@
  *      Author: isovic
  */
 
+#include <sequences/sequence_test.h>
 #include <stdio.h>
 #include "log_system/log_system.h"
 #include <sstream>
 #include "sequences/sequence_file.h"
-#include "sequences/sequence_alignment_test.h"
 #include "consensus/consensus.h"
 #include "argparser.h"
 #include "parameters.h"
@@ -46,6 +46,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.msa), VALUE_TYPE_STRING, "", "msa", "poa", "Choose the MSA algorithm to use. Available options: 'maff', 'poa', 'poav2'.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.mafft_folder), VALUE_TYPE_STRING, "", "mafft", "../tools/mafft-7.273-with-extensions/", "Relative path to the folder containing MAFFT. Relative to the folder this binary resides in.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.poav2_folder), VALUE_TYPE_STRING, "", "poav2", "../tools/poaV2/", "Relative path to the folder containing POAv2. Relative to the folder this binary resides in.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.realigned_aln_path), VALUE_TYPE_STRING, "", "realign", "", "If specified, the input SAM file will be realigned and output to the specified path.", 0, "Algorithm");
 
   argparser.AddArgument(&(parameters.match), VALUE_TYPE_INT32, "M", "match", "1", "Match score (positive value).", 0, "Alignment");
   argparser.AddArgument(&(parameters.mismatch), VALUE_TYPE_INT32, "X", "mismatch", "-1", "Mismatch penalty (negative value expected).", 0, "Alignment");
@@ -53,7 +54,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.gap_ext), VALUE_TYPE_INT32, "E", "gapext", "-1", "Gap extend penalty (negative value expected).", 0, "Alignment");
   argparser.AddArgument(&(parameters.aln_type), VALUE_TYPE_INT32, "a", "align", "-1", "Alignment algorithm: 0 for local, 1 for global and 2 for overlap.", 0, "Alignment");
 
-  argparser.AddArgument(&(parameters.temp_alt_contig_path), VALUE_TYPE_STRING, "", "altctgs", "", "Extracted alternate contigs. Output is in SAM format.", 0, "Debug");
+//  argparser.AddArgument(&(parameters.temp_alt_contig_path), VALUE_TYPE_STRING, "", "altctgs", "", "Extracted alternate contigs. Output is in SAM format.", 0, "Debug");
 
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
 

@@ -39,8 +39,8 @@ struct ProgramParameters {
   int32_t aln_type = 1;     // SW 0, NW 1, OV 2
 
   double win_ovl_margin = 0.00; // 0.05;
+
+  std::string realigned_aln_path = "";
 };
-
-
 
 #endif /* SRC_PARAMETERS_H_ */

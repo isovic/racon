@@ -22,7 +22,7 @@ struct seqaln_sort_key {
 //      return ((*op1)->get_aln().pos < (*op2)->get_aln().pos);
 //    }
   inline bool operator() (const SingleSequence* op1, const SingleSequence* op2) {
-    return ((op1)->get_aln().pos < (op2)->get_aln().pos);
+    return ((op1)->get_aln().get_pos() < (op2)->get_aln().get_pos());
   }
 };
 
@@ -37,5 +37,6 @@ int RunMSAFromSystemLocal(const ProgramParameters &parameters, std::string windo
 //void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> window_seqs, FILE *fp_window);
 void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, FILE *fp_window);
 int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns);
+void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *contig, std::vector<const SingleSequence *> &ctg_alns, std::map<const SingleSequence *, int64_t> &aln_lens_on_ref, std::string &ret_consensus, FILE *fp_out_cons);
 
 #endif /* SRC_CONSENSUS_CONSENSUS_H_ */
