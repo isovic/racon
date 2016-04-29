@@ -4,7 +4,7 @@ import os
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__));
 
 import sys;
-sys.path.append(SCRIPT_PATH + '/../tools/samscripts/src/');
+sys.path.append(SCRIPT_PATH + '/../codebase/samscripts/src/');
 
 import subprocess;
 
@@ -102,7 +102,7 @@ def verbose_gfa_contigs(contigs):
     	for i in xrange(0, len(contig.gp)):
     		print '\t' + contig.gp[i].read_name;
 
-def correct_layout_reads(contig, reads_path):
+def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, reference_path=None):
 	[headers_reads, seqs_reads, quals_reads] = fastqparser.read_fastq(reads_path);
 	seq_hash = {};
 	for i in xrange(0, len(headers_reads)):
@@ -140,14 +140,15 @@ def correct_layout_reads(contig, reads_path):
 		execute_command(command, sys.stderr, dry_run=False);
 
 		# command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t 4 %s %s %s' % (SCRIPT_PATH, single_read_path, single_read_sam, single_read_consensus);
-		command = '%s/../bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t 4 %s %s %s' % (SCRIPT_PATH, single_read_path, single_read_sam, single_read_consensus);
+		command = '%s/../bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, single_read_path, single_read_sam, single_read_consensus);
 		execute_command(command, sys.stderr, dry_run=False);
 
-		command = 'dnadiff -p %s/../temp/dnadiff/consread %s %s;' % (SCRIPT_PATH, ref_path, single_read_consensus);
-		command += 'grep "TotalBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
-		command += 'grep "AlignedBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
-		command += 'grep "AvgIdentity" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
-		execute_command(command, sys.stderr, dry_run=False);
+		if (reference_path != None and reference_path != '-'):
+			command = 'dnadiff -p %s/../temp/dnadiff/consread %s %s;' % (SCRIPT_PATH, ref_path, single_read_consensus);
+			command += 'grep "TotalBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
+			command += 'grep "AlignedBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
+			command += 'grep "AvgIdentity" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
+			execute_command(command, sys.stderr, dry_run=False);
 
 		command = 'cat %s >> %s' % (single_read_consensus, all_corrected_reads_path);
 		execute_command(command, sys.stderr, dry_run=False);
@@ -159,48 +160,42 @@ def correct_layout_reads(contig, reads_path):
 	command = '%s align -r %s -d %s -o %s --no-self-hits --mapq -1 --rebuild-index -v 1' % (graphmap_bin, raw_contig_temp_path, all_corrected_reads_path, all_corrected_reads_sam)
 	execute_command(command, sys.stderr, dry_run=False);
 
-	command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --ovl-margin 0.0 --msa poa -b 200 -t 4 %s %s %s' % (SCRIPT_PATH, raw_contig_temp_path, all_corrected_reads_sam, final_consensus_contig_path);
+	command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, raw_contig_temp_path, all_corrected_reads_sam, final_consensus_contig_path);
 	execute_command(command, sys.stderr, dry_run=False);
 
-	command = 'dnadiff -p %s/../temp/dnadiff/cons %s %s;' % (SCRIPT_PATH, ref_path, final_consensus_contig_path);
-	command += 'grep "TotalBases" %s/../temp/dnadiff/cons.report;' % (SCRIPT_PATH);
-	command += 'grep "AlignedBases" %s/../temp/dnadiff/cons.report;' % (SCRIPT_PATH);
-	command += 'grep "AvgIdentity" %s/../temp/dnadiff/cons.report;' % (SCRIPT_PATH);
+	command = 'cat %s >> %s' % (final_consensus_contig_path, out_consensus_path);
 	execute_command(command, sys.stderr, dry_run=False);
 
-		# exit(1);
-
+	if (reference_path != None and reference_path != '-'):
+		command = 'dnadiff -p %s/../temp/dnadiff/cons %s %s;' % (SCRIPT_PATH, ref_path, final_consensus_contig_path);
+		command += 'grep "TotalBases" %s/../temp/dnadiff/cons.report;' % (SCRIPT_PATH);
+		command += 'grep "AlignedBases" %s/../temp/dnadiff/cons.report;' % (SCRIPT_PATH);
+		command += 'grep "AvgIdentity" %s/../temp/dnadiff/cons.report;' % (SCRIPT_PATH);
+		execute_command(command, sys.stderr, dry_run=False);
 
 
 
 def main():
-    if (len(sys.argv) < 4 or len(sys.argv) > 4):
-        sys.stderr.write('Script for producing a consensus from GFA assembly layouts.\n');
-        sys.stderr.write('Usage:\n');
-        sys.stderr.write('  %s <layout.gfa> <reads.fastq> <consensus.fasta>\n' % (sys.argv[0]));
-        exit(1);
+	if (len(sys.argv) < 5 or len(sys.argv) > 6):
+		sys.stderr.write('Script for producing a consensus from GFA assembly layouts.\n');
+		sys.stderr.write('Usage:\n');
+		sys.stderr.write('  %s <layout.gfa> <reads.fastq> <consensus.fasta> num_threads [<reference.fa>]\n' % (sys.argv[0]));
+		exit(1);
 
-    gfa_file = sys.argv[1];
-    reads_file = sys.argv[2];
-    out_cons_file = sys.argv[3];
-    fp_out = sys.stdout;
-    if (len(sys.argv) >= 4):
-        out_sam = sys.argv[3];
-        try:
-            fp_out = open(out_sam, 'w');
-        except IOError, e:
-            sys.stderr.write('ERROR: Could not open file %s for writing! Exiting.\n' % (out_sam));
-            sys.stderr.write(str(e));
-            exit(1);
+	gfa_file = sys.argv[1];
+	reads_file = sys.argv[2];
+	out_cons_file = sys.argv[3];
+	num_threads = int(sys.argv[4]);
+	reference_path = None;
+	if (len(sys.argv) >= 6):
+		reference_path = sys.argv[5];
 
-    contigs = parse_gfa(gfa_file);
-    verbose_gfa_contigs(contigs);
+	contigs = parse_gfa(gfa_file);
+	verbose_gfa_contigs(contigs);
 
-    for contig in contigs:
-	    correct_layout_reads(contig, reads_file);
-
-    if (fp_out != sys.stdout):
-        fp_out.close();
-
+	fp = open(out_cons_file, 'w');
+	fp.close();
+	for contig in contigs:
+		correct_layout_reads(contig, reads_file, num_threads, out_cons_file, reference_path);
 if __name__ == "__main__":
-    main();
+	main();
