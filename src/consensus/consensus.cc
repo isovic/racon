@@ -29,12 +29,17 @@
 //    return indices;
 //}
 
-int AlignmentsToContigs(const SequenceFile &alns, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
+int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
   ctg_names.clear();
   ctg_alns.clear();
 
   for (int64_t i=0; i<alns.get_sequences().size(); i++) {
     if (alns.get_sequences()[i]->get_aln().IsMapped() == false) continue;
+
+    if (qv_threshold > 0.0) {
+      double average_bq = alns.get_sequences()[i]->CalcAverageBQ();
+      if (average_bq >= 0 && average_bq < qv_threshold) { continue; }
+    }
 
     auto it = ctg_alns.find(alns.get_sequences()[i]->get_aln().get_rname());
     if (it != ctg_alns.end()) {
@@ -110,8 +115,9 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
   // Separate alignments into groups for each contig.
   // Alignments which are called unmapped will be skipped in this step.
+  // Also, alignments are filtered by the base quality if available.
   LOG_ALL("Separating alignments to individual contigs.\n");
-  AlignmentsToContigs(alns, ctg_names, all_ctg_alns);
+  GroupAlignmentsToContigs(alns, parameters.qv_threshold, ctg_names, all_ctg_alns);
 
   // Verbose.
   LOG_ALL("In total, there are %ld contigs, each containing:\n", ctg_names.size());
@@ -182,7 +188,7 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
   std::stringstream ss_cons;
 
   if (fp_out_cons) {
-    fprintf (fp_out_cons, ">Consensus_%d %s\n", contig->get_sequence_absolute_id(), contig->get_header());
+    fprintf (fp_out_cons, ">Consensus-%s\n", contig->get_header());
     fflush (fp_out_cons);
   }
 
@@ -211,13 +217,21 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        // Chosing the MSA algorithm, and running the consensus on the window.
        if (parameters.msa == "poa") {
          ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, windows_for_msa, quals_for_msa, NULL);
+
+         if (thread_id == 0) { LOG_ALL(", coverage: %ldx", windows_for_msa.size()) }
+
          if (windows_for_msa.size() == 0) {
              consensus_windows[id_in_batch] = "";
          } else {
+           if (quals_for_msa.size() > 0) {
              consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, SPOA::AlignmentParams(parameters.match,
                                                                                                         parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
 //               consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
 //                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), false);
+           } else {
+             consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
+                                                                                                        parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
+           }
 
          }
        } else {

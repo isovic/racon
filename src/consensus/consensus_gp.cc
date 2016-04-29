@@ -25,7 +25,7 @@ int ConsensusFromGoldenPath(const ProgramParameters &parameters, const SequenceF
   // Separate alignments into groups for each contig.
   // Alignments which are called unmapped will be skipped in this step.
   LOG_ALL("Separating alignments to individual contigs.\n");
-  AlignmentsToContigs(alns, ctg_names, all_ctg_alns);
+  GroupAlignmentsToContigs(alns, parameters.qv_threshold, ctg_names, all_ctg_alns);
 
   // Verbose.
   LOG_ALL("In total, there are %ld contigs, each containing:\n", ctg_names.size());
