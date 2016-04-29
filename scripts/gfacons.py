@@ -102,7 +102,7 @@ def verbose_gfa_contigs(contigs):
     	for i in xrange(0, len(contig.gp)):
     		print '\t' + contig.gp[i].read_name;
 
-def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, reference_path=None):
+def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, ref_path=None):
 	[headers_reads, seqs_reads, quals_reads] = fastqparser.read_fastq(reads_path);
 	seq_hash = {};
 	for i in xrange(0, len(headers_reads)):
@@ -114,8 +114,7 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 	single_read_sam = '%s/../temp/singleread.sam' % (SCRIPT_PATH);
 	single_read_consensus = '%s/../temp/singleread.cons.fa' % (SCRIPT_PATH);
 	all_corrected_reads_path = '%s/../temp/reads.cons.fa' % (SCRIPT_PATH);
-	ref_path = '/home/isovic/work/eclipse-workspace/git/consise/test-data/lambda/NC_001416.fa'
-	graphmap_bin = '/home/isovic/work/eclipse-workspace/graphmap/bin/graphmap-not_release';
+	graphmap_bin = '%s/../tools/graphmap/bin/Linux-x64/graphmap' % (SCRIPT_PATH);
 	all_corrected_reads_sam = '%s/../temp/reads.cons.sam' % (SCRIPT_PATH);
 
 	raw_contig_temp_path = '%s/../temp/contig.raw.fa' % (SCRIPT_PATH);
@@ -143,7 +142,7 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 		command = '%s/../bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, single_read_path, single_read_sam, single_read_consensus);
 		execute_command(command, sys.stderr, dry_run=False);
 
-		if (reference_path != None and reference_path != '-'):
+		if (ref_path != None and ref_path != '-'):
 			command = 'dnadiff -p %s/../temp/dnadiff/consread %s %s;' % (SCRIPT_PATH, ref_path, single_read_consensus);
 			command += 'grep "TotalBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
 			command += 'grep "AlignedBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
@@ -166,7 +165,7 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 	command = 'cat %s >> %s' % (final_consensus_contig_path, out_consensus_path);
 	execute_command(command, sys.stderr, dry_run=False);
 
-	if (reference_path != None and reference_path != '-'):
+	if (ref_path != None and ref_path != '-'):
 		command = 'dnadiff -p %s/../temp/dnadiff/cons %s %s;' % (SCRIPT_PATH, ref_path, final_consensus_contig_path);
 		command += 'grep "TotalBases" %s/../temp/dnadiff/cons.report;' % (SCRIPT_PATH);
 		command += 'grep "AlignedBases" %s/../temp/dnadiff/cons.report;' % (SCRIPT_PATH);
