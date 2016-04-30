@@ -69,7 +69,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
     int64_t aln_ref_len = aln_ref_lens.find(alns[i])->second;
     int64_t aln_start = aln.get_pos() - 1;
     int64_t aln_end = aln_start + aln_ref_len - 1;
-    if (aln_start > window_end) {
+    if (aln_start > temp_window_end) {
       break;
 
     } else if (aln_end < window_start) {
@@ -79,7 +79,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
 
       int64_t start_cig_id = 0, end_cig_id = 0;
       int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
-      int64_t end_seq = aln.FindBasePositionOnRead(window_end, &end_cig_id);
+      int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
 
       if (start_seq == -1) { start_seq = 0; }
       else if (start_seq < 0) { fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1); }
@@ -87,7 +87,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
       if (end_seq == -2) { end_seq = alns[i]->get_data_length() - 1; }
       else if (end_seq < 0) { fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1); }
 
-//      if ((end_seq - start_seq) < 0.50f * (window_end - window_start)) { continue; }
+//      if ((end_seq - start_seq) < 0.50f * (temp_window_end - window_start)) { continue; }
 
       window_seqs.push_back(GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1));
       if (alns[i]->get_quality() != NULL) {
@@ -96,9 +96,9 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
 
       if (fp_window) {
         #ifndef WINDOW_OUTPUT_IN_FASTQ
-          fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+          fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
         #else
-          fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, window_end, window_seqs.back().c_str());
+          fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
           fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
         #endif
       }
@@ -108,7 +108,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
 }
 
 int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
-  LOG_ALL("Running consensus - directly from alignments.\n");
+  LOG_MEDHIGH("Running consensus - directly from alignments.\n");
 
   std::vector<std::string> ctg_names;
   std::map<std::string, std::vector<const SingleSequence *> > all_ctg_alns;
@@ -116,13 +116,13 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
   // Separate alignments into groups for each contig.
   // Alignments which are called unmapped will be skipped in this step.
   // Also, alignments are filtered by the base quality if available.
-  LOG_ALL("Separating alignments to individual contigs.\n");
+  LOG_MEDHIGH("Separating alignments to individual contigs.\n");
   GroupAlignmentsToContigs(alns, parameters.qv_threshold, ctg_names, all_ctg_alns);
 
   // Verbose.
-  LOG_ALL("In total, there are %ld contigs, each containing:\n", ctg_names.size());
+  LOG_MEDHIGH("In total, there are %ld contigs, each containing:\n", ctg_names.size());
   for (int32_t i=0; i<ctg_names.size(); i++) {
-    LOG_ALL("\t[%ld] %s %ld alignments\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size());
+    LOG_MEDHIGH("\t[%ld] %s %ld alignments\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size());
   }
 
   // Hash the sequences by their name.
@@ -174,9 +174,9 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
     fclose(fp_out_cons);
 
     ///////////////////////////////////////
-    LOG_NOHEADER("\n");
+    LOG_MEDHIGH_NOHEADER("\n");
     LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
-    LOG_NOHEADER("\n");
+    LOG_MEDHIGH_NOHEADER("\n");
   }
 
 //  if (fp_alt_contig_path) { fclose(fp_alt_contig_path); }
@@ -202,13 +202,16 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
     consensus_windows.resize(parameters.batch_of_windows);
     int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
 
-    #pragma omp parallel for num_threads(parameters.num_threads)
+    #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
      for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
+//       if ((id_in_batch + 1) == (windows_to_process)) { break; }
+
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
        int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
        int32_t thread_id = omp_get_thread_num();
+//       int32_t thread_id = 0;
 
-       if (thread_id == 0) { LOG_ALL("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length())); }
+       if (thread_id == 0) { LOG_MEDHIGH("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length())); }
 
        // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
        std::vector<std::string> windows_for_msa;
@@ -218,7 +221,7 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        if (parameters.msa == "poa") {
          ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, windows_for_msa, quals_for_msa, NULL);
 
-         if (thread_id == 0) { LOG_ALL(", coverage: %ldx", windows_for_msa.size()) }
+         if (thread_id == 0) { LOG_MEDHIGH_NOHEADER(", coverage: %ldx", windows_for_msa.size()) }
 
          if (windows_for_msa.size() == 0) {
              consensus_windows[id_in_batch] = "";
@@ -226,8 +229,6 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
            if (quals_for_msa.size() > 0) {
              consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, SPOA::AlignmentParams(parameters.match,
                                                                                                         parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
-//               consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
-//                                                                                                          parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), false);
            } else {
              consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
                                                                                                         parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
@@ -249,6 +250,8 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        }
      }
 
+     LOG_MEDHIGH_NOHEADER("\n");
+     LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
      for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
        int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
@@ -321,8 +324,8 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        }
      }
 
-     LOG_NOHEADER("\n");
-     LOG_ALL("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
+     LOG_MEDHIGH_NOHEADER("\n");
+     LOG_MEDHIGH("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
   }
 
   ret_consensus = ss_cons.str();

@@ -54,6 +54,8 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.gap_ext), VALUE_TYPE_INT32, "E", "gapext", "-1", "Gap extend penalty (negative value expected).", 0, "Alignment");
   argparser.AddArgument(&(parameters.aln_type), VALUE_TYPE_INT32, "a", "align", "-1", "Alignment algorithm: 0 for local, 1 for global and 2 for overlap.", 0, "Alignment");
 
+  argparser.AddArgument(&(parameters.verbose_level), VALUE_TYPE_INT32, "v", "verbose", "5", "Number of threads to use.", 0, "Other");
+
 //  argparser.AddArgument(&(parameters.temp_alt_contig_path), VALUE_TYPE_STRING, "", "altctgs", "", "Extracted alternate contigs. Output is in SAM format.", 0, "Debug");
 
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
@@ -66,6 +68,15 @@ int main(int argc, char* argv[]) {
 
   // Process the command line arguments.
   argparser.ProcessArguments(argc, argv);
+
+  if (parameters.verbose_level == 1) {
+    LogSystem::GetInstance().LOG_VERBOSE_TYPE = LOG_VERBOSE_STD;
+  } else if (parameters.verbose_level > 1) {
+    LogSystem::GetInstance().LOG_VERBOSE_TYPE = LOG_VERBOSE_FULL | LOG_VERBOSE_STD;
+  }
+
+  // Set the verbose level for the execution of this program.
+  LogSystem::GetInstance().SetProgramVerboseLevelFromInt(parameters.verbose_level);
 
   // Store the command line arguments for later use.
   for (int32_t i=0; i<argc; i++) { parameters.cmd_arguments.push_back(argv[i]); }
@@ -84,11 +95,11 @@ int main(int argc, char* argv[]) {
 
   std::string gfa = argv[1];
   SequenceFile seqs_gfa(SEQ_FORMAT_AUTO, parameters.raw_contigs_path);
-  seqs_gfa.Verbose(stdout);
+//  seqs_gfa.Verbose(stdout);
 
   std::string sam = argv[2];
   SequenceFile seqs_sam(SEQ_FORMAT_SAM, parameters.aln_path);
-  seqs_sam.Verbose(stdout);
+//  seqs_sam.Verbose(stdout);
 
   std::string alt_contig_path = argv[3];
 

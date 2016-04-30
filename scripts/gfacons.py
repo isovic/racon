@@ -102,6 +102,12 @@ def verbose_gfa_contigs(contigs):
     	for i in xrange(0, len(contig.gp)):
     		print '\t' + contig.gp[i].read_name;
 
+# Nekoliko stvari za isprobati:
+# 1. Napraviti alignment ili overlap readova na referencu (raw contig), da nadjem koji se readovi preklapaju. Kada popravljam samo jedan read, onda zapisati samo one s kojima se preklapa u file.
+# 2. Umjesto popravljanja svih readova u pathu popraviti samo one koji su najdalje preklopljeni da se smanji broj operacija.
+
+# 3. Neovisno o ovome gore, trebao bih: popraviti region selection da smanjim IF-ove tako da stavim self hitove izvan counting dijela, i trebao bih IndexSpacedHashFast srediti da bude MFS to LFS a ne obrnuto.
+
 def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, ref_path=None):
 	[headers_reads, seqs_reads, quals_reads] = fastqparser.read_fastq(reads_path);
 	seq_hash = {};
@@ -116,15 +122,23 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 	all_corrected_reads_path = '%s/../temp/reads.cons.fa' % (SCRIPT_PATH);
 	graphmap_bin = '%s/../tools/graphmap/bin/Linux-x64/graphmap' % (SCRIPT_PATH);
 	all_corrected_reads_sam = '%s/../temp/reads.cons.sam' % (SCRIPT_PATH);
+	aln_reads_to_raw_contig = '%s/../temp/reads_to_raw_contig.sam' % (SCRIPT_PATH);
 
 	raw_contig_temp_path = '%s/../temp/contig.raw.fa' % (SCRIPT_PATH);
 	final_consensus_contig_path = '%s/../temp/contig.consensus.fa' % (SCRIPT_PATH);
+
+	# ### Alignment svih readova na contig, da se odredi koji se alignaju s kojima.
+	# command = '%s align -r %s -d %s -o %s --evalue 0 --mapq 40 -v 1' % (graphmap_bin, raw_contig_temp_path, reads_path, aln_reads_to_raw_contig)
+	# execute_command(command, sys.stderr, dry_run=False);
+	# Ovdje naci overlap
 
 	### Touch the file to clear it.
 	fp = open(all_corrected_reads_path, 'w');
 	fp.close();
 
 	for i in xrange(0, len(contig.gp)):
+		timestamp = strftime("%Y/%m/%d %H:%M:%S", gmtime());
+		sys.stderr.write('[%s] Correcting read %d/%d.\n' % (timestamp, (i + 1), len(contig.gp)));
 		# if (i < 3): continue;
 
 		gp = contig.gp[i];
@@ -140,6 +154,7 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 
 		# command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t 4 %s %s %s' % (SCRIPT_PATH, single_read_path, single_read_sam, single_read_consensus);
 		command = '%s/../bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, single_read_path, single_read_sam, single_read_consensus);
+		# command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, single_read_path, single_read_sam, single_read_consensus);
 		execute_command(command, sys.stderr, dry_run=False);
 
 		if (ref_path != None and ref_path != '-'):

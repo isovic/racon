@@ -49,7 +49,7 @@ modules:
 	git submodule update --init --recursive
 	git submodule foreach git pull origin master
 
-tools: tools/graphmap/bin/Linux-x64/graphmap tools/poaV2/poa tools/mafft-7.273-with-extensions/binaries/disttbfast
+tools: tools/graphmap/bin/Linux-x64/graphmap tools/poaV2/poa tools/mafft-7.273-with-extensions/binaries/disttbfast tools/edlib/src/aligner
 	echo "All tools installed."
 
 tools/graphmap/bin/Linux-x64/graphmap:
@@ -60,6 +60,9 @@ tools/poaV2/poa:
 
 tools/mafft-7.273-with-extensions/binaries/disttbfast:
 	mkdir -p tools && cd tools && wget http://mafft.cbrc.jp/alignment/software/mafft-7.273-with-extensions-src.tgz && tar -xzvf mafft-7.273-with-extensions-src.tgz && cd mafft-7.273-with-extensions/core && make
+
+tools/edlib/src/aligner:
+	mkdir -p tools; cd tools; git clone https://github.com/Martinsos/edlib.git; cd edlib/src && make -j
 
 
 
