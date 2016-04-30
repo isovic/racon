@@ -9,6 +9,9 @@ sys.path.append(SCRIPT_PATH + '/../codebase/samscripts/src/');
 import subprocess;
 
 import fastqparser;
+import utility_sam;
+
+from intervaltree import *;
 
 # VERBOSE_DEBUG = True;
 VERBOSE_DEBUG = False;
@@ -108,6 +111,28 @@ def verbose_gfa_contigs(contigs):
 
 # 3. Neovisno o ovome gore, trebao bih: popraviti region selection da smanjim IF-ove tako da stavim self hitove izvan counting dijela, i trebao bih IndexSpacedHashFast srediti da bude MFS to LFS a ne obrnuto.
 
+def make_interval_tree(sam_path):
+	[headers, sam_lines] = utility_sam.LoadSAM(sam_path);
+
+	qname_to_interval = {};
+	intervals = [];
+	for sam_line in sam_lines:
+		if (sam_line.IsMapped() == False): continue;
+		s = sam_line.pos - 1;
+		e = s + sam_line.CalcReferenceLengthFromCigar() - 1;
+		intervals.append(Interval(s, e, sam_line));
+		qname_to_interval[sam_line.qname] = intervals[-1];
+	t = IntervalTree(intervals)
+
+	return [t, qname_to_interval];
+
+def find_overlaps(interval_tree, start, end):
+	overlaps = [];
+	results = interval_tree.search(start, end);
+	for result in results:
+		overlaps.append(result.val);
+	return overlaps;
+
 def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, ref_path=None):
 	[headers_reads, seqs_reads, quals_reads] = fastqparser.read_fastq(reads_path);
 	seq_hash = {};
@@ -119,6 +144,7 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 	single_read_path = '%s/../temp/singleread.fastq' % (SCRIPT_PATH);
 	single_read_sam = '%s/../temp/singleread.sam' % (SCRIPT_PATH);
 	single_read_consensus = '%s/../temp/singleread.cons.fa' % (SCRIPT_PATH);
+	overlapping_reads_path = '%s/../temp/ovlreads.fastq' % (SCRIPT_PATH);
 	all_corrected_reads_path = '%s/../temp/reads.cons.fa' % (SCRIPT_PATH);
 	graphmap_bin = '%s/../tools/graphmap/bin/Linux-x64/graphmap' % (SCRIPT_PATH);
 	all_corrected_reads_sam = '%s/../temp/reads.cons.sam' % (SCRIPT_PATH);
@@ -127,10 +153,14 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 	raw_contig_temp_path = '%s/../temp/contig.raw.fa' % (SCRIPT_PATH);
 	final_consensus_contig_path = '%s/../temp/contig.consensus.fa' % (SCRIPT_PATH);
 
-	# ### Alignment svih readova na contig, da se odredi koji se alignaju s kojima.
-	# command = '%s align -r %s -d %s -o %s --evalue 0 --mapq 40 -v 1' % (graphmap_bin, raw_contig_temp_path, reads_path, aln_reads_to_raw_contig)
-	# execute_command(command, sys.stderr, dry_run=False);
-	# Ovdje naci overlap
+	fp = open(raw_contig_temp_path, 'w');
+	fp.write('>%s\n%s\n' % (contig.name, contig.seq));
+	fp.close();
+
+	### Alignment svih readova na contig, da se odredi koji se alignaju s kojima.
+	command = '%s align -r %s -d %s -o %s --evalue 0 --mapq 40 -v 1' % (graphmap_bin, raw_contig_temp_path, reads_path, aln_reads_to_raw_contig)
+	execute_command(command, sys.stderr, dry_run=False);
+	[t, qname_to_intervals] = make_interval_tree(aln_reads_to_raw_contig);
 
 	### Touch the file to clear it.
 	fp = open(all_corrected_reads_path, 'w');
@@ -145,11 +175,21 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 
 		[h, s, q] = seq_hash[gp.read_name];
 
+		### Write down the read we are currently correcting.
 		fp = open(single_read_path, 'w');
 		fp.write('@%s\n%s\n+\n%s\n' % (h, s, q));
 		fp.close();
 
-		command = '%s align -r %s -d %s -o %s --no-self-hits --mapq -1 --rebuild-index -v 1' % (graphmap_bin, single_read_path, reads_path, single_read_sam)
+		### Find all reads which overlap the read, so it's faster to align them again.
+		interval = qname_to_intervals[h];
+		ovl_sams = find_overlaps(t, interval.begin, interval.end);
+		fp = open(overlapping_reads_path, 'w');
+		for ovl_sam in ovl_sams:
+			fp.write('@%s\n%s\n+\n%s\n' % (ovl_sam.qname, ovl_sam.seq, ovl_sam.qual));
+		fp.close();
+
+		### Align all the reads for Consise to do it's work.
+		command = '%s align -r %s -d %s -o %s --no-self-hits --mapq -1 --rebuild-index -v 1' % (graphmap_bin, single_read_path, overlapping_reads_path, single_read_sam)
 		execute_command(command, sys.stderr, dry_run=False);
 
 		# command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t 4 %s %s %s' % (SCRIPT_PATH, single_read_path, single_read_sam, single_read_consensus);
@@ -166,10 +206,6 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 
 		command = 'cat %s >> %s' % (single_read_consensus, all_corrected_reads_path);
 		execute_command(command, sys.stderr, dry_run=False);
-
-	fp = open(raw_contig_temp_path, 'w');
-	fp.write('>%s\n%s\n' % (contig.name, contig.seq));
-	fp.close();
 
 	command = '%s align -r %s -d %s -o %s --no-self-hits --mapq -1 --rebuild-index -v 1' % (graphmap_bin, raw_contig_temp_path, all_corrected_reads_path, all_corrected_reads_sam)
 	execute_command(command, sys.stderr, dry_run=False);
