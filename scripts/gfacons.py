@@ -141,6 +141,10 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 		seq_hash[headers_reads[i].split()[0]] = [headers_reads[i], seqs_reads[i], quals_reads[i]];		# Handle the case when read name was split at a whitespace.
 		seq_hash[headers_reads[i].split(':')[0]] = [headers_reads[i], seqs_reads[i], quals_reads[i]];		# Handle the case of nanopore reads in FASTQ files, where ':' is used as a delimiter instead of space.
 
+	if (ref_path != None and ref_path != '-'):
+		command = 'mkdir -p %s/../temp/dnadiff' % (SCRIPT_PATH);
+		execute_command(command, sys.stderr, dry_run=False);
+
 	single_read_path = '%s/../temp/singleread.fastq' % (SCRIPT_PATH);
 	single_read_sam = '%s/../temp/singleread.sam' % (SCRIPT_PATH);
 	single_read_consensus = '%s/../temp/singleread.cons.fa' % (SCRIPT_PATH);
@@ -158,9 +162,11 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 	fp.close();
 
 	### Alignment svih readova na contig, da se odredi koji se alignaju s kojima.
-	command = '%s align -r %s -d %s -o %s --evalue 0 --mapq 40 -v 1' % (graphmap_bin, raw_contig_temp_path, reads_path, aln_reads_to_raw_contig)
-	execute_command(command, sys.stderr, dry_run=False);
+	# command = '%s align -r %s -d %s -o %s --evalue 0 --mapq 40 -v 1' % (graphmap_bin, raw_contig_temp_path, reads_path, aln_reads_to_raw_contig)
+	# execute_command(command, sys.stderr, dry_run=False);
+	sys.stderr.write('Building an interval tree from the alignments...\n');
 	[t, qname_to_intervals] = make_interval_tree(aln_reads_to_raw_contig);
+	sys.stderr.write('Done building the tree, progressing to consensus.\n');
 
 	### Touch the file to clear it.
 	fp = open(all_corrected_reads_path, 'w');
@@ -181,7 +187,7 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 		fp.close();
 
 		### Find all reads which overlap the read, so it's faster to align them again.
-		interval = qname_to_intervals[h];
+		interval = qname_to_intervals[gp.read_name];
 		ovl_sams = find_overlaps(t, interval.begin, interval.end);
 		fp = open(overlapping_reads_path, 'w');
 		for ovl_sam in ovl_sams:
@@ -193,8 +199,8 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 		execute_command(command, sys.stderr, dry_run=False);
 
 		# command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t 4 %s %s %s' % (SCRIPT_PATH, single_read_path, single_read_sam, single_read_consensus);
-		command = '%s/../bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, single_read_path, single_read_sam, single_read_consensus);
-		# command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, single_read_path, single_read_sam, single_read_consensus);
+		# command = '%s/../bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, single_read_path, single_read_sam, single_read_consensus);
+		command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, single_read_path, single_read_sam, single_read_consensus);
 		execute_command(command, sys.stderr, dry_run=False);
 
 		if (ref_path != None and ref_path != '-'):

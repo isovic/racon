@@ -22,5 +22,6 @@ scripts/*
 scripts/test-leftalign/*.pyc
 scripts/test-leftalign/data/
 !scripts/gfacons.py
+!scripts/intervaltree.py
 !scripts/test-leftalign/data/msa1.txt
 !scripts/test-leftalign/data/msa2.txt
