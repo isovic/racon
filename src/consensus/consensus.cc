@@ -53,15 +53,30 @@ int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std:
   return 0;
 }
 
-void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, FILE *fp_window) {
+void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens,
+                           int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv,
+                           std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends, FILE *fp_window) {
   if (window_start > window_end) {
     return;
   }
 
   int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
-  // window_seqs.push_back(GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1)));
-  std::string dummy_quals((temp_window_end - window_start + 1), 'A');
-  // window_qv.push_back(dummy_quals);
+  window_seqs.push_back(GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1)));
+  std::string dummy_quals((temp_window_end - window_start + 1), '!');
+  window_qv.push_back(dummy_quals);
+  window_starts.push_back(0);
+  window_ends.push_back(temp_window_end - window_start);
+
+//  fflush(stdout);
+//  fflush(stderr);
+//  printf ("\n");
+//  printf ("window_start = %ld, window_end = %ld, temp_window_end = %ld\n", window_start, window_end, temp_window_end);
+//  fflush(stdout);
+//
+//  printf ("seq_start_in_window = %u, seq_end_in_window = %u, seq_len = %ld, qual_len = %ld, %s, %s\n",
+//          window_starts.back(), window_ends.back(), window_seqs.back().size(), window_qv.back().size(),
+//          window_seqs.back().c_str(), window_qv.back().c_str());
+//  fflush(stdout);
 
   std::vector<SingleSequence *> candidates;
   for (int64_t i=0; i<alns.size(); i++) {
@@ -80,12 +95,27 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
       int64_t start_cig_id = 0, end_cig_id = 0;
       int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
       int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
+      uint32_t seq_start_in_window = 0;
+      uint32_t seq_end_in_window = temp_window_end - window_start;
 
-      if (start_seq == -1) { start_seq = 0; }
-      else if (start_seq < 0) { fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1); }
+      if (start_seq == -1) {
+        start_seq = aln.GetClippedBasesFront();
 
-      if (end_seq == -2) { end_seq = alns[i]->get_data_length() - 1; }
-      else if (end_seq < 0) { fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1); }
+        seq_start_in_window = aln.get_pos() - 1 - window_start;
+        seq_start_in_window = std::max((uint32_t) 0, (uint32_t) ((int32_t) seq_start_in_window - 0));
+//        start_seq = 0;
+      } else if (start_seq < 0) {
+        fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1);
+      }
+
+      if (end_seq == -2) {
+        end_seq = alns[i]->get_data_length() - 1 - aln.GetClippedBasesBack();
+        seq_end_in_window = (aln.get_pos() - 1 + aln.GetReferenceLengthFromCigar()) - window_start;
+        seq_end_in_window = std::min((uint32_t) (temp_window_end - window_start), (uint32_t) ((int32_t) seq_end_in_window + 0));
+//        end_seq = alns[i]->get_data_length() - 1;
+      } else if (end_seq < 0) {
+        fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1);
+      }
 
 //      if ((end_seq - start_seq) < 0.50f * (temp_window_end - window_start)) { continue; }
 
@@ -93,6 +123,13 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
       if (alns[i]->get_quality() != NULL) {
         window_qv.push_back(GetSubstring((char *) (alns[i]->get_quality() + start_seq), end_seq - start_seq + 1));
       }
+      window_starts.push_back(seq_start_in_window);
+      window_ends.push_back(seq_end_in_window);
+
+//      printf ("seq_start_in_window = %u, seq_end_in_window = %u, aln.pos = %ld, len_on_ref = %ld, seq_len = %ld, qual_len = %ld, %s, %s\n",
+//              seq_start_in_window, seq_end_in_window, aln.get_pos(), aln.GetReferenceLengthFromCigar(), window_seqs.back().size(), window_qv.back().size(),
+//              window_seqs.back().c_str(), window_qv.back().c_str());
+//      fflush(stdout);
 
       if (fp_window) {
         #ifndef WINDOW_OUTPUT_IN_FASTQ
@@ -216,10 +253,12 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
        std::vector<std::string> windows_for_msa;
        std::vector<std::string> quals_for_msa;
+       std::vector<uint32_t> starts_for_msa;
+       std::vector<uint32_t> ends_for_msa;
 
        // Chosing the MSA algorithm, and running the consensus on the window.
        if (parameters.msa == "poa") {
-         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, windows_for_msa, quals_for_msa, NULL);
+         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, NULL);
 
          if (thread_id == 0) { LOG_MEDHIGH_NOHEADER(", coverage: %ldx", windows_for_msa.size()) }
 
@@ -233,8 +272,17 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
 
          } else {
            if (quals_for_msa.size() > 0) {
-             consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, SPOA::AlignmentParams(parameters.match,
-                                                                                                        parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
+//             printf ("id_in_batch = %ld\n", id_in_batch);
+//             for (int64_t i1=0; i1<windows_for_msa.size(); i1++) {
+//               printf ("[i1 = %ld] %u, %u\n", i1, starts_for_msa[i1], ends_for_msa[i1]);
+//               fflush(stdout);
+//             }
+//             printf ("\n");
+//             fflush(stdout);
+
+             consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
+                                                                       SPOA::AlignmentParams(parameters.match, parameters.mismatch,
+                                                                       parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
            } else {
              consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
                                                                                                         parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
@@ -250,7 +298,7 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
          if (fp_window == NULL) {
            ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
          }
-         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, windows_for_msa, quals_for_msa, fp_window);
+         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, fp_window);
          fclose(fp_window);
          RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
        }
