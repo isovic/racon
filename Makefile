@@ -49,11 +49,14 @@ modules:
 	git submodule update --init --recursive
 	git submodule foreach git pull origin master
 
-tools: tools/graphmap/bin/Linux-x64/graphmap tools/poaV2/poa tools/mafft-7.273-with-extensions/binaries/disttbfast tools/edlib/src/aligner
+tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/poaV2/poa tools/mafft-7.273-with-extensions/binaries/disttbfast tools/edlib/src/aligner
 	echo "All tools installed."
 
 tools/graphmap/bin/Linux-x64/graphmap:
 	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make -j
+
+tools/graphmap/bin/graphmap-not_release:
+	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make -j testing
 
 tools/poaV2/poa:
 	mkdir -p tools && cd tools && wget http://netassist.dl.sourceforge.net/project/poamsa/poamsa/2.0/poaV2.tar.gz && tar -xvzf poaV2.tar.gz && cd poaV2 && make poa

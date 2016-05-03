@@ -15,7 +15,7 @@ reads=$folder/reads.fastq
 sam=$folder/alignments.sam
 reference=$folder/ecoli_K12_MG1655_U00096.3.fasta
 # sam=temp/alignments.sam
-dataset=ecoli-pacbio
+dataset=ecoli_pacbio
 # msa=mafft
 # msa=poav2
 msa=poa
@@ -33,5 +33,5 @@ grep "AlignedBases" temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
 grep "AvgIdentity" temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
 cat $memtime
 
-tools/edlib/src/aligner ${consensus} ${reference} -p -f NICE > ${consensus}.refalign.txt
-head -n 10 ${consensus}.refalign.txt | tail -n 1
+# tools/edlib/src/aligner ${consensus} ${reference} -p -f NICE > ${consensus}.refalign.txt
+# head -n 10 ${consensus}.refalign.txt | tail -n 1

@@ -12,7 +12,7 @@ threads=4
 contigs=test-data/DATASETS_FOR_CONSENSUS/ecoli_map006_ont/layout.gfa
 reads=test-data/DATASETS_FOR_CONSENSUS/ecoli_map006_ont/reads.fastq
 sam=test-data/DATASETS_FOR_CONSENSUS/ecoli_map006_ont/alignments.sam
-dataset=ecoli
+dataset=ecoli_map006
 # msa=mafft
 # msa=poav2
 msa=poa
@@ -31,5 +31,5 @@ grep "AlignedBases" temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
 grep "AvgIdentity" temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
 cat $memtime
 
-tools/edlib/src/aligner ${consensus} ${reference} -p -f NICE > ${consensus}.refalign.txt
-head -n 10 ${consensus}.refalign.txt | tail -n 1
+# tools/edlib/src/aligner ${consensus} ${reference} -p -f NICE > ${consensus}.refalign.txt
+# head -n 10 ${consensus}.refalign.txt | tail -n 1

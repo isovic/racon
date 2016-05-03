@@ -122,6 +122,8 @@ def make_interval_tree(sam_path):
 		e = s + sam_line.CalcReferenceLengthFromCigar() - 1;
 		intervals.append(Interval(s, e, sam_line));
 		qname_to_interval[sam_line.qname] = intervals[-1];
+		qname_to_interval[sam_line.qname.split()[0]] = intervals[-1];
+		qname_to_interval[sam_line.qname.split(':')[0]] = intervals[-1];
 	t = IntervalTree(intervals)
 
 	return [t, qname_to_interval];
@@ -134,6 +136,9 @@ def find_overlaps(interval_tree, start, end):
 	return overlaps;
 
 def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, ref_path=None):
+	# graphmap_bin = '%s/../tools/graphmap/bin/Linux-x64/graphmap' % (SCRIPT_PATH);
+	graphmap_bin = '%s/../tools/graphmap/bin/graphmap-not_release' % (SCRIPT_PATH);
+
 	[headers_reads, seqs_reads, quals_reads] = fastqparser.read_fastq(reads_path);
 	seq_hash = {};
 	for i in xrange(0, len(headers_reads)):
@@ -150,7 +155,6 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 	single_read_consensus = '%s/../temp/singleread.cons.fa' % (SCRIPT_PATH);
 	overlapping_reads_path = '%s/../temp/ovlreads.fastq' % (SCRIPT_PATH);
 	all_corrected_reads_path = '%s/../temp/reads.cons.fa' % (SCRIPT_PATH);
-	graphmap_bin = '%s/../tools/graphmap/bin/Linux-x64/graphmap' % (SCRIPT_PATH);
 	all_corrected_reads_sam = '%s/../temp/reads.cons.sam' % (SCRIPT_PATH);
 	aln_reads_to_raw_contig = '%s/../temp/reads_to_raw_contig.sam' % (SCRIPT_PATH);
 
@@ -162,8 +166,9 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 	fp.close();
 
 	### Alignment svih readova na contig, da se odredi koji se alignaju s kojima.
-	# command = '%s align -r %s -d %s -o %s --evalue 0 --mapq 40 -v 1' % (graphmap_bin, raw_contig_temp_path, reads_path, aln_reads_to_raw_contig)
-	# execute_command(command, sys.stderr, dry_run=False);
+	command = '%s align -r %s -d %s -o %s -v 1 --rebuild-index -b 3' % (graphmap_bin, raw_contig_temp_path, reads_path, aln_reads_to_raw_contig)
+	execute_command(command, sys.stderr, dry_run=False);
+
 	sys.stderr.write('Building an interval tree from the alignments...\n');
 	[t, qname_to_intervals] = make_interval_tree(aln_reads_to_raw_contig);
 	sys.stderr.write('Done building the tree, progressing to consensus.\n');
@@ -171,6 +176,9 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 	### Touch the file to clear it.
 	fp = open(all_corrected_reads_path, 'w');
 	fp.close();
+
+	failed_reads_path = '%s/../temp/failed_reads.txt' % (SCRIPT_PATH);
+	fp_failed = open(failed_reads_path, 'w');
 
 	for i in xrange(0, len(contig.gp)):
 		timestamp = strftime("%Y/%m/%d %H:%M:%S", gmtime());
@@ -187,7 +195,15 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 		fp.close();
 
 		### Find all reads which overlap the read, so it's faster to align them again.
-		interval = qname_to_intervals[gp.read_name];
+		try:
+			interval = qname_to_intervals[gp.read_name];
+		except:
+			sys.stderr.write('ERROR: Could not find read "%s" in the interval tree! Continuing. The read name will be written to "%s".\n' % (gp.read_name, failed_reads_path));
+			timestamp = strftime("%Y/%m/%d %H:%M:%S", gmtime());
+			fp_failed.write('[%s] %d %s\n' % (timestamp, i, gp.read_name));
+			fp_failed.flush();
+			continue;
+
 		ovl_sams = find_overlaps(t, interval.begin, interval.end);
 		fp = open(overlapping_reads_path, 'w');
 		for ovl_sam in ovl_sams:
@@ -203,17 +219,21 @@ def correct_layout_reads(contig, reads_path, num_threads, out_consensus_path, re
 		command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --bq 10.0 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, single_read_path, single_read_sam, single_read_consensus);
 		execute_command(command, sys.stderr, dry_run=False);
 
-		if (ref_path != None and ref_path != '-'):
-			command = 'dnadiff -p %s/../temp/dnadiff/consread %s %s;' % (SCRIPT_PATH, ref_path, single_read_consensus);
-			command += 'grep "TotalBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
-			command += 'grep "AlignedBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
-			command += 'grep "AvgIdentity" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
-			execute_command(command, sys.stderr, dry_run=False);
+		# if (ref_path != None and ref_path != '-'):
+		# 	command = 'dnadiff -p %s/../temp/dnadiff/consread %s %s;' % (SCRIPT_PATH, ref_path, single_read_consensus);
+		# 	command += 'grep "TotalBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
+		# 	command += 'grep "AlignedBases" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
+		# 	command += 'grep "AvgIdentity" %s/../temp/dnadiff/consread.report;' % (SCRIPT_PATH);
+		# 	execute_command(command, sys.stderr, dry_run=False);
 
 		command = 'cat %s >> %s' % (single_read_consensus, all_corrected_reads_path);
 		execute_command(command, sys.stderr, dry_run=False);
 
-	command = '%s align -r %s -d %s -o %s --no-self-hits --mapq -1 --rebuild-index -v 1' % (graphmap_bin, raw_contig_temp_path, all_corrected_reads_path, all_corrected_reads_sam)
+		# exit(1);
+
+	fp_failed.close();
+
+	command = '%s align -r %s -d %s -o %s --no-self-hits --mapq -1 --rebuild-index -v 1 -b 3' % (graphmap_bin, raw_contig_temp_path, all_corrected_reads_path, all_corrected_reads_sam)
 	execute_command(command, sys.stderr, dry_run=False);
 
 	command = '%s/../bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 -w 500 --ovl-margin 0.0 --msa poa -b 200 -t %d %s %s %s' % (SCRIPT_PATH, num_threads, raw_contig_temp_path, all_corrected_reads_sam, final_consensus_contig_path);

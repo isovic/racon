@@ -225,6 +225,12 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
 
          if (windows_for_msa.size() == 0) {
              consensus_windows[id_in_batch] = "";
+             ERROR_REPORT(ERR_UNEXPECTED_VALUE, "windows_for_msa.size() == 0!");
+         } else if (windows_for_msa.size() <= 2) {
+ //          int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
+ //          consensus_windows[id_in_batch] = GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1));
+             consensus_windows[id_in_batch] = windows_for_msa[0];
+
          } else {
            if (quals_for_msa.size() > 0) {
              consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, SPOA::AlignmentParams(parameters.match,

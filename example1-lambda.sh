@@ -8,11 +8,11 @@ threads=4
 
 ### Lambda:
 # awk '$1 ~/S/ {print ">"$2"\n"$3}' test-data/lambda/layout-miniasm.gfa > test-data/lambda/layout-miniasm.fasta
-# contigs=test-data/lambda/layout-miniasm.fasta
-contigs=test-data/lambda/layout-miniasm.gfa
+contigs=test-data/lambda/layout-miniasm.fasta
+# contigs=test-data/lambda/layout-miniasm.gfa
 reads=test-data/lambda/reads.fastq
 sam=test-data/lambda/alignments.sam
-dataset=lambda
+dataset=lambda_30x_ont
 # msa=mafft
 # msa=poav2
 msa=poa
@@ -20,9 +20,12 @@ consensus=temp/consensus-${dataset}-${msa}.fasta
 memtime=temp/consensus-${dataset}-${msa}.memtime
 reference=test-data/lambda/NC_001416.fa
 tools/graphmap/bin/Linux-x64/graphmap align -a anchor -z 0 -c 40 -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
+# tools/bwa/bwa index ${contigs}
+# tools/bwa/bwa mem -x ont2d ${contigs} ${reads} > ${sam}
 mkdir -p temp
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o $memtime \
-	bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 --bq 10 -w 500 --ovl-margin 0.0 --msa ${msa} -b 200 -t ${threads} --winpath temp/window.fasta ${contigs} ${sam} ${consensus}
+	bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 --bq 10 -w 500 --ovl-margin 0.00 --msa ${msa} -b 200 -t ${threads} --winpath temp/window.fasta ${contigs} ${sam} ${consensus}
+	# bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 --bq 10 -w 500 --ovl-margin 0.00 --msa ${msa} -b 200 -t ${threads} --winpath temp/window.fasta ${contigs} ${sam} ${consensus}
 mkdir -p temp/dnadiff-${dataset}
 rm temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
 dnadiff -p temp/dnadiff-${dataset}/consise-${dataset}-${msa} ${reference} ${consensus}

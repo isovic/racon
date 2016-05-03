@@ -19,9 +19,9 @@ class IntervalTree:
 		s_right = []
  
 		for k in intervals:
-			if k.get_end() < x_center:
+			if k.end < x_center:
 				s_left.append(k)
-			elif k.get_begin() > x_center:
+			elif k.begin > x_center:
 				s_right.append(k)
 			else:
 				s_center.append(k)
@@ -33,7 +33,7 @@ class IntervalTree:
 		fs = sort_by_begin(intervals)
 		length = len(fs)
  
-		return fs[int(length/2)].get_begin()
+		return fs[int(length/2)].begin
  
 	def search(self, begin, end=None):
 		if end:
@@ -49,7 +49,7 @@ class IntervalTree:
 	def _search(self, node, point, result):
 		
 		for k in node.s_center:
-			if k.get_begin() <= point <= k.get_end():
+			if k.begin <= point <= k.end:
 				result.append(k)
 		if point < node.x_center and node.left_node:
 			for k in self._search(node.left_node, point, []):
@@ -66,10 +66,10 @@ class Interval:
 		self.end = end
 		self.val = val;
 		
-	def get_begin(self):
-		return self.begin
-	def get_end(self):
-		return self.end
+	# def get_begin(self):
+	# 	return self.begin
+	# def get_end(self):
+	# 	return self.end
 	def verbose(self):
 		return '[%d, %d, %s]' % (self.begin, self.end, str(self.val));
  
@@ -81,4 +81,4 @@ class Node:
 		self.right_node = right_node
  
 def sort_by_begin(intervals):
-	return sorted(intervals, key=lambda x: x.get_begin())
+	return sorted(intervals, key=lambda x: x.begin)
