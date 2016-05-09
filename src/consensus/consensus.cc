@@ -54,7 +54,7 @@ int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std:
 }
 
 void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens,
-                           int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv,
+                           int64_t window_start, int64_t window_end, double qv_threshold, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv,
                            std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends, FILE *fp_window) {
   if (window_start > window_end) {
     return;
@@ -119,12 +119,28 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
 
 //      if ((end_seq - start_seq) < 0.50f * (temp_window_end - window_start)) { continue; }
 
-      window_seqs.push_back(GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1));
-      if (alns[i]->get_quality() != NULL) {
-        window_qv.push_back(GetSubstring((char *) (alns[i]->get_quality() + start_seq), end_seq - start_seq + 1));
+      std::string seq_data = GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1);
+      std::string seq_qual = (alns[i]->get_quality() != NULL) ? (GetSubstring((char *) (alns[i]->get_quality() + start_seq), end_seq - start_seq + 1)) : (std::string((end_seq - start_seq + 1), '!' + 0));
+
+      double avg_qual;
+      for (int64_t j=0; j<seq_qual.size(); j++) {
+        avg_qual += (double) (seq_qual[j] - '!');
       }
-      window_starts.push_back(seq_start_in_window);
-      window_ends.push_back(seq_end_in_window);
+      avg_qual /= std::max((double) seq_qual.size(), 1.0);
+//      avg_qual = 255.0;
+
+//      for (int64_t i1=0; i1<seq_qual.size(); i1++) {
+//        if (seq_qual[i1] < ('!' + qv_threshold)) {
+//          seq_qual[i1] = '!';
+//        }
+//      }
+
+      if (avg_qual >= qv_threshold) {
+        window_seqs.push_back(seq_data);
+        window_starts.push_back(seq_start_in_window);
+        window_ends.push_back(seq_end_in_window);
+        window_qv.push_back(seq_qual);
+      }
 
 //      printf ("seq_start_in_window = %u, seq_end_in_window = %u, aln.pos = %ld, len_on_ref = %ld, seq_len = %ld, qual_len = %ld, %s, %s\n",
 //              seq_start_in_window, seq_end_in_window, aln.get_pos(), aln.GetReferenceLengthFromCigar(), window_seqs.back().size(), window_qv.back().size(),
@@ -154,7 +170,8 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
   // Alignments which are called unmapped will be skipped in this step.
   // Also, alignments are filtered by the base quality if available.
   LOG_MEDHIGH("Separating alignments to individual contigs.\n");
-  GroupAlignmentsToContigs(alns, parameters.qv_threshold, ctg_names, all_ctg_alns);
+//  GroupAlignmentsToContigs(alns, parameters.qv_threshold, ctg_names, all_ctg_alns);
+  GroupAlignmentsToContigs(alns, -1.0, ctg_names, all_ctg_alns);
 
   // Verbose.
   LOG_MEDHIGH("In total, there are %ld contigs, each containing:\n", ctg_names.size());
@@ -232,6 +249,8 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
   int64_t num_windows = ceil((float) contig->get_sequence_length() / (float) parameters.window_len);
   LOG_DEBUG ("current_contig->get_sequence_length() = %ld, parameters.window_len = %ld, num_windows = %ld\n", contig->get_sequence_length(), parameters.window_len, num_windows);
 
+//  FILE *fp_test = fopen("temp/test.fasta", "w");
+
   // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
   // then the results are collected and output to file. After that, a new batch is loaded.
   for (int64_t window_batch_start = parameters.start_window, num_batches = 0; window_batch_start < num_windows && (parameters.num_batches < 0 || num_batches < parameters.num_batches); window_batch_start += parameters.batch_of_windows, num_batches++) {
@@ -239,8 +258,12 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
     consensus_windows.resize(parameters.batch_of_windows);
     int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
 
-    #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
-     for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
+//    windows_to_process = 49;
+//    #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
+//     for (int64_t id_in_batch = 48; id_in_batch < windows_to_process; id_in_batch += 1) {
+      #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
+       for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
+
 //       if ((id_in_batch + 1) == (windows_to_process)) { break; }
 
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
@@ -256,9 +279,11 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        std::vector<uint32_t> starts_for_msa;
        std::vector<uint32_t> ends_for_msa;
 
+//       std::vector<std::string> msa;
+
        // Chosing the MSA algorithm, and running the consensus on the window.
        if (parameters.msa == "poa") {
-         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, NULL);
+         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, parameters.qv_threshold, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, NULL);
 
          if (thread_id == 0) { LOG_MEDHIGH_NOHEADER(", coverage: %ldx", windows_for_msa.size()) }
 
@@ -283,12 +308,40 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
              consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
                                                                        SPOA::AlignmentParams(parameters.match, parameters.mismatch,
                                                                        parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
+
+//             consensus_windows[id_in_batch] = SPOA::generate_consensus(msa, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
+//                                                                       SPOA::AlignmentParams(parameters.match, parameters.mismatch,
+//                                                                       parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
+//             consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa,
+//                                                                       SPOA::AlignmentParams(parameters.match, parameters.mismatch,
+//                                                                       parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
+
            } else {
              consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
-                                                                                                        parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
+                                                                                                        parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), false);
            }
 
+//           fprintf (fp_test, ">ID_%d_Consensus window %ld to %ld\n%s\n", (id_in_batch), window_start, window_end, consensus_windows[id_in_batch].c_str());
+
+////           for (int64_t i1=0; i1<windows_for_msa.size(); i1++) {
+////             fprintf (fp_test, ">ID_%d_Window_%d\n%s\n", (id_in_batch), i1, windows_for_msa[i1].c_str());
+////             fflush(fp_test);
+////           }
+////
+////           std::vector<std::string> msa;
+////           SPOA::generate_msa(msa, windows_for_msa, quals_for_msa, SPOA::AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), true);
+//           for (int64_t i1=0; i1<msa.size(); i1++) {
+////             fprintf (fp_test, ">ID_%d_MSA_Window_%d\n%s\n", (id_in_batch), i1, msa[i1].c_str());
+//             fprintf (fp_test, "%s\n", msa[i1].c_str());
+//             fflush(fp_test);
+//           }
+//           fprintf (fp_test, "\n");
+
          }
+
+//         fprintf (fp_test, ">%d\n%s\n", (id_in_batch), consensus_windows[id_in_batch].c_str());
+//         fflush(fp_test);
+
        } else {
          FILE *fp_window = NULL;
          std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
@@ -298,12 +351,13 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
          if (fp_window == NULL) {
            ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
          }
-         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, fp_window);
+         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, parameters.qv_threshold, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, fp_window);
          fclose(fp_window);
          RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
        }
      }
 
+//     fclose(fp_test);
      LOG_MEDHIGH_NOHEADER("\n");
      LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
      for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {

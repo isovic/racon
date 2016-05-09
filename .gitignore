@@ -3,7 +3,7 @@ obj_linux/
 obj/
 bin/
 tools/
-temp/
+temp*/
 obj_debug/
 .cproject
 .project
