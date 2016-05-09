@@ -1,6 +1,7 @@
 #! /bin/sh
 
 make modules
+make subgraph
 make tools
 make -j
 

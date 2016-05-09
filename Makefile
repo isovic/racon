@@ -49,6 +49,9 @@ modules:
 	git submodule update --init --recursive
 	git submodule foreach git pull origin master
 
+subgraph:
+	cd codebase/; rm -r spoa; git clone https://github.com/rvaser/spoa.git; cd spoa; git checkout subgraph_extraction; git checkout 41ff413f2a2ae6099cb4710de127316e158f438c;
+
 tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/poaV2/poa tools/mafft-7.273-with-extensions/binaries/disttbfast tools/edlib/src/aligner
 	echo "All tools installed."
 
