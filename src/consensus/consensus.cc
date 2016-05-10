@@ -15,6 +15,10 @@
 #include <omp.h>
 #include "spoa.hpp"
 #include "graph.hpp"
+#include "intervaltree/IntervalTree.h"
+
+typedef Interval<const SingleSequence *> IntervalSS;
+typedef IntervalTree<const SingleSequence *> IntervalTreeSS;
 
 // #define WINDOW_OUTPUT_IN_FASTQ
 
@@ -54,7 +58,7 @@ int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std:
 }
 
 void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens,
-                           int64_t window_start, int64_t window_end, double qv_threshold, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv,
+                           IntervalTreeSS &aln_interval_tree, int64_t window_start, int64_t window_end, double qv_threshold, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv,
                            std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends, FILE *fp_window) {
   if (window_start > window_end) {
     return;
@@ -78,86 +82,146 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
 //          window_seqs.back().c_str(), window_qv.back().c_str());
 //  fflush(stdout);
 
-  std::vector<SingleSequence *> candidates;
-  for (int64_t i=0; i<alns.size(); i++) {
-    auto aln = alns[i]->get_aln();
-    int64_t aln_ref_len = aln_ref_lens.find(alns[i])->second;
-    int64_t aln_start = aln.get_pos() - 1;
-    int64_t aln_end = aln_start + aln_ref_len - 1;
-    if (aln_start > temp_window_end) {
-      break;
+  std::vector<IntervalSS> intervals;
+  aln_interval_tree.findOverlapping(window_start, temp_window_end, intervals);
+  for (int64_t i=0; i<intervals.size(); i++) {
+    auto seq = intervals[i].value;
+    auto aln = seq->get_aln();
 
-    } else if (aln_end < window_start) {
-      continue;
+    int64_t start_cig_id = 0, end_cig_id = 0;
+//    printf ("Looking for the start: window_start = %ld\n", window_start);
+//    fflush(stdout);
+    int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
+//    printf ("Looking for the end: temp_window_end = %ld\n", temp_window_end);
+//    fflush(stdout);
+    int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
+    uint32_t seq_start_in_window = 0;
+    uint32_t seq_end_in_window = temp_window_end - window_start;
 
-    } else {
+    if (start_seq == -1) {
+      start_seq = aln.GetClippedBasesFront();
 
-      int64_t start_cig_id = 0, end_cig_id = 0;
-      int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
-      int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
-      uint32_t seq_start_in_window = 0;
-      uint32_t seq_end_in_window = temp_window_end - window_start;
+      seq_start_in_window = aln.get_pos() - 1 - window_start;
+      seq_start_in_window = std::max((uint32_t) 0, (uint32_t) ((int32_t) seq_start_in_window - 0));
 
-      if (start_seq == -1) {
-        start_seq = aln.GetClippedBasesFront();
+    } else if (start_seq < 0) {
+      fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1);
+    }
 
-        seq_start_in_window = aln.get_pos() - 1 - window_start;
-        seq_start_in_window = std::max((uint32_t) 0, (uint32_t) ((int32_t) seq_start_in_window - 0));
-//        start_seq = 0;
-      } else if (start_seq < 0) {
-        fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1);
-      }
+    if (end_seq == -2) {
+      end_seq = seq->get_data_length() - 1 - aln.GetClippedBasesBack();
+      seq_end_in_window = (aln.get_pos() - 1 + aln.GetReferenceLengthFromCigar()) - window_start;
+      seq_end_in_window = std::min((uint32_t) (temp_window_end - window_start), (uint32_t) ((int32_t) seq_end_in_window + 0));
+    } else if (end_seq < 0) {
+      fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1);
+    }
 
-      if (end_seq == -2) {
-        end_seq = alns[i]->get_data_length() - 1 - aln.GetClippedBasesBack();
-        seq_end_in_window = (aln.get_pos() - 1 + aln.GetReferenceLengthFromCigar()) - window_start;
-        seq_end_in_window = std::min((uint32_t) (temp_window_end - window_start), (uint32_t) ((int32_t) seq_end_in_window + 0));
-//        end_seq = alns[i]->get_data_length() - 1;
-      } else if (end_seq < 0) {
-        fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1);
-      }
+    std::string seq_data = GetSubstring((char *) (seq->get_data() + start_seq), end_seq - start_seq + 1);
+    std::string seq_qual = (seq->get_quality() != NULL) ? (GetSubstring((char *) (seq->get_quality() + start_seq), end_seq - start_seq + 1)) : (std::string((end_seq - start_seq + 1), '!' + 0));
 
-//      if ((end_seq - start_seq) < 0.50f * (temp_window_end - window_start)) { continue; }
+    double avg_qual;
+    for (int64_t j=0; j<seq_qual.size(); j++) {
+      avg_qual += (double) (seq_qual[j] - '!');
+    }
+    avg_qual /= std::max((double) seq_qual.size(), 1.0);
 
-      std::string seq_data = GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1);
-      std::string seq_qual = (alns[i]->get_quality() != NULL) ? (GetSubstring((char *) (alns[i]->get_quality() + start_seq), end_seq - start_seq + 1)) : (std::string((end_seq - start_seq + 1), '!' + 0));
+    if (avg_qual >= qv_threshold) {
+      window_seqs.push_back(seq_data);
+      window_starts.push_back(seq_start_in_window);
+      window_ends.push_back(seq_end_in_window);
+      window_qv.push_back(seq_qual);
+    }
 
-      double avg_qual;
-      for (int64_t j=0; j<seq_qual.size(); j++) {
-        avg_qual += (double) (seq_qual[j] - '!');
-      }
-      avg_qual /= std::max((double) seq_qual.size(), 1.0);
-//      avg_qual = 255.0;
-
-//      for (int64_t i1=0; i1<seq_qual.size(); i1++) {
-//        if (seq_qual[i1] < ('!' + qv_threshold)) {
-//          seq_qual[i1] = '!';
-//        }
-//      }
-
-      if (avg_qual >= qv_threshold) {
-        window_seqs.push_back(seq_data);
-        window_starts.push_back(seq_start_in_window);
-        window_ends.push_back(seq_end_in_window);
-        window_qv.push_back(seq_qual);
-      }
-
-//      printf ("seq_start_in_window = %u, seq_end_in_window = %u, aln.pos = %ld, len_on_ref = %ld, seq_len = %ld, qual_len = %ld, %s, %s\n",
-//              seq_start_in_window, seq_end_in_window, aln.get_pos(), aln.GetReferenceLengthFromCigar(), window_seqs.back().size(), window_qv.back().size(),
-//              window_seqs.back().c_str(), window_qv.back().c_str());
-//      fflush(stdout);
-
-      if (fp_window) {
-        #ifndef WINDOW_OUTPUT_IN_FASTQ
-          fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
-        #else
-          fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
-          fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
-        #endif
-      }
-
+    if (fp_window) {
+      #ifndef WINDOW_OUTPUT_IN_FASTQ
+        fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", seq->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
+      #else
+        fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", seq->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
+        fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
+      #endif
     }
   }
+
+//  std::vector<SingleSequence *> candidates;
+//  for (int64_t i=0; i<alns.size(); i++) {
+//    auto aln = alns[i]->get_aln();
+//    int64_t aln_ref_len = aln_ref_lens.find(alns[i])->second;
+//    int64_t aln_start = aln.get_pos() - 1;
+//    int64_t aln_end = aln_start + aln_ref_len - 1;
+//    if (aln_start > temp_window_end) {
+//      break;
+//
+//    } else if (aln_end < window_start) {
+//      continue;
+//
+//    } else {
+//
+//      int64_t start_cig_id = 0, end_cig_id = 0;
+//      int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
+//      int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
+//      uint32_t seq_start_in_window = 0;
+//      uint32_t seq_end_in_window = temp_window_end - window_start;
+//
+//      if (start_seq == -1) {
+//        start_seq = aln.GetClippedBasesFront();
+//
+//        seq_start_in_window = aln.get_pos() - 1 - window_start;
+//        seq_start_in_window = std::max((uint32_t) 0, (uint32_t) ((int32_t) seq_start_in_window - 0));
+////        start_seq = 0;
+//      } else if (start_seq < 0) {
+//        fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1);
+//      }
+//
+//      if (end_seq == -2) {
+//        end_seq = alns[i]->get_data_length() - 1 - aln.GetClippedBasesBack();
+//        seq_end_in_window = (aln.get_pos() - 1 + aln.GetReferenceLengthFromCigar()) - window_start;
+//        seq_end_in_window = std::min((uint32_t) (temp_window_end - window_start), (uint32_t) ((int32_t) seq_end_in_window + 0));
+////        end_seq = alns[i]->get_data_length() - 1;
+//      } else if (end_seq < 0) {
+//        fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1);
+//      }
+//
+////      if ((end_seq - start_seq) < 0.50f * (temp_window_end - window_start)) { continue; }
+//
+//      std::string seq_data = GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1);
+//      std::string seq_qual = (alns[i]->get_quality() != NULL) ? (GetSubstring((char *) (alns[i]->get_quality() + start_seq), end_seq - start_seq + 1)) : (std::string((end_seq - start_seq + 1), '!' + 0));
+//
+//      double avg_qual;
+//      for (int64_t j=0; j<seq_qual.size(); j++) {
+//        avg_qual += (double) (seq_qual[j] - '!');
+//      }
+//      avg_qual /= std::max((double) seq_qual.size(), 1.0);
+////      avg_qual = 255.0;
+//
+////      for (int64_t i1=0; i1<seq_qual.size(); i1++) {
+////        if (seq_qual[i1] < ('!' + qv_threshold)) {
+////          seq_qual[i1] = '!';
+////        }
+////      }
+//
+//      if (avg_qual >= qv_threshold) {
+//        window_seqs.push_back(seq_data);
+//        window_starts.push_back(seq_start_in_window);
+//        window_ends.push_back(seq_end_in_window);
+//        window_qv.push_back(seq_qual);
+//      }
+//
+////      printf ("seq_start_in_window = %u, seq_end_in_window = %u, aln.pos = %ld, len_on_ref = %ld, seq_len = %ld, qual_len = %ld, %s, %s\n",
+////              seq_start_in_window, seq_end_in_window, aln.get_pos(), aln.GetReferenceLengthFromCigar(), window_seqs.back().size(), window_qv.back().size(),
+////              window_seqs.back().c_str(), window_qv.back().c_str());
+////      fflush(stdout);
+//
+//      if (fp_window) {
+//        #ifndef WINDOW_OUTPUT_IN_FASTQ
+//          fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
+//        #else
+//          fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
+//          fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
+//        #endif
+//      }
+//
+//    }
+//  }
 }
 
 int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
@@ -249,6 +313,15 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
   int64_t num_windows = ceil((float) contig->get_sequence_length() / (float) parameters.window_len);
   LOG_DEBUG ("current_contig->get_sequence_length() = %ld, parameters.window_len = %ld, num_windows = %ld\n", contig->get_sequence_length(), parameters.window_len, num_windows);
 
+  // Build the interval tree for fast overlap calculation.
+  std::vector<IntervalSS> aln_intervals;
+  for (int64_t i=0; i<ctg_alns.size(); i++) {
+    int64_t aln_start = ctg_alns[i]->get_aln().get_pos() - 1;
+    int64_t aln_end = aln_start + ctg_alns[i]->get_aln().GetReferenceLengthFromCigar() - 1;
+    aln_intervals.push_back(IntervalSS(aln_start, aln_end, ctg_alns[i]));
+  }
+  IntervalTreeSS aln_interval_tree(aln_intervals);
+
 //  FILE *fp_test = fopen("temp/test.fasta", "w");
 
   // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
@@ -283,7 +356,7 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
 
        // Chosing the MSA algorithm, and running the consensus on the window.
        if (parameters.msa == "poa") {
-         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, parameters.qv_threshold, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, NULL);
+         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree, window_start, window_end, parameters.qv_threshold, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, NULL);
 
          if (thread_id == 0) { LOG_MEDHIGH_NOHEADER(", coverage: %ldx", windows_for_msa.size()) }
 
@@ -351,7 +424,7 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
          if (fp_window == NULL) {
            ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
          }
-         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, window_start, window_end, parameters.qv_threshold, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, fp_window);
+         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree, window_start, window_end, parameters.qv_threshold, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, fp_window);
          fclose(fp_window);
          RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
        }
