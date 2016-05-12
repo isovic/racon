@@ -19,12 +19,6 @@ void RunTests() {
   exit(0);
 }
 
-//void PrintUsage() {
-//  fprintf (stderr, "Expected 3 parameters!\n\n");
-//  fprintf (stderr, "Usage:\n");
-//  fprintf (stderr, "\t%s <layout.gfa> <alignments.sam> <out_alt_contigs.sam>\n", argv[0]);
-//}
-
 int main(int argc, char* argv[]) {
   //  RunTests();
 
@@ -34,7 +28,6 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.raw_contigs_path), VALUE_TYPE_STRING, "", "raw", "", "Path to the raw contig sequences (output from the layout step). GFA, FASTA/FASTQ or SAM formats allowed.", -3, "Input/Output options");
   argparser.AddArgument(&(parameters.aln_path), VALUE_TYPE_STRING, "", "alnpath", "", "Path to a SAM file with read-to-raw contig alignments.", -2, "Input/Output options");
   argparser.AddArgument(&(parameters.consensus_path), VALUE_TYPE_STRING, "", "out", "", "Output consensus sequence.", -1, "Input/Output options");
-  argparser.AddArgument(&(parameters.temp_window_path), VALUE_TYPE_STRING, "", "winpath", "temp.window.fasta", "A window of alternate contigs, used to feed MSA tools from disk.", 0, "Input/Output options");
 
   argparser.AddArgument(&(parameters.num_threads), VALUE_TYPE_INT32, "t", "threads", "4", "Number of threads to use.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "-1.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
@@ -43,9 +36,6 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "20000", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.start_window), VALUE_TYPE_INT64, "", "start-window", "0", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.msa), VALUE_TYPE_STRING, "", "msa", "poa", "Choose the MSA algorithm to use. Available options: 'maff', 'poa', 'poav2'.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.mafft_folder), VALUE_TYPE_STRING, "", "mafft", "../tools/mafft-7.273-with-extensions/", "Relative path to the folder containing MAFFT. Relative to the folder this binary resides in.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.poav2_folder), VALUE_TYPE_STRING, "", "poav2", "../tools/poaV2/", "Relative path to the folder containing POAv2. Relative to the folder this binary resides in.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.realigned_aln_path), VALUE_TYPE_STRING, "", "realign", "", "If specified, the input SAM file will be realigned and output to the specified path.", 0, "Algorithm");
 
   argparser.AddArgument(&(parameters.match), VALUE_TYPE_INT32, "M", "match", "5", "Match score (positive value).", 0, "Alignment");

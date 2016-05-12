@@ -210,8 +210,8 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
     consensus_windows.resize(parameters.batch_of_windows);
     int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
 
-      #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
-       for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
+    #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
+    for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
 
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
        int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin) - 1;
@@ -225,47 +225,25 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        std::vector<uint32_t> starts_for_msa;
        std::vector<uint32_t> ends_for_msa;
 
-//       std::vector<std::string> msa;
-
        // Chosing the MSA algorithm, and running the consensus on the window.
-       if (parameters.msa == "poa") {
-         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree, window_start, window_end, parameters.qv_threshold, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, NULL);
-
-         if (thread_id == 0) { LOG_MEDHIGH_NOHEADER(", coverage: %ldx", windows_for_msa.size()) }
-
-         if (windows_for_msa.size() == 0) {
-             consensus_windows[id_in_batch] = "";
-             ERROR_REPORT(ERR_UNEXPECTED_VALUE, "windows_for_msa.size() == 0!");
-         } else if (windows_for_msa.size() <= 2) {
- //          int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
- //          consensus_windows[id_in_batch] = GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1));
-             consensus_windows[id_in_batch] = windows_for_msa[0];
-
+       ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree, window_start, window_end, parameters.qv_threshold, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, NULL);
+       if (thread_id == 0) { LOG_MEDHIGH_NOHEADER(", coverage: %ldx", windows_for_msa.size()) }
+       if (windows_for_msa.size() == 0) {
+           consensus_windows[id_in_batch] = "";
+           ERROR_REPORT(ERR_UNEXPECTED_VALUE, "windows_for_msa.size() == 0!");
+       } else if (windows_for_msa.size() <= 2) {  // In case the coverage is too low, just pick the first sequence in the window.
+//          int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
+//          consensus_windows[id_in_batch] = GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1));
+           consensus_windows[id_in_batch] = windows_for_msa[0];
+       } else {
+         if (quals_for_msa.size() > 0) {
+           consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
+                                                                     SPOA::AlignmentParams(parameters.match, parameters.mismatch,
+                                                                     parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
          } else {
-           if (quals_for_msa.size() > 0) {
-//             printf ("id_in_batch = %ld\n", id_in_batch);
-//             for (int64_t i1=0; i1<windows_for_msa.size(); i1++) {
-//               printf ("[i1 = %ld] %u, %u\n", i1, starts_for_msa[i1], ends_for_msa[i1]);
-//               fflush(stdout);
-//             }
-//             printf ("\n");
-//             fflush(stdout);
-
-             consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
-                                                                       SPOA::AlignmentParams(parameters.match, parameters.mismatch,
-                                                                       parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
-
-//             consensus_windows[id_in_batch] = SPOA::generate_consensus(msa, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
-//                                                                       SPOA::AlignmentParams(parameters.match, parameters.mismatch,
-//                                                                       parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
-//             consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, quals_for_msa,
-//                                                                       SPOA::AlignmentParams(parameters.match, parameters.mismatch,
-//                                                                       parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
-
-           } else {
-             consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
-                                                                                                        parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), false);
-           }
+           consensus_windows[id_in_batch] = SPOA::generate_consensus(windows_for_msa, SPOA::AlignmentParams(parameters.match,
+                                                                                                      parameters.mismatch, parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type), false);
+         }
 
 //           fprintf (fp_test, ">ID_%d_Consensus window %ld to %ld\n%s\n", (id_in_batch), window_start, window_end, consensus_windows[id_in_batch].c_str());
 
@@ -283,25 +261,9 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
 //           }
 //           fprintf (fp_test, "\n");
 
-         }
-
-//         fprintf (fp_test, ">%d\n%s\n", (id_in_batch), consensus_windows[id_in_batch].c_str());
-//         fflush(fp_test);
-
-       } else {
-         FILE *fp_window = NULL;
-         std::string window_path = FormatString("%s.%ld", parameters.temp_window_path.c_str(), thread_id);
-         if (parameters.temp_window_path != "") {
-           fp_window = fopen(window_path.c_str(), "w");
-         }
-         if (fp_window == NULL) {
-           ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Window file not opened!\n");
-         }
-         ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree, window_start, window_end, parameters.qv_threshold, windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa, fp_window);
-         fclose(fp_window);
-         RunMSAFromSystemLocal(parameters, window_path, consensus_windows[id_in_batch]);
        }
-     }
+    }
+
 
 //     fclose(fp_test);
      LOG_MEDHIGH_NOHEADER("\n");
@@ -386,86 +348,4 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
   if (fp_out_cons) {
     fprintf (fp_out_cons, "\n");
   }
-}
-
-
-
-int MajorityVoteFromMSALocal(std::string pir_path, std::string *cons) {
-  SequenceFile pir(SEQ_FORMAT_FASTQ, pir_path, false);
-
-  const SequenceVector& seqs = pir.get_sequences();
-
-  if (seqs.size() == 0) { return 1; }
-
-
-  for (int64_t i=1; i<pir.get_sequences().size(); i++) {
-    if (seqs[i]->get_data_length() != seqs[i-1]->get_data_length()) {
-      ERROR_REPORT(ERR_FILE_DEFORMED_FORMAT, "MSA sequences not of correct length in file %s!\n", pir_path.c_str());
-      return 2;
-    }
-  }
-
-  int64_t seq_len = seqs[0]->get_data_length();
-  *cons = "";
-  std::stringstream ss;
-
-  for (int64_t i=0; i<seq_len; i++) {
-    // Count occurrences for the column.
-    int32_t base_counts[256] = {0};
-    for (int32_t j=0; j<seqs.size(); j++) {
-      base_counts[toupper(seqs[j]->get_data()[i])] += 1;
-    }
-
-    int64_t sum_base_counts = base_counts['A'] + base_counts['C'] + base_counts['T'] + base_counts['G'];
-    int64_t sum_gap_counts = base_counts['-'] + base_counts['.'];
-    if (sum_base_counts > sum_gap_counts) {
-      std::vector<int8_t> bases = {'A', 'C', 'T', 'G'};
-      int8_t max_base = 'A';
-      for (int32_t j=0; j<bases.size(); j++) {
-        if (base_counts[bases[j]] > base_counts[max_base]) max_base = bases[j];
-      }
-      ss << (char) max_base;
-    }
-  }
-
-  *cons = ss.str();
-
-  return 0;
-}
-
-int RunMSAFromSystemLocal(const ProgramParameters &parameters, std::string window_path, std::string &cons) {
-  std::string msa_path = FormatString("%s.msa", window_path.c_str());
-  if (parameters.msa == "mafft") {
-    //
-//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --maxiterate 1000 --quiet %s > %s", // AlignedBases           48306(99.60%)       47762(100.00%)  AvgIdentity                    96.33                96.33
-//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --op 0 --ep 1 --maxiterate 1000 --quiet %s > %s", // AlignedBases           48306(99.60%)       47353(100.00%)  AvgIdentity                    97.03                97.03
-//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --lop 0 --lexp 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
-// Ovaj je dobar    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --localpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
-//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --globalpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
-
- // Trenutno najbolji rezultat:
-//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --genafpair --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
-
-//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --retree 1 --maxiterate 0 --nofft --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
-//                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
-
-    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --op 0 --ep 1 --quiet %s > %s", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
-                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
-
-//    int32_t rc = system(FormatString("export MAFFT_BINARIES=$PWD/%s/%s/binaries/; %s/%s/scripts/mafft --op 0 --ep 1 --quiet %s > %s.noleft", // AlignedBases           48306(99.60%)       47482(100.00%)  AvgIdentity                    96.87                96.87
-//                        parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), parameters.program_folder.c_str(), parameters.mafft_folder.c_str(), window_path.c_str(), msa_path.c_str()).c_str());
-//    int32_t rc1 = system(FormatString("scripts/test-leftalign/convert_msa2sam.py %s.noleft %s",
-//                        msa_path.c_str(), msa_path.c_str()).c_str());
-
-  } else if (parameters.msa == "poav2") {
-    int32_t rc = system(FormatString("%s/%s/poa -do_local -do_progressive -read_fasta %s -pir %s %s/../settings/all1-poav2.mat",
-                        parameters.program_folder.c_str(), parameters.poav2_folder.c_str(), window_path.c_str(), msa_path.c_str(), parameters.program_folder.c_str()).c_str());
-  } else {
-    ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Unrecognized MSA option '%s'! Exiting.",parameters. msa.c_str());
-    return 1;
-  }
-
-  MajorityVoteFromMSALocal(msa_path, &cons);
-
-  return 0;
 }
