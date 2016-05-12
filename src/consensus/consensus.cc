@@ -142,86 +142,6 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
     }
   }
 
-//  std::vector<SingleSequence *> candidates;
-//  for (int64_t i=0; i<alns.size(); i++) {
-//    auto aln = alns[i]->get_aln();
-//    int64_t aln_ref_len = aln_ref_lens.find(alns[i])->second;
-//    int64_t aln_start = aln.get_pos() - 1;
-//    int64_t aln_end = aln_start + aln_ref_len - 1;
-//    if (aln_start > temp_window_end) {
-//      break;
-//
-//    } else if (aln_end < window_start) {
-//      continue;
-//
-//    } else {
-//
-//      int64_t start_cig_id = 0, end_cig_id = 0;
-//      int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
-//      int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
-//      uint32_t seq_start_in_window = 0;
-//      uint32_t seq_end_in_window = temp_window_end - window_start;
-//
-//      if (start_seq == -1) {
-//        start_seq = aln.GetClippedBasesFront();
-//
-//        seq_start_in_window = aln.get_pos() - 1 - window_start;
-//        seq_start_in_window = std::max((uint32_t) 0, (uint32_t) ((int32_t) seq_start_in_window - 0));
-////        start_seq = 0;
-//      } else if (start_seq < 0) {
-//        fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1);
-//      }
-//
-//      if (end_seq == -2) {
-//        end_seq = alns[i]->get_data_length() - 1 - aln.GetClippedBasesBack();
-//        seq_end_in_window = (aln.get_pos() - 1 + aln.GetReferenceLengthFromCigar()) - window_start;
-//        seq_end_in_window = std::min((uint32_t) (temp_window_end - window_start), (uint32_t) ((int32_t) seq_end_in_window + 0));
-////        end_seq = alns[i]->get_data_length() - 1;
-//      } else if (end_seq < 0) {
-//        fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1);
-//      }
-//
-////      if ((end_seq - start_seq) < 0.50f * (temp_window_end - window_start)) { continue; }
-//
-//      std::string seq_data = GetSubstring((char *) (alns[i]->get_data() + start_seq), end_seq - start_seq + 1);
-//      std::string seq_qual = (alns[i]->get_quality() != NULL) ? (GetSubstring((char *) (alns[i]->get_quality() + start_seq), end_seq - start_seq + 1)) : (std::string((end_seq - start_seq + 1), '!' + 0));
-//
-//      double avg_qual;
-//      for (int64_t j=0; j<seq_qual.size(); j++) {
-//        avg_qual += (double) (seq_qual[j] - '!');
-//      }
-//      avg_qual /= std::max((double) seq_qual.size(), 1.0);
-////      avg_qual = 255.0;
-//
-////      for (int64_t i1=0; i1<seq_qual.size(); i1++) {
-////        if (seq_qual[i1] < ('!' + qv_threshold)) {
-////          seq_qual[i1] = '!';
-////        }
-////      }
-//
-//      if (avg_qual >= qv_threshold) {
-//        window_seqs.push_back(seq_data);
-//        window_starts.push_back(seq_start_in_window);
-//        window_ends.push_back(seq_end_in_window);
-//        window_qv.push_back(seq_qual);
-//      }
-//
-////      printf ("seq_start_in_window = %u, seq_end_in_window = %u, aln.pos = %ld, len_on_ref = %ld, seq_len = %ld, qual_len = %ld, %s, %s\n",
-////              seq_start_in_window, seq_end_in_window, aln.get_pos(), aln.GetReferenceLengthFromCigar(), window_seqs.back().size(), window_qv.back().size(),
-////              window_seqs.back().c_str(), window_qv.back().c_str());
-////      fflush(stdout);
-//
-//      if (fp_window) {
-//        #ifndef WINDOW_OUTPUT_IN_FASTQ
-//          fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
-//        #else
-//          fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", alns[i]->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
-//          fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
-//        #endif
-//      }
-//
-//    }
-//  }
 }
 
 int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
@@ -340,7 +260,7 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
 //       if ((id_in_batch + 1) == (windows_to_process)) { break; }
 
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
-       int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
+       int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin) - 1;
        int32_t thread_id = omp_get_thread_num();
 //       int32_t thread_id = 0;
 
