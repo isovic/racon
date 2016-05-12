@@ -60,8 +60,11 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
   window_starts.push_back(0);
   window_ends.push_back(temp_window_end - window_start);
 
+  // Find seqs which fall into the window region.
   std::vector<IntervalSS> intervals;
   aln_interval_tree.findOverlapping(window_start, temp_window_end, intervals);
+
+  // For each seq, extract its segment which falls into the window.
   for (int64_t i=0; i<intervals.size(); i++) {
     auto seq = intervals[i].value;
     auto aln = seq->get_aln();
@@ -178,8 +181,6 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
     LOG_MEDHIGH_NOHEADER("\n");
   }
 
-//  if (fp_alt_contig_path) { fclose(fp_alt_contig_path); }
-
   return 0;
 }
 
@@ -266,6 +267,7 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
 
 
 //     fclose(fp_test);
+
      LOG_MEDHIGH_NOHEADER("\n");
      LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
      for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {

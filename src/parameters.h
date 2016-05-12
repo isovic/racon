@@ -36,6 +36,7 @@ struct ProgramParameters {
 
   double win_ovl_margin = 0.00; // 0.05;
 
+  bool do_realign = false;
   std::string realigned_aln_path = "";
 
   int32_t verbose_level = 1;

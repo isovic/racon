@@ -36,7 +36,8 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "20000", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.start_window), VALUE_TYPE_INT64, "", "start-window", "0", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.realigned_aln_path), VALUE_TYPE_STRING, "", "realign", "", "If specified, the input SAM file will be realigned and output to the specified path.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.do_realign), VALUE_TYPE_BOOL, "", "realign", "0", "If enabled, input SAM file will be realigned. In this mode, BQ filtering cannot be used. Realigned SAM will be output to stdout unless --rsam is specified.", 0, "Control");
+  argparser.AddArgument(&(parameters.realigned_aln_path), VALUE_TYPE_STRING, "", "rsam", "", "If specified, the input SAM file will be realigned and output to the specified path.", 0, "Control");
 
   argparser.AddArgument(&(parameters.match), VALUE_TYPE_INT32, "M", "match", "5", "Match score (positive value).", 0, "Alignment");
   argparser.AddArgument(&(parameters.mismatch), VALUE_TYPE_INT32, "X", "mismatch", "-4", "Mismatch penalty (negative value expected).", 0, "Alignment");
