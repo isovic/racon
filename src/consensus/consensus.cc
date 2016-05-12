@@ -22,17 +22,6 @@ typedef IntervalTree<const SingleSequence *> IntervalTreeSS;
 
 // #define WINDOW_OUTPUT_IN_FASTQ
 
-//std::vector<size_t> soort(const std::vector<std::string>& windows) {
-//    std::vector<size_t> indices(windows.size());
-//    std::iota(begin(indices), end(indices), static_cast<size_t>(0));
-//
-//    std::sort(
-//        begin(indices), end(indices),
-//        [&](size_t a, size_t b) { return windows[a].size() > windows[b].size(); }
-//    );
-//    return indices;
-//}
-
 int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
   ctg_names.clear();
   ctg_alns.clear();
@@ -71,17 +60,6 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
   window_starts.push_back(0);
   window_ends.push_back(temp_window_end - window_start);
 
-//  fflush(stdout);
-//  fflush(stderr);
-//  printf ("\n");
-//  printf ("window_start = %ld, window_end = %ld, temp_window_end = %ld\n", window_start, window_end, temp_window_end);
-//  fflush(stdout);
-//
-//  printf ("seq_start_in_window = %u, seq_end_in_window = %u, seq_len = %ld, qual_len = %ld, %s, %s\n",
-//          window_starts.back(), window_ends.back(), window_seqs.back().size(), window_qv.back().size(),
-//          window_seqs.back().c_str(), window_qv.back().c_str());
-//  fflush(stdout);
-
   std::vector<IntervalSS> intervals;
   aln_interval_tree.findOverlapping(window_start, temp_window_end, intervals);
   for (int64_t i=0; i<intervals.size(); i++) {
@@ -89,11 +67,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
     auto aln = seq->get_aln();
 
     int64_t start_cig_id = 0, end_cig_id = 0;
-//    printf ("Looking for the start: window_start = %ld\n", window_start);
-//    fflush(stdout);
     int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
-//    printf ("Looking for the end: temp_window_end = %ld\n", temp_window_end);
-//    fflush(stdout);
     int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
     uint32_t seq_start_in_window = 0;
     uint32_t seq_end_in_window = temp_window_end - window_start;
@@ -154,7 +128,6 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
   // Alignments which are called unmapped will be skipped in this step.
   // Also, alignments are filtered by the base quality if available.
   LOG_MEDHIGH("Separating alignments to individual contigs.\n");
-//  GroupAlignmentsToContigs(alns, parameters.qv_threshold, ctg_names, all_ctg_alns);
   GroupAlignmentsToContigs(alns, -1.0, ctg_names, all_ctg_alns);
 
   // Verbose.
@@ -175,18 +148,6 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
   for (int64_t i=0; i<alns.get_sequences().size(); i++) {
     aln_lens_on_ref[alns.get_sequences()[i]] = alns.get_sequences()[i]->get_aln().GetReferenceLengthFromCigar();
   }
-
-  // Debug output of alternate contigs, aligned to the raw contig (input sequence), in SAM format.
-  // Deprecated.
-//  FILE *fp_alt_contig_path = NULL;
-//  if (parameters.temp_alt_contig_path != "") {
-//    fp_alt_contig_path = fopen(parameters.temp_alt_contig_path.c_str(), "w");
-//    fprintf (fp_alt_contig_path, "@HD\tVN:1.0\tSO:unknown\n");
-//    for (int32_t i=0; i<ctg_names.size(); i++) {
-//      fprintf (fp_alt_contig_path, "@SQ\tSN:%s\tLN:%ld\n", ctg_names[i].c_str(), rname_to_seq[ctg_names[i]]->get_data_length());
-//    }
-//    fprintf (fp_alt_contig_path, "@PG\tID:consise PN:consise\n");
-//  }
 
   // Clear the output file for consensus.
   FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "w");
@@ -242,8 +203,6 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
   }
   IntervalTreeSS aln_interval_tree(aln_intervals);
 
-//  FILE *fp_test = fopen("temp/test.fasta", "w");
-
   // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
   // then the results are collected and output to file. After that, a new batch is loaded.
   for (int64_t window_batch_start = parameters.start_window, num_batches = 0; window_batch_start < num_windows && (parameters.num_batches < 0 || num_batches < parameters.num_batches); window_batch_start += parameters.batch_of_windows, num_batches++) {
@@ -251,18 +210,12 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
     consensus_windows.resize(parameters.batch_of_windows);
     int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
 
-//    windows_to_process = 49;
-//    #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
-//     for (int64_t id_in_batch = 48; id_in_batch < windows_to_process; id_in_batch += 1) {
       #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
        for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
-
-//       if ((id_in_batch + 1) == (windows_to_process)) { break; }
 
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
        int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin) - 1;
        int32_t thread_id = omp_get_thread_num();
-//       int32_t thread_id = 0;
 
        if (thread_id == 0) { LOG_MEDHIGH("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length())); }
 

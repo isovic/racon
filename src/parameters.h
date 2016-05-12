@@ -18,8 +18,8 @@ struct ProgramParameters {
   std::string consensus_path = "";
   std::string temp_window_path = "";
   std::string out_fmt = "fasta";
-  int64_t window_len = 1000;
-  int64_t batch_of_windows = 200;
+  int64_t window_len = 500;
+  int64_t batch_of_windows = 20000;
   int64_t num_batches = -1;
   int64_t start_window = 0;
   double qv_threshold = 10.0;
@@ -32,10 +32,10 @@ struct ProgramParameters {
   std::string program_folder;
   std::vector<std::string> cmd_arguments;
 
-  int32_t match = 1;
-  int32_t mismatch = -1;
-  int32_t gap_open = -1;
-  int32_t gap_ext = -1;
+  int32_t match = 5;
+  int32_t mismatch = -4;
+  int32_t gap_open = -8;
+  int32_t gap_ext = -6;
   int32_t aln_type = 1;     // SW 0, NW 1, OV 2
 
   double win_ovl_margin = 0.00; // 0.05;

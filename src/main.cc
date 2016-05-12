@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "-1.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.win_ovl_margin), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "200", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "20000", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.start_window), VALUE_TYPE_INT64, "", "start-window", "0", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.msa), VALUE_TYPE_STRING, "", "msa", "poa", "Choose the MSA algorithm to use. Available options: 'maff', 'poa', 'poav2'.", 0, "Algorithm");
@@ -48,11 +48,11 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.poav2_folder), VALUE_TYPE_STRING, "", "poav2", "../tools/poaV2/", "Relative path to the folder containing POAv2. Relative to the folder this binary resides in.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.realigned_aln_path), VALUE_TYPE_STRING, "", "realign", "", "If specified, the input SAM file will be realigned and output to the specified path.", 0, "Algorithm");
 
-  argparser.AddArgument(&(parameters.match), VALUE_TYPE_INT32, "M", "match", "1", "Match score (positive value).", 0, "Alignment");
-  argparser.AddArgument(&(parameters.mismatch), VALUE_TYPE_INT32, "X", "mismatch", "-1", "Mismatch penalty (negative value expected).", 0, "Alignment");
-  argparser.AddArgument(&(parameters.gap_open), VALUE_TYPE_INT32, "G", "gapopen", "-1", "Gap open penalty (negative value expected).", 0, "Alignment");
-  argparser.AddArgument(&(parameters.gap_ext), VALUE_TYPE_INT32, "E", "gapext", "-1", "Gap extend penalty (negative value expected).", 0, "Alignment");
-  argparser.AddArgument(&(parameters.aln_type), VALUE_TYPE_INT32, "a", "align", "-1", "Alignment algorithm: 0 for local, 1 for global and 2 for overlap.", 0, "Alignment");
+  argparser.AddArgument(&(parameters.match), VALUE_TYPE_INT32, "M", "match", "5", "Match score (positive value).", 0, "Alignment");
+  argparser.AddArgument(&(parameters.mismatch), VALUE_TYPE_INT32, "X", "mismatch", "-4", "Mismatch penalty (negative value expected).", 0, "Alignment");
+  argparser.AddArgument(&(parameters.gap_open), VALUE_TYPE_INT32, "G", "gapopen", "-8", "Gap open penalty (negative value expected).", 0, "Alignment");
+  argparser.AddArgument(&(parameters.gap_ext), VALUE_TYPE_INT32, "E", "gapext", "-6", "Gap extend penalty (negative value expected).", 0, "Alignment");
+  argparser.AddArgument(&(parameters.aln_type), VALUE_TYPE_INT32, "a", "align", "1", "Alignment algorithm: 0 for local, 1 for global and 2 for overlap.", 0, "Alignment");
 
   argparser.AddArgument(&(parameters.verbose_level), VALUE_TYPE_INT32, "v", "verbose", "5", "Number of threads to use.", 0, "Other");
 
