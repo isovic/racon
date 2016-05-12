@@ -9,6 +9,7 @@ obj_debug/
 .project
 .settings/
 *.log
+callgrind*
 test-data/lambda/*
 !test-data/lambda/layout-miniasm.gfa
 !test-data/lambda/NC_001416.fa
