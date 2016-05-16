@@ -38,6 +38,7 @@ struct ProgramParameters {
 
   bool do_realign = false;
   std::string realigned_aln_path = "";
+  bool do_pileup = false;
 
   int32_t verbose_level = 1;
 };

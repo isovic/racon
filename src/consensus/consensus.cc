@@ -199,11 +199,14 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
-    CreateConsensus(parameters, contig, ctg_alns, aln_lens_on_ref, consensus, fp_out_cons);
-//    Pileup pileup(contig, ctg_alns);
-//    pileup.GenerateConsensus(0, consensus);
-//    fprintf (fp_out_cons, ">Consensus_0\n%s\n", consensus.c_str());
+    if (parameters.do_pileup == false) {
+      CreateConsensus(parameters, contig, ctg_alns, aln_lens_on_ref, consensus, fp_out_cons);
 
+    } else {
+      Pileup pileup(contig, ctg_alns);
+      pileup.GenerateConsensus(0, consensus);
+      fprintf (fp_out_cons, ">Consensus_0\n%s\n", consensus.c_str());
+    }
     fclose(fp_out_cons);
 
     ///////////////////////////////////////
