@@ -16,9 +16,24 @@
 #include "spoa.hpp"
 #include "graph.hpp"
 #include "intervaltree/IntervalTree.h"
+#include "libs/edlib.h"
+#include "pileup.h"
 
 typedef Interval<const SingleSequence *> IntervalSS;
 typedef IntervalTree<const SingleSequence *> IntervalTreeSS;
+
+void prepare_indices1(std::vector<uint32_t>& dst, const std::vector<std::string>& sequences, bool sorted) {
+    dst.resize(sequences.size());
+    std::iota(dst.begin(), dst.end(), static_cast<uint32_t>(0));
+
+    if (sorted) {
+        std::sort(dst.begin(), dst.end(),
+            [&](uint32_t lhs, uint32_t rhs) {
+                return sequences[lhs].size() > sequences[rhs].size();
+            }
+        );
+    }
+}
 
 // #define WINDOW_OUTPUT_IN_FASTQ
 
@@ -185,6 +200,10 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
     CreateConsensus(parameters, contig, ctg_alns, aln_lens_on_ref, consensus, fp_out_cons);
+//    Pileup pileup(contig, ctg_alns);
+//    pileup.GenerateConsensus(0, consensus);
+//    fprintf (fp_out_cons, ">Consensus_0\n%s\n", consensus.c_str());
+
     fclose(fp_out_cons);
 
     ///////////////////////////////////////
@@ -192,6 +211,56 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
     LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
     LOG_MEDHIGH_NOHEADER("\n");
   }
+
+  return 0;
+}
+
+int ConvertMSAToAln(const std::string &ref_msa, const std::string &seq_msa, int64_t window_start, SequenceAlignment &aln) {
+  if (ref_msa.size() != seq_msa.size() || ref_msa.size() == 0 || seq_msa.size() == 0) {
+    return 1;
+  }
+
+  // The CIGAR vector and the position should not be cleared as they will be filled up accross windows.
+  int64_t aln_pos = aln.get_pos();  // aln_pos is 1 based. If it's equal to 0, it's not a valid position.
+
+  int64_t pos_on_ref = 0;
+  int64_t pos_on_seq = 0;
+  for (int64_t i=0; i<ref_msa.size(); i++) {
+    if (seq_msa[i] != '-') {
+      if (aln_pos == 0) { aln_pos = window_start + pos_on_ref + 1; }
+    }
+
+    char op = 0;
+    if (ref_msa[i] == '-' && seq_msa[i] == '-') {
+      continue;
+    } else if (ref_msa[i] == seq_msa[i]) {
+      op = 'M';
+    } else if (ref_msa[i] != seq_msa[i] && ref_msa[i] != '-' && seq_msa[i] != '-') {
+      op = 'X';
+    } else if (ref_msa[i] == '-' && seq_msa[i] != '-') {
+      op = 'I';
+    } else if (ref_msa[i] != '-' && seq_msa[i] == '-') {
+      if (aln_pos != 0) { // In aln_pos == 0 the sequence hasn't already started, which means that the 'D' op should not be counted.
+        op = 'D';
+      }
+    }
+
+    if (aln.get_cigar().size() > 0 && aln.get_cigar().back().op == op) {
+      aln.cigar().back().count += 1;
+    } else if (op != 0) {
+      CigarOp new_cigar_op;
+      new_cigar_op.op = op;
+      new_cigar_op.count = 1;
+      new_cigar_op.pos_ref = -1; // pos_on_ref;     // I can't guarantee the correctness of these positions here, because it depends on the previous windows on the ref.
+      new_cigar_op.pos_query = -1; // pos_on_seq;
+      aln.cigar().push_back(new_cigar_op);
+    }
+
+    if (ref_msa[i] != '-') { pos_on_ref += 1; }
+    if (seq_msa[i] != '-') { pos_on_seq += 1; }
+  }
+
+  aln.set_pos(aln_pos);
 
   return 0;
 }
@@ -215,6 +284,25 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
     aln_intervals.push_back(IntervalSS(aln_start, aln_end, ctg_alns[i]));
   }
   IntervalTreeSS aln_interval_tree(aln_intervals);
+
+  // For realignment, we need a vector of new alignment objects which will update the existing ones.
+  std::map<const SingleSequence *, SequenceAlignment> realigns;
+  if (parameters.do_realign) {
+//    realigns.resize(ctg_alns.size());
+    for (int64_t i=0; i<ctg_alns.size(); i++) {
+      realigns[ctg_alns[i]] = SequenceAlignment();
+      SequenceAlignment &r = realigns[ctg_alns[i]];
+//      r.set_mapq(ctg_alns[i]->get_aln().get_mapq());
+//      r.set_flag(ctg_alns[i]->get_aln().get_flag());
+//      r.set
+      r.CopyFrom(ctg_alns[i]->get_aln());
+      r.cigar().clear();
+      r.set_pos(0);
+      r.set_as(0);
+      r.set_evalue(0.0);
+      r.optional().clear();
+    }
+  }
 
   // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
   // then the results are collected and output to file. After that, a new batch is loaded.
@@ -251,10 +339,10 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        }
 
        // Sort the sequences in the window by their length. This is a temporary workaround to be able to generate the realigned reads.
-       std::vector<uint32_t> indices;
-       if (parameters.do_realign) {
-//         prepare_indices(indices, windows_for_msa, true);
-       }
+//       std::vector<uint32_t> indices;
+//       if (parameters.do_realign) {
+//         prepare_indices1(indices, windows_for_msa, true);
+//       }
 
        auto graph = construct_partial_order_graph(windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
                                                   SPOA::AlignmentParams(parameters.match, parameters.mismatch,
@@ -269,14 +357,14 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        }
 
        if (parameters.do_realign) {
-
          std::vector<std::string> msa;
          graph->generate_msa(msa, false);
+         // Sequence at msa[0] is the reference sequence.
+         for (int64_t i=1; i<msa.size(); i++) {
+           auto seq = refs_for_msa[i];
+           ConvertMSAToAln(msa[0], msa[i], window_start, realigns[seq]);
+         }
 
-//         for (int64_t i=0; i<msa.size(); i++) {
-//           auto seq = refs_for_msa[indices[i]];
-//         }
-//
 //         FILE *fp_test = fopen("temp/test.msa", "w");
 ////         fprintf (fp_test, "%s\n", consensus_windows[id_in_batch].c_str());
 //         for (int64_t i1=0; i1<msa.size(); i1++) {
@@ -366,6 +454,15 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
 
      LOG_MEDHIGH_NOHEADER("\n");
      LOG_MEDHIGH("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
+  }
+
+  if (parameters.do_realign) {
+    for (int64_t i=0; i<ctg_alns.size(); i++) {
+      const SequenceAlignment &r = realigns[ctg_alns[i]];
+      ((SingleSequence *) ctg_alns[i])->aln().CopyFrom(r);
+      std::string sam_line = ctg_alns[i]->MakeSAMLine();
+      fprintf (stdout, "%s\n", sam_line.c_str());
+    }
   }
 
   ret_consensus = ss_cons.str();
