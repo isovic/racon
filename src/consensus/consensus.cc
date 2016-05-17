@@ -290,7 +290,7 @@ int FilterOverhangsFromMsa(const std::vector<std::string> &msa, int32_t overhang
     if ((max_cov - dash_count) >= overhang_min_threshold) { break; }
   }
 
-  fprintf (stderr, "start_pos = %d, end_pos = %d, seq_len = %d\n", start_pos, end_pos, seq_len);
+//  fprintf (stderr, "start_pos = %d, end_pos = %d, seq_len = %d\n", start_pos, end_pos, seq_len);
 
   std::stringstream ss;
   auto& old_cons = msa.back();
