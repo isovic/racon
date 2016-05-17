@@ -21,7 +21,7 @@ Pileup::Pileup(const SingleSequence* ref, std::vector<const SingleSequence*>& re
   }
 
   for (int64_t i=0; i<ref_alns.size(); i++) {
-    if ((i % 100) == 0) { fprintf (stderr, "Adding alignment %d to the pileup...\n", i); }
+    if ((i % 1000) == 0) { fprintf (stderr, "Adding alignment %d to the pileup...\n", i); }
     AddAlignment(ref, ref_alns[i], i);
   }
 }

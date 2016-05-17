@@ -26,3 +26,5 @@ scripts/test-leftalign/data/
 !scripts/intervaltree.py
 !scripts/test-leftalign/data/msa1.txt
 !scripts/test-leftalign/data/msa2.txt
+# !scripts/circedlib.py
+!scripts/edcontigs.py

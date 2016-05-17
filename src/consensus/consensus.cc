@@ -269,6 +269,69 @@ int ConvertMSAToAln(const std::string &ref_msa, const std::string &seq_msa, int6
   return 0;
 }
 
+int FilterOverhangsFromMsa(const std::vector<std::string> &msa, int32_t overhang_min_threshold, std::string &consensus) {
+  if (msa.size() == 0) { return 1; }
+
+  int64_t seq_len = msa[0].size();
+  int32_t first_msa_seq = 1;  // The 0-th sequence is the layout (with qualities set to '!').
+  int32_t last_msa_seq = msa.size() - 1;  // The last msa sequence is the consensus sequence, also aligned to the MSA.
+  int32_t max_cov = last_msa_seq - first_msa_seq;
+  int32_t start_pos = 0, end_pos = seq_len - 1;
+
+  for (start_pos = 0; start_pos < last_msa_seq; start_pos++) {
+    int32_t dash_count = 0;
+    for (int32_t j=first_msa_seq; j<msa.size(); j++) { if (msa[j][start_pos] == '-') { dash_count += 1; } }
+    if ((max_cov - dash_count) >= overhang_min_threshold) { break; }
+  }
+
+  for (end_pos = (seq_len - 1); end_pos >= 0; end_pos--) {
+    int32_t dash_count = 0;
+    for (int32_t j=first_msa_seq; j<last_msa_seq; j++) { if (msa[j][end_pos] == '-') { dash_count += 1; } }
+    if ((max_cov - dash_count) >= overhang_min_threshold) { break; }
+  }
+
+  fprintf (stderr, "start_pos = %d, end_pos = %d, seq_len = %d\n", start_pos, end_pos, seq_len);
+
+  std::stringstream ss;
+  auto& old_cons = msa.back();
+  for (int32_t i=start_pos; i<=end_pos; i++) {
+    if (old_cons[i] != '-') { ss << old_cons[i]; }
+  }
+  consensus = ss.str();
+
+  return 0;
+}
+
+int MajorityVoteFromMSA(std::vector<std::string> &msa, std::string &consensus) {
+  if (msa.size() == 0) { return 1; }
+
+  int64_t seq_len = msa[0].size();
+  std::stringstream ss;
+
+  for (int64_t i=0; i<seq_len; i++) {
+    // Count occurrences for the column.
+    int32_t base_counts[256] = {0};
+    for (int32_t j=1; j<(msa.size()-1); j++) {
+      base_counts[toupper(msa[j][i])] += 1;
+    }
+
+    int64_t sum_base_counts = base_counts['A'] + base_counts['C'] + base_counts['T'] + base_counts['G'];
+    int64_t sum_gap_counts = base_counts['-'] + base_counts['.'];
+    if (sum_base_counts > sum_gap_counts) {
+      std::vector<int8_t> bases = {'A', 'C', 'T', 'G'};
+      int8_t max_base = 'A';
+      for (int32_t j=0; j<bases.size(); j++) {
+        if (base_counts[bases[j]] > base_counts[max_base]) max_base = bases[j];
+      }
+      ss << (char) max_base;
+    }
+  }
+
+  consensus = ss.str();
+
+  return 0;
+}
+
 void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *contig, std::vector<const SingleSequence *> &ctg_alns, std::map<const SingleSequence *, int64_t> &aln_lens_on_ref, std::string &ret_consensus, FILE *fp_out_cons) {
   std::stringstream ss_cons;
 
@@ -358,11 +421,21 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
            consensus_windows[id_in_batch] = windows_for_msa[0];
        } else {
            consensus_windows[id_in_batch] = graph->generate_consensus();
+
+           std::vector<std::string> msa;
+           graph->generate_msa(msa, true);
+           for (int64_t i=0; i<msa.size(); i++) {
+             printf ("%s\n", msa[i].c_str());
+           }
+
+           int32_t overhang_min_threshold = 3;
+           FilterOverhangsFromMsa(msa, overhang_min_threshold, consensus_windows[id_in_batch]);
+//           MajorityVoteFromMSA(msa, consensus_windows[id_in_batch]);
        }
 
        if (parameters.do_realign) {
          std::vector<std::string> msa;
-         graph->generate_msa(msa, false);
+         graph->generate_msa(msa, true);
          // Sequence at msa[0] is the reference sequence.
          for (int64_t i=1; i<msa.size(); i++) {
            auto seq = refs_for_msa[i];
