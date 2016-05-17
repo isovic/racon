@@ -17,10 +17,11 @@ Pileup::Pileup(const SingleSequence* ref, std::vector<const SingleSequence*>& re
   bases_.resize(ref->get_sequence_length());
 
   for (int64_t i=0; i<ref->get_sequence_length(); i++) {
-    bases_[i].ref_base = (char) ref->get_data()[i];
+    bases_[i].ref_base = ref->get_data()[i];
   }
 
   for (int64_t i=0; i<ref_alns.size(); i++) {
+    if ((i % 100) == 0) { fprintf (stderr, "Adding alignment %d to the pileup...\n", i); }
     AddAlignment(ref, ref_alns[i], i);
   }
 }
@@ -93,7 +94,7 @@ void Pileup::GenerateConsensus(int32_t cov_threshold, std::string& cons) {
   for (int64_t i=0; i<bases_.size(); i++) {
 
     if (bases_[i].coverage < cov_threshold) {
-      ss << bases_[i].ref_base;
+//      ss << bases_[i].ref_base;
 //      printf ("  bases_[i].coverage < cov_threshold\n");
 //      fflush(stdout);
       continue;
@@ -127,23 +128,21 @@ void Pileup::GenerateConsensus(int32_t cov_threshold, std::string& cons) {
     }
 
     bool base_is_del = false;
+
     // This part handles the current base calling. It considers deletions
     // as normal bases, and picks the majority vote.
-    std::vector<size_t> bc_indices;
-    ordered_sort_array(bc, 256, bc_indices);
+    std::vector<int32_t> bc_actgd = {bc['A'] + bc['a'], bc['C'] + bc['c'], bc['T'] + bc['t'], bc['G'] + bc['g'], bc['-']};  // d stands for deletion
+    char actgd[] = {'A', 'C', 'T', 'G', '-'};
+    std::vector<size_t> bc_actgd_indices;
+    ordered_sort_array(&bc_actgd[0], bc_actgd.size(), bc_actgd_indices);
     int32_t sum_all_bc = 0;
-    for (int32_t j=0; j<256; j++) { sum_all_bc += bc[j]; }
-    int32_t sum_bases = sum_all_bc - bc['-'];
+    for (int32_t j=0; j<bc_actgd.size(); j++) { sum_all_bc += bc_actgd[j]; }
+    int32_t num_bases = sum_all_bc - bc['-'];
 //    printf ("  sum_all_bc = %d, sum_bases = %d, bc['-'] = %d\n", sum_all_bc, sum_bases, bc['-']);
+    int32_t num_dels = bc['-'];
 
-//    if (i == 7173) {
-//      for (int32_t j=0; j<256; j++) {
-//        printf ("[%d] '%c' = %d\n", bc_indices[j], (char) bc_indices[j], bc[bc_indices[j]]);
-//      }
-//      fflush(stdout);
-//    }
-
-    if (bc['-'] > sum_bases) {
+//    if (bc['-'] > num_bases) {
+    if (actgd[bc_actgd_indices.back()] == '-') {
 //      printf ("  base_is_del = true\n");
 //      fflush(stdout);
       base_is_del = true;
@@ -151,9 +150,9 @@ void Pileup::GenerateConsensus(int32_t cov_threshold, std::string& cons) {
     } else {
       // Call the base.
       bool is_base_called = false;
-      for (int32_t j=(bc_indices.size()-1); j>=0; j--) {
-        if (((char) bc_indices[j])!= '-') {
-          ss << (char) bc_indices[j];
+      for (int32_t j=(bc_actgd_indices.size()-1); j>=0; j--) {
+        if ((actgd[bc_actgd_indices[j]]) != '-' && bc_actgd[bc_actgd_indices[j]] > 0) {
+          ss << actgd[bc_actgd_indices[j]];
           is_base_called = true;
           temp += 1;
 //          printf ("  + is_base_called = true, '%c', count = %d\n", (char) bc_indices[j], bc[bc_indices[j]]);
@@ -163,6 +162,8 @@ void Pileup::GenerateConsensus(int32_t cov_threshold, std::string& cons) {
       }
       if (is_base_called == false) {
         ss << bases_[i].ref_base;
+        printf ("Tu sam 1!\n");
+        exit(1);
 //        printf ("  - bases_[i].ref_base = '%c'\n", bases_[i].ref_base);
 //        fflush(stdout);
       }
@@ -204,11 +205,44 @@ void Pileup::GenerateConsensus(int32_t cov_threshold, std::string& cons) {
 
 void Pileup::Verbose(FILE* fp) {
   for (int64_t i=0; i<bases_.size(); i++) {
-    fprintf (fp, "%s\t%ld\t%c\t%ld", ref_->get_header(), i, bases_[i].ref_base, bases_[i].events.size());
+    fprintf (fp, "%s\t%ld\t%s\t%ld\t", ref_->get_header(), i, bases_[i].ref_base.c_str(), bases_[i].events.size());
+    int32_t base_cov = 0;
     for (int64_t j=0; j<bases_[i].events.size(); j++) {
-      fprintf (fp, "\t(%d, %s)", bases_[i].events[j].t, bases_[i].events[j].e.c_str());
+//      fprintf (fp, "\t(%d, %s)", bases_[i].events[j].t, bases_[i].events[j].e.c_str());
+      if (bases_[i].events[j].t == kEventBase) {
+        if (bases_[i].events[j].e == bases_[i].ref_base) {
+          fprintf (fp, ".");
+          base_cov += 1;
+        } else if (bases_[i].events[j].e == "-") {
+          // Pass the deletions for now.
+        } else {
+          fprintf (fp, "%s", bases_[i].events[j].e.c_str());
+          base_cov += 1;
+        }
+      }
     }
-    fprintf (fp, "\n");
+
+    fprintf (fp, " (%d)\t", base_cov);
+
+    int32_t del_cov = 0;
+    for (int64_t j=0; j<bases_[i].events.size(); j++) {
+      if (bases_[i].events[j].t == kEventBase && bases_[i].events[j].e == "-") {
+        fprintf (fp, "*");
+        del_cov += 1;
+      }
+    }
+
+    fprintf (fp, " (%d)\t", del_cov);
+
+    int32_t ins_cov = 0;
+    for (int64_t j=0; j<bases_[i].events.size(); j++) {
+      if (bases_[i].events[j].t == kEventInsertion) {
+        fprintf (fp, "+%d%s", bases_[i].events[j].e.size(), bases_[i].events[j].e.c_str());
+        ins_cov += 1;
+      }
+    }
+
+    fprintf (fp, " (%d)\n", ins_cov);
   }
 }
 

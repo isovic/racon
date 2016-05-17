@@ -204,7 +204,8 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
     } else {
       Pileup pileup(contig, ctg_alns);
-      pileup.GenerateConsensus(0, consensus);
+//      pileup.Verbose(stdout);
+      pileup.GenerateConsensus(5, consensus);
       fprintf (fp_out_cons, ">Consensus_0\n%s\n", consensus.c_str());
     }
     fclose(fp_out_cons);

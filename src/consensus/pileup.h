@@ -33,7 +33,7 @@ typedef struct {
   int32_t coverage = 0;
   int32_t base_coverage = 0;
   int32_t del_coverage = 0;
-  char ref_base = '?';
+  std::string ref_base = "?";
 } RefBase;
 
 class Pileup {
