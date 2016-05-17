@@ -424,9 +424,9 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
 
            std::vector<std::string> msa;
            graph->generate_msa(msa, true);
-           for (int64_t i=0; i<msa.size(); i++) {
-             printf ("%s\n", msa[i].c_str());
-           }
+//           for (int64_t i=0; i<msa.size(); i++) {
+//             printf ("%s\n", msa[i].c_str());
+//           }
 
            int32_t overhang_min_threshold = 3;
            FilterOverhangsFromMsa(msa, overhang_min_threshold, consensus_windows[id_in_batch]);
