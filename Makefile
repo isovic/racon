@@ -1,4 +1,4 @@
-BIN_NAME=consise
+BIN_NAME=racon
 BIN_DEBUG = ./bin/$(BIN_NAME)
 BIN_LINUX = ./bin/$(BIN_NAME)
 BIN_MAC = ./bin/$(BIN_NAME)-mac

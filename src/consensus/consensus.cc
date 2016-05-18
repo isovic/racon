@@ -419,12 +419,23 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        if (windows_for_msa.size() <= 2) {  // In case the coverage is too low, just pick the first sequence in the window.
            consensus_windows[id_in_batch] = windows_for_msa[0];
        } else {
-           consensus_windows[id_in_batch] = graph->generate_consensus();
+         std::vector<uint32_t> coverages;
+           std::string cons_window = graph->generate_consensus(coverages);
 
-           std::vector<std::string> msa;
-           graph->generate_msa(msa, true);
+           int32_t start_offset = 0, end_offset = cons_window.size() - 1;
+           for (;start_offset<cons_window.size(); start_offset++) {
+             if (coverages[start_offset] >= ((windows_for_msa.size() - 1) / 2)) { break; }
+           }
+           for (; end_offset >= 0; end_offset--) {
+             if (coverages[start_offset] >= ((windows_for_msa.size() - 1) / 2)) { break; }
+           }
+
+           consensus_windows[id_in_batch] = cons_window.substr(start_offset, (end_offset - start_offset + 1));
+
+//           std::vector<std::string> msa;
+//           graph->generate_msa(msa, true);
 //           for (int64_t i=0; i<msa.size(); i++) { printf ("%s\n", msa[i].c_str()); }
-           FilterOverhangsFromMsa(msa, consensus_windows[id_in_batch]);
+//           FilterOverhangsFromMsa(msa, consensus_windows[id_in_batch]);
 //           MajorityVoteFromMSA(msa, consensus_windows[id_in_batch]);
        }
 

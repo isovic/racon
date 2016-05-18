@@ -1,23 +1,24 @@
-# consise
+# Racon
 Consensus module for raw de novo DNA assembly of long uncorrected reads.  
 
 ## Quick start
-Clone and make Consise:
+Clone and make Racon:
 ```  
-git clone https://github.com/isovic/consise.git  && cd consise && make modules && make tools && make -j  
+git clone https://github.com/isovic/racon.git  && cd racon && make modules && make tools && make -j  
 ```
 Run an example script:  
 ```  
 ./example1-lambda.sh  
 ```  
+Tip: Running Racon iterativelly will produce better consensus sequences. (But don't forget to align your reads to the consensus sequence from the previous iteration.)  
 
 ## Dependencies
 1. gcc >= 4.8  
 
 ## Installation
 ```  
-git clone https://github.com/isovic/consise.git  
-cd consise  
+git clone https://github.com/isovic/racon.git  
+cd racon  
 make modules  
 make tools  
 make -j  
@@ -25,6 +26,6 @@ make -j
 
 ## Usage
 ```  
-bin/consise [options] <raw_contigs.fasta> <alignments.sam> <out_consensus.fasta>  
+bin/racon [options] <raw_contigs.fasta> <alignments.sam> <out_consensus.fasta>  
 ```  
-For detailed info on various options, run ```bin/consise``` without arguments.  
+For detailed info on various options, run ```bin/racon``` without arguments.  

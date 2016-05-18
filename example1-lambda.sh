@@ -1,56 +1,56 @@
 #! /bin/sh
 
-make modules
-# make subgraph
-make tools
+# make modules
+# make tools
 make -j
 
 threads=4
 
+mkdir -p results/temp
+mkdir -p temp
+
 ### Lambda:
 awk '$1 ~/S/ {print ">"$2"\n"$3}' test-data/lambda/layout-miniasm.gfa > test-data/lambda/layout-miniasm.fasta
-# contigs=test-data/lambda/layout-miniasm.gfa
 reads=test-data/lambda/reads.fastq
-# sam=test-data/lambda/alignments.sam
+
 dataset=lambda_30x_ont
-# msa=mafft
-# msa=poav2
-msa=poa
-sam=temp/consensus-${dataset}-${msa}-v1.sam
-contigs=test-data/lambda/layout-miniasm.fasta
-consensus=temp/consensus-${dataset}-${msa}-v1.fasta
-#
-# contigs=temp/consensus-${dataset}-${msa}-v1.fasta
-# sam=temp/consensus-${dataset}-${msa}-v2.sam
-# consensus=temp/consensus-${dataset}-${msa}-v2.fasta
-#
-# contigs=temp/consensus-${dataset}-${msa}-v2.fasta
-# sam=temp/consensus-${dataset}-${msa}-v3.sam
-# consensus=temp/consensus-${dataset}-${msa}-v3.fasta
+suffix=poa
 
-mkdir -p temp
 reference=test-data/lambda/NC_001416.fa
-memtime=temp/consensus-${dataset}-${msa}.memtime
+memtime=results/consensus-${dataset}-${suffix}.memtime
+
+### Run the first iteration ###
+contigs=test-data/lambda/layout-miniasm.fasta
+sam=results/temp/consensus-${dataset}-${suffix}-iter1.sam
+consensus=results/consensus-${dataset}-${suffix}-iter1.fasta
+
 tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
-# tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index --mapq 3 -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
-# tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o $memtime \
-	bin/consise -M 1 -X -1 -G -1 -E -1 --bq 10 -w 500 -b 20000 -t ${threads} ${contigs} ${sam} ${consensus}
-	# bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 --bq 10 -w 500 --start-window 2 --num-batches 1 --ovl-margin 0.00 -b 1 -t ${threads} ${contigs} ${sam} ${consensus} > temp/msa.txt
-	# bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 --bq 10 -w 500 --ovl-margin 0.00 -b 20000 -t ${threads} ${contigs} ${sam} ${consensus}
-	# bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 --bq 10 -w 500 --pileup --ovl-margin 0.00 -b 20000 -t ${threads} ${contigs} ${sam} ${consensus}
-mkdir -p temp/dnadiff-${dataset}
-rm temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
-dnadiff -p temp/dnadiff-${dataset}/consise-${dataset}-${msa} ${reference} ${consensus}
-grep "TotalBases" temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
-grep "AlignedBases" temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
-grep "AvgIdentity" temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
+	bin/racon -M 4 -X -5 -G -8 -E -6 --bq 10 -t ${threads} ${contigs} ${sam} ${consensus}
+############################################
+
+#### Run the second iteration ###
+contigs=results/consensus-${dataset}-${suffix}-iter1.fasta
+sam=results/temp/consensus-${dataset}-${suffix}-iter2.sam
+consensus=results/consensus-${dataset}-${suffix}-iter2.fasta
+
+tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
+/usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o $memtime \
+	bin/racon -M 4 -X -5 -G -8 -E -6 --bq 10 -t ${threads} ${contigs} ${sam} ${consensus}
+############################################
+
+### Run dnadiff to get the Avg. Identity ###
+mkdir -p results/temp/dnadiff-${dataset}
+rm results/temp/dnadiff-${dataset}/racon-${dataset}-${suffix}.report
+dnadiff -p results/temp/dnadiff-${dataset}/racon-${dataset}-${suffix} ${reference} ${consensus}
+grep "TotalBases" results/temp/dnadiff-${dataset}/racon-${dataset}-${suffix}.report
+grep "AlignedBases" results/temp/dnadiff-${dataset}/racon-${dataset}-${suffix}.report
+grep "AvgIdentity" results/temp/dnadiff-${dataset}/racon-${dataset}-${suffix}.report
 cat $memtime
+############################################
 
-# tools/edlib/src/aligner ${consensus} ${reference} -p -f NICE > ${consensus}.refalign.txt
-# head -n 10 ${consensus}.refalign.txt | tail -n 1
-
-# tools/edlib/src/aligner ${consensus} ${reference} -p -f NICE -m HW > ${consensus}.refalign.txt
+### Edit distance calculation - Avg. Identity doesn't take deletions into account ###
 echo ""
 echo "Evaluating the results."
 scripts/edcontigs.py ${reference} ${consensus}
+############################################

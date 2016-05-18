@@ -5,8 +5,8 @@
  *      Author: isovic
  */
 
-#ifndef SRC_CONSISE_PARAMETERR_H_
-#define SRC_CONSISE_PARAMETERR_H_
+#ifndef SRC_RACON_PARAMETERR_H_
+#define SRC_RACON_PARAMETERR_H_
 
 #include <string>
 

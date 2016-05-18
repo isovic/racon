@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.aln_path), VALUE_TYPE_STRING, "", "alnpath", "", "Path to a SAM file with read-to-raw contig alignments.", -2, "Input/Output options");
   argparser.AddArgument(&(parameters.consensus_path), VALUE_TYPE_STRING, "", "out", "", "Output consensus sequence.", -1, "Input/Output options");
 
-  argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "-1.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.do_pileup), VALUE_TYPE_BOOL, "", "pileup", "0", "Simple pileup + majority vote consensus will be performed instead of using Spoa. Much faster, but less accurate.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.num_threads), VALUE_TYPE_INT32, "t", "threads", "4", "Number of threads to use.", 0, "Control");
