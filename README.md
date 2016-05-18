@@ -28,4 +28,5 @@ make -j
 ```  
 bin/racon [options] <raw_contigs.fasta> <alignments.sam> <out_consensus.fasta>  
 ```  
+Racon depends on quality values - the SAM file needs to have them included.  
 For detailed info on various options, run ```bin/racon``` without arguments.  
