@@ -34,8 +34,8 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.win_ovl_margin), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "20000", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.start_window), VALUE_TYPE_INT64, "", "start-window", "0", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "The number of batches which to process", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.start_window), VALUE_TYPE_INT64, "", "start-window", "0", "ID of the window to start processing from.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.do_realign), VALUE_TYPE_BOOL, "", "realign", "0", "If enabled, input SAM file will be realigned. In this mode, BQ filtering cannot be used. Realigned SAM will be output to stdout unless --rsam is specified.", 0, "Control");
   argparser.AddArgument(&(parameters.realigned_aln_path), VALUE_TYPE_STRING, "", "rsam", "", "If specified, the input SAM file will be realigned and output to the specified path.", 0, "Control");
   argparser.AddArgument(&(parameters.do_pileup), VALUE_TYPE_BOOL, "", "pileup", "0", "Pileup consensus will be performed instead of POA.", 0, "Control");
