@@ -29,3 +29,4 @@ scripts/test-leftalign/data/
 !scripts/test-leftalign/data/msa2.txt
 # !scripts/circedlib.py
 !scripts/edcontigs.py
+!scripts/lis.py
