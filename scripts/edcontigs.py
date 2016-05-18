@@ -142,11 +142,14 @@ def eval_contigs(ref_path, contig_path, temp_folder):
 		fp_contig.close();
 
 		nucmer_out_prefix = '%s/nucmer' % (temp_folder);
+		sys.stderr.write('\n');
 		sys.stderr.write('Running MUMmer on contig: "%s"\n' % (contig_name));
 		command = '%s --maxmatch --extend -p %s %s %s; delta-filter -r -q %s.delta > %s.filt.delta; show-coords -r -c %s.filt.delta > %s.filt.coords' % \
 					(NUCMER_PATH, nucmer_out_prefix, ref_path, single_contig_path, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix);
-		execute_command(command, None, False);
+		# execute_command(command, None, False);
+		[rc, rstdout, rstderr] = execute_command_with_ret(DRY_RUN, command);
 
+		sys.stderr.write('\n');
 		sys.stderr.write('Parsing the coords file.\n');
 		# fp = open('/home/isovic/work/eclipse-workspace/git/consise/temp2-mummer/test-data/out/nucmer.coords2', 'r');
 		coords_path = '%s.filt.coords' % (nucmer_out_prefix);
@@ -325,9 +328,15 @@ def extract_seqs_for_edlib(temp_folder, ref_path, contig_path, rstart, rend, qst
 	fp_nw_ref.close();
 	fp_nw_contig.close();
 
-	sys.stderr.write('Running Edlib...\n');
+	sys.stderr.write('Running Edlib to determine the edit distance...\n');
 	command = '%s %s %s -m NW' % (EDLIB_PATH, nw_contig_path, nw_ref_path);
-	execute_command(command, None, False);
+	[rc, rstdout, rstderr] = execute_command_with_ret(DRY_RUN, command);
+	# execute_command(command, None, False);
+	scores = parse_edlib_scores(rstdout);
+	sys.stderr.write('Final edit distance:\n');
+	for i in xrange(0, len(scores)):
+		sys.stdout.write('[%d] %d\n' % (i, scores[i]));
+	sys.stdout.write('\n');
 
 #	[rc_rev, rstdout_rev, rstderr_rev] = execute_command_with_ret(DRY_RUN, command);
 #	scores_rev = parse_edlib_scores(rstdout_rev);
@@ -343,7 +352,7 @@ def main():
 	if (len(sys.argv) < 3):
 		sys.stderr.write('Tool for calculating the edit distance of two sequences using Edlib.\n');
 		sys.stderr.write('Usage:\n');
-		sys.stderr.write('\t%s <ref.fa> <contigs.fa>' % (sys.argv[0]));
+		sys.stderr.write('\t%s <ref.fa> <contigs.fa>\n' % (sys.argv[0]));
 		exit(1);
 
 	ref_path = sys.argv[1];

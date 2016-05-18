@@ -49,9 +49,6 @@ modules:
 	git submodule update --init --recursive
 	git submodule foreach git pull origin master
 
-# subgraph:
-# 	cd codebase/; rm -rf spoa; git clone https://github.com/rvaser/spoa.git; cd spoa; git checkout subgraph_extraction; git checkout 41ff413f2a2ae6099cb4710de127316e158f438c;
-
 tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/edlib/src/aligner
 	echo "All tools installed."
 
@@ -60,12 +57,6 @@ tools/graphmap/bin/Linux-x64/graphmap:
 
 tools/graphmap/bin/graphmap-not_release:
 	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make -j testing
-
-# tools/poaV2/poa:
-# 	mkdir -p tools && cd tools && wget http://netassist.dl.sourceforge.net/project/poamsa/poamsa/2.0/poaV2.tar.gz && tar -xvzf poaV2.tar.gz && cd poaV2 && make poa
-
-# tools/mafft-7.273-with-extensions/binaries/disttbfast:
-# 	mkdir -p tools && cd tools && wget http://mafft.cbrc.jp/alignment/software/mafft-7.273-with-extensions-src.tgz && tar -xzvf mafft-7.273-with-extensions-src.tgz && cd mafft-7.273-with-extensions/core && make
 
 tools/edlib/src/aligner:
 	mkdir -p tools; cd tools; git clone https://github.com/Martinsos/edlib.git; cd edlib; git checkout 06d8e77f6ec5efb43aa04109caf53e9868695c75; cd src && make -j

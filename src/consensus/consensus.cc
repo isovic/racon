@@ -22,19 +22,6 @@
 typedef Interval<const SingleSequence *> IntervalSS;
 typedef IntervalTree<const SingleSequence *> IntervalTreeSS;
 
-void prepare_indices1(std::vector<uint32_t>& dst, const std::vector<std::string>& sequences, bool sorted) {
-    dst.resize(sequences.size());
-    std::iota(dst.begin(), dst.end(), static_cast<uint32_t>(0));
-
-    if (sorted) {
-        std::sort(dst.begin(), dst.end(),
-            [&](uint32_t lhs, uint32_t rhs) {
-                return sequences[lhs].size() > sequences[rhs].size();
-            }
-        );
-    }
-}
-
 // #define WINDOW_OUTPUT_IN_FASTQ
 
 int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
@@ -126,15 +113,6 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
       window_ends.push_back(seq_end_in_window);
       window_qv.push_back(seq_qual);
     }
-
-//    if (avg_qual < qv_threshold) {
-//      seq_qual = std::string(seq_data.size(), '!');
-//    }
-//    window_seqs.push_back(seq_data);
-//    window_starts.push_back(seq_start_in_window);
-//    window_ends.push_back(seq_end_in_window);
-//    window_qv.push_back(seq_qual);
-
 
     if (fp_window) {
       #ifndef WINDOW_OUTPUT_IN_FASTQ
@@ -281,74 +259,46 @@ int FilterOverhangsFromMsa(const std::vector<std::string> &msa, std::string &con
   for (start_pos = 0; start_pos < last_msa_seq; start_pos++) {
     int32_t dash_count = 0;
     for (int32_t j=first_msa_seq; j<msa.size(); j++) { if (msa[j][start_pos] == '-') { dash_count += 1; } }
-//    if ((max_cov - dash_count) >= overhang_min_threshold) { break; }
     if (dash_count < max_cov/2) { break; }
   }
 
   for (end_pos = (seq_len - 1); end_pos >= 0; end_pos--) {
     int32_t dash_count = 0;
     for (int32_t j=first_msa_seq; j<last_msa_seq; j++) { if (msa[j][end_pos] == '-') { dash_count += 1; } }
-//    if ((max_cov - dash_count) >= overhang_min_threshold) { break; }
     if (dash_count < max_cov/2) { break; }
   }
-
-//  fprintf (stderr, "start_pos = %d, end_pos = %d, seq_len = %d\n", start_pos, end_pos, seq_len);
 
   std::string new_cons = "";
   std::stringstream ss;
   auto& old_cons = msa.back();
   for (int32_t i=start_pos; i<=end_pos; i++) {
-//    if (old_cons[i] != '-') { ss << old_cons[i]; }
-
-//    if (old_cons[i] != '-') { std::string base = MajorityVotePos(msa, first_msa_seq, last_msa_seq-1, i); ss << base; new_cons += (base == "") ? "-" : base; }
-//    else {new_cons += " "; }
     if (old_cons[i] != '-') { ss << old_cons[i]; }
-//    else {
-//      std::string base = MajorityVotePos(msa, first_msa_seq, last_msa_seq-1, i);
-//      ss << base;
-//      new_cons += (base == "") ? "-" : base;
-//    }
   }
-
-//  printf ("%s\n", new_cons.c_str());
-
-//  for (int32_t i=0; i<seq_len; i++) {
-//    if (old_cons[i] == '-') { printf ("-"); continue; }
-//    int32_t dash_count = 0;
-//    for (int32_t j=first_msa_seq; j<last_msa_seq; j++) { if (msa[j][i] == '-') { dash_count += 1; } }
-//    if (dash_count < max_cov/2) {
-//      ss << old_cons[i];
-//      printf ("%c", old_cons[i]);
-//    } else {
-//      printf (".");
-//    }
-//  }
-//  printf ("\n");
 
   consensus = ss.str();
 
   return 0;
 }
 
-std::string MajorityVotePos(const std::vector<std::string> &msa, int32_t first_seq, int32_t last_seq, int32_t pos) {
-  if (msa.size() == 0) { return std::string(""); }
-
-  int64_t seq_len = msa[0].size();
-  std::stringstream ss;
-
-  // Count occurrences for the column.
-  int32_t base_counts[256] = {0};
-  for (int32_t j=first_seq; j<=last_seq; j++) {
-    base_counts[toupper(msa[j][pos])] += 1;
-  }
-
-  std::vector<int32_t> filtered_base_counts = {base_counts['A'], base_counts['C'], base_counts['T'], base_counts['G'], base_counts['-']};
-  std::vector<size_t> indices;
-  ordered_sort_vector(filtered_base_counts, indices);
-  if (indices.back() == 4) { return std::string(""); }
-  char ret = "ACTG-"[indices.back()];
-  return std::string(1, ret);
-
+//std::string MajorityVotePos(const std::vector<std::string> &msa, int32_t first_seq, int32_t last_seq, int32_t pos) {
+//  if (msa.size() == 0) { return std::string(""); }
+//
+//  int64_t seq_len = msa[0].size();
+//  std::stringstream ss;
+//
+//  // Count occurrences for the column.
+//  int32_t base_counts[256] = {0};
+//  for (int32_t j=first_seq; j<=last_seq; j++) {
+//    base_counts[toupper(msa[j][pos])] += 1;
+//  }
+//
+//  std::vector<int32_t> filtered_base_counts = {base_counts['A'], base_counts['C'], base_counts['T'], base_counts['G'], base_counts['-']};
+//  std::vector<size_t> indices;
+//  ordered_sort_vector(filtered_base_counts, indices);
+//  if (indices.back() == 4) { return std::string(""); }
+//  char ret = "ACTG-"[indices.back()];
+//  return std::string(1, ret);
+//
 //  int64_t sum_base_counts = base_counts['A'] + base_counts['C'] + base_counts['T'] + base_counts['G'];
 //  int64_t sum_gap_counts = base_counts['-'] + base_counts['.'];
 //  if (sum_base_counts > sum_gap_counts) {
@@ -361,7 +311,7 @@ std::string MajorityVotePos(const std::vector<std::string> &msa, int32_t first_s
 //  }
 //
 //  return std::string("");
-}
+//}
 
 int MajorityVoteFromMSA(std::vector<std::string> &msa, std::string &consensus) {
   if (msa.size() == 0) { return 1; }
@@ -416,13 +366,9 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
   // For realignment, we need a vector of new alignment objects which will update the existing ones.
   std::map<const SingleSequence *, SequenceAlignment> realigns;
   if (parameters.do_realign) {
-//    realigns.resize(ctg_alns.size());
     for (int64_t i=0; i<ctg_alns.size(); i++) {
       realigns[ctg_alns[i]] = SequenceAlignment();
       SequenceAlignment &r = realigns[ctg_alns[i]];
-//      r.set_mapq(ctg_alns[i]->get_aln().get_mapq());
-//      r.set_flag(ctg_alns[i]->get_aln().get_flag());
-//      r.set
       r.CopyFrom(ctg_alns[i]->get_aln());
       r.cigar().clear();
       r.set_pos(0);
@@ -466,30 +412,18 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
          ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Quality values not specified for input reads! Please use FASTQ or another format which provides qualities.");
        }
 
-       // Sort the sequences in the window by their length. This is a temporary workaround to be able to generate the realigned reads.
-//       std::vector<uint32_t> indices;
-//       if (parameters.do_realign) {
-//         prepare_indices1(indices, windows_for_msa, true);
-//       }
-
        auto graph = construct_partial_order_graph(windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
                                                   SPOA::AlignmentParams(parameters.match, parameters.mismatch,
                                                   parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
 
        if (windows_for_msa.size() <= 2) {  // In case the coverage is too low, just pick the first sequence in the window.
-//          int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
-//          consensus_windows[id_in_batch] = GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1));
            consensus_windows[id_in_batch] = windows_for_msa[0];
        } else {
            consensus_windows[id_in_batch] = graph->generate_consensus();
 
            std::vector<std::string> msa;
            graph->generate_msa(msa, true);
-//           for (int64_t i=0; i<msa.size(); i++) {
-//             printf ("%s\n", msa[i].c_str());
-//           }
-
-//           int32_t overhang_min_threshold = 3;
+//           for (int64_t i=0; i<msa.size(); i++) { printf ("%s\n", msa[i].c_str()); }
            FilterOverhangsFromMsa(msa, consensus_windows[id_in_batch]);
 //           MajorityVoteFromMSA(msa, consensus_windows[id_in_batch]);
        }
@@ -502,17 +436,6 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
            auto seq = refs_for_msa[i];
            ConvertMSAToAln(msa[0], msa[i], window_start, realigns[seq]);
          }
-
-//         FILE *fp_test = fopen("temp/test.msa", "w");
-////         fprintf (fp_test, "%s\n", consensus_windows[id_in_batch].c_str());
-//         for (int64_t i1=0; i1<msa.size(); i1++) {
-////             fprintf (fp_test, ">ID_%d_MSA_Window_%d\n%s\n", (id_in_batch), i1, msa[i1].c_str());
-//           fprintf (fp_test, "%s\n", msa[i1].c_str());
-//           fflush(fp_test);
-//         }
-//         fprintf (fp_test, "\n");
-//         fclose(fp_test);
-//         exit(1);
        }
     }
 

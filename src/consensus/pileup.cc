@@ -162,8 +162,8 @@ void Pileup::GenerateConsensus(int32_t cov_threshold, std::string& cons) {
       }
       if (is_base_called == false) {
         ss << bases_[i].ref_base;
-        printf ("Tu sam 1!\n");
-        exit(1);
+//        printf ("Tu sam 1!\n");
+//        exit(1);
 //        printf ("  - bases_[i].ref_base = '%c'\n", bases_[i].ref_base);
 //        fflush(stdout);
       }
@@ -192,8 +192,8 @@ void Pileup::GenerateConsensus(int32_t cov_threshold, std::string& cons) {
       std::string ins_cons;
       MajorityVoteFromMSA(msa, ins_cons);
       ss << ins_cons;
-      printf ("  insertion! '%s'\n", ins_cons.c_str());
-      fflush(stdout);
+//      printf ("  insertion! '%s'\n", ins_cons.c_str());
+//      fflush(stdout);
     }
   }
 
