@@ -31,10 +31,14 @@ consensus=temp/consensus-${dataset}-${msa}-v1.fasta
 mkdir -p temp
 reference=test-data/lambda/NC_001416.fa
 memtime=temp/consensus-${dataset}-${msa}.memtime
-tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index --mapq 3 -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
+tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
+# tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index --mapq 3 -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
 # tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o $memtime \
-	bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 --bq 10 -w 500 --ovl-margin 0.00 -b 20000 -t ${threads} ${contigs} ${sam} ${consensus}
+	bin/consise -M 1 -X -1 -G -1 -E -1 --bq 10 -w 500 -b 20000 -t ${threads} ${contigs} ${sam} ${consensus}
+	# bin/consise --align 1 -M 1 -X -1 -G -1 -E -1 --bq 10 -w 500 --start-window 2 --num-batches 1 --ovl-margin 0.00 -b 1 -t ${threads} ${contigs} ${sam} ${consensus} > temp/msa.txt
+	# bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 --bq 10 -w 500 --ovl-margin 0.00 -b 20000 -t ${threads} ${contigs} ${sam} ${consensus}
+	# bin/consise --align 1 -M 5 -X -4 -G -8 -E -6 --bq 10 -w 500 --pileup --ovl-margin 0.00 -b 20000 -t ${threads} ${contigs} ${sam} ${consensus}
 mkdir -p temp/dnadiff-${dataset}
 rm temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
 dnadiff -p temp/dnadiff-${dataset}/consise-${dataset}-${msa} ${reference} ${consensus}
@@ -43,5 +47,10 @@ grep "AlignedBases" temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
 grep "AvgIdentity" temp/dnadiff-${dataset}/consise-${dataset}-${msa}.report
 cat $memtime
 
-tools/edlib/src/aligner ${consensus} ${reference} -p -f NICE > ${consensus}.refalign.txt
-head -n 10 ${consensus}.refalign.txt | tail -n 1
+# tools/edlib/src/aligner ${consensus} ${reference} -p -f NICE > ${consensus}.refalign.txt
+# head -n 10 ${consensus}.refalign.txt | tail -n 1
+
+# tools/edlib/src/aligner ${consensus} ${reference} -p -f NICE -m HW > ${consensus}.refalign.txt
+echo ""
+echo "Evaluating the results."
+scripts/edcontigs.py ${reference} ${consensus}
