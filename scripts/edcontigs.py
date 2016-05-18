@@ -3,7 +3,7 @@
 import os
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__));
 import sys;
-sys.path.append(SCRIPT_PATH + '/../tools/samscripts/src/');
+sys.path.append(SCRIPT_PATH + '/../codebase/samscripts/src/');
 
 import subprocess;
 import operator;
