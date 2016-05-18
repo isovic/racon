@@ -3,8 +3,7 @@
 import os
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__));
 import sys;
-# sys.path.append(SCRIPT_PATH + '/../tools/samscripts/src/');
-sys.path.append('/home/isovic/work/eclipse-workspace/git/samscripts/src/');
+sys.path.append(SCRIPT_PATH + '/../tools/samscripts/src/');
 
 import subprocess;
 import operator;
