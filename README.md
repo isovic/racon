@@ -40,11 +40,11 @@ Racon depends on quality values - the SAM file needs to have them included.
 For detailed info on various options, run ```bin/racon``` without arguments.  
 
 ## Contact information
-```
+
 For additional information, help and bug reports please send an email to one of the following: robert.vaser@fer.hr,
 ivan.sovic@irb.hr, mile.sikic@fer.hr
 
 
 ## Acknowledgment
-```
+
 This work has been supported in part by Croatian Science Foundation under the project UIP-11-2013-7353.
