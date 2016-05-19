@@ -8,6 +8,7 @@ Racon takes as input only two files: the raw contig FASTA and the alignments (SA
 We recommend [GraphMap](https://github.com/isovic/graphmap) for generating the alignments.  
 
 Please note: Racon depends on *quality values* - the SAM file needs to have them included.  
+There is also a default QV threshold set to 10 (Phred score). If your data is of poorer quality, you can modify this parameter using ```--qv FLOAT```. If ```FLOAT``` is ```-1```, the QV filtering will be turned off.  
 
 ## Quick start
 Clone and make Racon:
