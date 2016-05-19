@@ -18,7 +18,7 @@ Run an example script:
 ```  
 ./example1-lambda.sh  
 ```  
-Tip: Running Racon iterativelly will produce better consensus sequences. (But don't forget to align your reads to the consensus sequence from the previous iteration.)  
+Tip: Running Racon iteratively will produce better consensus sequences. (But don't forget to align your reads to the consensus sequence from the previous iteration.)  
 
 ## Dependencies
 1. gcc >= 4.8  
@@ -38,3 +38,13 @@ bin/racon [options] <raw_contigs.fasta> <alignments.sam> <out_consensus.fasta>
 ```  
 Racon depends on quality values - the SAM file needs to have them included.  
 For detailed info on various options, run ```bin/racon``` without arguments.  
+
+## Contact information
+```
+For additional information, help and bug reports please send an email to one of the following: robert.vaser@fer.hr,
+ivan.sovic@irb.hr, mile.sikic@fer.hr
+
+
+## Acknowledgment
+```
+This work has been supported in part by Croatian Science Foundation under the project UIP-11-2013-7353.
