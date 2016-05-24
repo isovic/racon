@@ -339,9 +339,10 @@ def extract_seqs_for_edlib(temp_folder, ref_path, contig_path, rstart, rend, qst
 	[rc, rstdout, rstderr] = execute_command_with_ret(DRY_RUN, command);
 	# execute_command(command, None, False);
 	scores = parse_edlib_scores(rstdout);
-	sys.stderr.write('Final edit distance:\n');
-	for i in xrange(0, len(scores)):
-		sys.stdout.write('[%d] %d\n' % (i, scores[i]));
+	unaligned_len = len(seqs_ref[rid]) - len(ref_seq);
+	sys.stderr.write('Final edit distance: %d, aligned edit distance: %d, unaligned ref len: %d, aligned ref len: %d, aligned contig len: %d\n' % ((scores[0] + unaligned_len), scores[0], unaligned_len, len(ref_seq), len(contig_seq)));
+#	for i in xrange(0, len(scores)):
+#		sys.stdout.write('[%d] edit dist: %d\tunaligned len: %d\n' % (i, scores[i], unaligned_len));
 	sys.stdout.write('\n');
 
 #	[rc_rev, rstdout_rev, rstderr_rev] = execute_command_with_ret(DRY_RUN, command);
