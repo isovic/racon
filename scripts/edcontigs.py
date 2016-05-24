@@ -156,7 +156,9 @@ def eval_contigs(ref_path, contig_path, temp_folder):
 		lines = fp.readlines();
 		fp.close();
 		coords = parse_coords_lines(lines, contig_name, seqs_ref, ref_hash, seqs_contigs, contig_hash);
-		print coords;
+		print 'coords: "%s"' % (coords);
+		print 'lines:\n', lines;
+		sys.stdout.flush();
 		[rstart, rend, qstart, qend, is_fwd, rname, qname] = coords;
 		extract_seqs_for_edlib(temp_folder, ref_path, contig_path, rstart, rend, qstart, qend, is_fwd, rname, qname);
 		sys.stderr.write('\n');
@@ -178,6 +180,7 @@ def parse_coords_lines(lines, contig_name, seqs_ref, ref_hash, seqs_contigs, con
 		if (len(line) == 0): continue;
 		if (line == '='*len(line)):
 			state_coord_lines = True;
+			print 'state_coord_lines = ', state_coord_lines;
 			continue;
 		if (state_coord_lines == False):
 			continue;
@@ -187,8 +190,10 @@ def parse_coords_lines(lines, contig_name, seqs_ref, ref_hash, seqs_contigs, con
 		print line;
 
 		sline = line.split();
+		print sline;
 		[curr_rstart, curr_rend, curr_qstart, curr_qend, curr_rname, curr_qname] = [int(sline[0]), int(sline[1]), int(sline[3]), int(sline[4]), sline[-2], sline[-1]];
 		fwd = True if (curr_qstart <= curr_qend) else False;
+		print 'fwd = ', fwd;
 		if (len(all_frags) > 0 and curr_rname != all_frags[-1][-2]):
 			sys.stderr.write('ERROR: Fragments of one contig are not aligned to the same reference! Possible structural variant? Exiting.\n');
 			exit(1);
@@ -199,11 +204,13 @@ def parse_coords_lines(lines, contig_name, seqs_ref, ref_hash, seqs_contigs, con
 	# for frag in all_frags:
 	# 	print frag;
 	# print num_fwd;
-	correct_orient = True if (num_fwd >= (len(all_frags) / 2)) else False;
-	# print correct_orient;
+	correct_orient = True if (num_fwd > (len(all_frags) / 2)) else False;
+	print 'correct_orient = ', correct_orient;
 	all_frags = [val for val in all_frags if val[4] == correct_orient];
+	print 'Printing frags:';
 	for frag in all_frags:
 		print frag;
+	sys.stdout.flush();
 
 	if (len(all_frags) == 0):
 		return [rstart, rend, qstart, qend, True, '', ''];
