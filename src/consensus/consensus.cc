@@ -100,6 +100,9 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
     std::string seq_data = GetSubstring((char *) (seq->get_data() + start_seq), end_seq - start_seq + 1);
     std::string seq_qual = (seq->get_quality() != NULL) ? (GetSubstring((char *) (seq->get_quality() + start_seq), end_seq - start_seq + 1)) : (std::string((end_seq - start_seq + 1), '!' + 0));
 
+    // Safety percaution.
+    if (seq_data.size() < 2) { continue; }
+
     double avg_qual;
     for (int64_t j=0; j<seq_qual.size(); j++) {
       avg_qual += (double) (seq_qual[j] - '!');

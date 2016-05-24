@@ -356,7 +356,10 @@ def main():
 
 	ref_path = sys.argv[1];
 	contigs_path = sys.argv[2];
-	temp_path = os.path.dirname(contigs_path) + '/temp-ed';
+	if (len(os.path.dirname(contigs_path)) != 0):
+		temp_path = os.path.dirname(contigs_path) + '/temp-ed';
+	else:
+		temp_path = './temp-ed';
 
 	eval_contigs(ref_path, contigs_path, temp_path);
 
