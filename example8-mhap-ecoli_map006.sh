@@ -44,7 +44,7 @@ echo "tools/minimap/minimap $contigs $readsfasta > $paf"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_minimap} \
 	tools/minimap/minimap $contigs $readsfasta > $paf
 echo "tools/miniasm/misc/paf2mhap.pl $contigs $readsfasta $paf > $mhap"
-tools/miniasm/misc/paf2mhap.pl $contigs $readsfasta $paf > $mhap
+scripts/paf2mhap.pl $contigs $readsfasta $paf > $mhap
 echo $reads
 echo $mhap
 
@@ -93,7 +93,7 @@ echo "tools/minimap/minimap $contigs $readsfasta > $paf"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_minimap} \
 	tools/minimap/minimap $contigs $readsfasta > $paf
 echo "tools/miniasm/misc/paf2mhap.pl $contigs $readsfasta $paf > $mhap"
-tools/miniasm/misc/paf2mhap.pl $contigs $readsfasta $paf > $mhap
+scripts/paf2mhap.pl $contigs $readsfasta $paf > $mhap
 echo $reads
 echo $mhap
 
@@ -103,7 +103,7 @@ echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} --mhap --reads 
 	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} --mhap --reads $reads ${contigs} ${mhap} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
-# ############################################
+############################################
 ### Run dnadiff to get the Avg. Identity ###
 mkdir -p results/temp/dnadiff-${dataset}
 rm results/temp/dnadiff-${dataset}/racon-${dataset}-${suffix}.report

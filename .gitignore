@@ -30,5 +30,6 @@ scripts/test-leftalign/data/
 # !scripts/circedlib.py
 !scripts/edcontigs.py
 !scripts/lis.py
+!scripts/paf2mhap.pl
 *.tee
 *.memtime
