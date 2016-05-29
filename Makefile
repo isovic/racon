@@ -49,7 +49,7 @@ modules:
 	git submodule update --init --recursive
 	git submodule foreach git pull origin master
 
-tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/edlib/src/aligner
+tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/edlib/src/aligner tools/minimap/minimap tools/miniasm/miniasm
 	echo "All tools installed."
 
 tools/graphmap/bin/Linux-x64/graphmap:
@@ -61,6 +61,12 @@ tools/graphmap/bin/graphmap-not_release:
 tools/edlib/src/aligner:
 	mkdir -p tools; cd tools; git clone https://github.com/isovic/edlib.git; cd edlib; cd src && make -j
 	# mkdir -p tools; cd tools; git clone https://github.com/Martinsos/edlib.git; cd edlib; git checkout 06d8e77f6ec5efb43aa04109caf53e9868695c75; cd src && make -j
+
+tools/minimap/minimap:
+	mkdir -p tools; cd tools; git clone https://github.com/lh3/minimap.git; cd minimap; make -j
+
+tools/miniasm/miniasm:
+	mkdir -p tools; cd tools; git clone https://github.com/lh3/miniasm.git; cd miniasm; make -j
 
 
 
