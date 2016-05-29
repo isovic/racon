@@ -290,6 +290,7 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
     // This sorts ascending by the pos field.
     std::sort(ctg_alns.begin(), ctg_alns.end(), seqaln_sort_key());
 
+    LOG_ALL("Starting consensus for contig %ld / %ld (%.2f%%): %s\n", (i + 1), ctg_names.size(), 100.0*((float) (i + 1)) / ((float) ctg_names.size()), contig->get_header());
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
     if (parameters.do_pileup == false) {
@@ -304,7 +305,7 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
     fclose(fp_out_cons);
 
     ///////////////////////////////////////
-    LOG_MEDHIGH_NOHEADER("\n");
+//    LOG_MEDHIGH_NOHEADER("\n");
     LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
     LOG_MEDHIGH_NOHEADER("\n");
   }
@@ -657,7 +658,7 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
        }
      }
 
-     LOG_MEDHIGH_NOHEADER("\n");
+//     LOG_MEDHIGH_NOHEADER("\n");
      LOG_MEDHIGH("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
   }
 
