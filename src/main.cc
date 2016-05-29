@@ -13,6 +13,7 @@
 #include "consensus/consensus.h"
 #include "argparser.h"
 #include "parameters.h"
+#include "mhap.h"
 
 void RunTests() {
   TEST_CLASS_SEQUENCE_ALIGNMENT();
@@ -29,6 +30,9 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.aln_path), VALUE_TYPE_STRING, "", "alnpath", "", "Path to a SAM file with read-to-raw contig alignments.", -2, "Input/Output options");
   argparser.AddArgument(&(parameters.consensus_path), VALUE_TYPE_STRING, "", "out", "", "Output consensus sequence.", -1, "Input/Output options");
 
+  argparser.AddArgument(&(parameters.is_mhap), VALUE_TYPE_BOOL, "", "mhap", "0", "MHAP is provided instead of SAM. This requires an additional parameter '--reads' specifying the input reads FASTQ file.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.reads_path), VALUE_TYPE_STRING, "", "reads", "", "Reads in FASTQ format.", 0, "Input/Output options");
+
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.do_pileup), VALUE_TYPE_BOOL, "", "pileup", "0", "Simple pileup + majority vote consensus will be performed instead of using Spoa. Much faster, but less accurate.", 0, "Algorithm");
@@ -42,7 +46,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.gap_open), VALUE_TYPE_INT32, "G", "gapopen", "-8", "Gap open penalty (negative value expected).", 0, "Alignment");
   argparser.AddArgument(&(parameters.gap_ext), VALUE_TYPE_INT32, "E", "gapext", "-6", "Gap extend penalty (negative value expected).", 0, "Alignment");
 //  argparser.AddArgument(&(parameters.aln_type), VALUE_TYPE_INT32, "a", "align", "1", "Alignment algorithm: 0 for local, 1 for global and 2 for overlap.", 0, "Alignment");
-
+//  parameters.aln_type = 0;
   argparser.AddArgument(&(parameters.verbose_level), VALUE_TYPE_INT32, "v", "verbose", "5", "Verbose level. 0 off, 1 low, 2 medium, 3 high, 4 and 5 all levels, 6-9 debug.", 0, "Other");
 
   // TODO: Deprecated feature. Consider removing permanently.
@@ -64,6 +68,21 @@ int main(int argc, char* argv[]) {
 
   // Process the command line arguments.
   argparser.ProcessArguments(argc, argv);
+  // Store the command line arguments for later use.
+  for (int32_t i=0; i<argc; i++) { parameters.cmd_arguments.push_back(argv[i]); }
+  parameters.program_folder = parameters.cmd_arguments[0].substr(0, parameters.cmd_arguments[0].find_last_of("\\/"));
+  parameters.program_bin = parameters.cmd_arguments[0].substr(parameters.cmd_arguments[0].find_last_of("\\/") + 1);
+  //  // Verbose the current state of the parameters after.
+  //  fprintf (stderr, "%s\n\n", argparser.VerboseArguments().c_str());
+
+  // Sanity check on parameter values.
+  if (parameters.is_mhap == true && parameters.reads_path == "") {
+//    FATAL_REPORT("Reads file not specified! Exiting.");
+    fprintf (stderr, "ERROR: Reads file not specified! Exiting.\n");
+    exit(1);
+  }
+
+
 
   if (parameters.verbose_level == 1) {
     LogSystem::GetInstance().LOG_VERBOSE_TYPE = LOG_VERBOSE_STD;
@@ -74,33 +93,58 @@ int main(int argc, char* argv[]) {
   // Set the verbose level for the execution of this program.
   LogSystem::GetInstance().SetProgramVerboseLevelFromInt(parameters.verbose_level);
 
-  // Store the command line arguments for later use.
-  for (int32_t i=0; i<argc; i++) { parameters.cmd_arguments.push_back(argv[i]); }
-  parameters.program_folder = parameters.cmd_arguments[0].substr(0, parameters.cmd_arguments[0].find_last_of("\\/"));
-  parameters.program_bin = parameters.cmd_arguments[0].substr(parameters.cmd_arguments[0].find_last_of("\\/") + 1);
-
-//  // Verbose the current state of the parameters after.
-//  fprintf (stderr, "%s\n\n", argparser.VerboseArguments().c_str());
-
   /// Check if help was triggered.
   if (argparser.GetArgumentByLongName("help")->is_set == true) {
     fprintf (stderr, "  %s [options] <raw> <aln> <temp>\n\n", argv[0]);
     fprintf (stderr, "%s\n", argparser.VerboseUsage().c_str());
+    fflush(stderr);
     exit(1);
   }
 
   std::string gfa = argv[1];
   SequenceFile seqs_gfa(SEQ_FORMAT_AUTO, parameters.raw_contigs_path);
-//  seqs_gfa.Verbose(stdout);
 
-  std::string sam = argv[2];
-  SequenceFile seqs_sam(SEQ_FORMAT_SAM, parameters.aln_path);
-//  seqs_sam.Verbose(stdout);
+  SequenceFile *seqs_sam = NULL;
 
-  std::string alt_contig_path = argv[3];
+  if (parameters.is_mhap == false) {
+    std::string sam = parameters.aln_path;
+    LOG_ALL("Using SAM for input alignments. (%s)\n", sam.c_str());
+    LOG_ALL("Parsing the SAM file.\n");
+    seqs_sam = new SequenceFile(SEQ_FORMAT_SAM, parameters.aln_path);
+  } else {
+    std::string mhap = parameters.aln_path;
+    LOG_ALL("Using MHAP for input alignments. (%s)\n", mhap.c_str());
+    std::vector<MHAPLine> overlaps, overlaps_filtered;
 
-//  Consensus(parameters, seqs_gfa, seqs_sam);
-  ConsensusDirectFromAln(parameters, seqs_gfa, seqs_sam);
+    LOG_ALL("Parsing the MHAP file.\n");
+    ParseMHAP(mhap, overlaps);
+    LOG_ALL("Filtering MHAP overlaps.\n");
+    FilterMHAP(overlaps, overlaps_filtered);
+
+    LOG_ALL("Loading reads.\n");
+    SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
+    seqs_sam = new SequenceFile();
+    LOG_ALL("Aligning overlaps.\n");
+    AlignMHAP(seqs_gfa, seqs_reads, overlaps_filtered, parameters.num_threads, *seqs_sam);
+  }
+
+  ConsensusDirectFromAln(parameters, seqs_gfa, *seqs_sam);
+  seqs_sam->Clear();
+  if (seqs_sam) { delete seqs_sam; }
+
+//  std::string alt_contig_path = argv[3];
+
+//  std::string mhap_path = "results/temp/consensus-lambda_30x_ont-mhap-iter1.mhap";
+//  std::string reads_path = "test-data/lambda/reads.fastq";
+//  std::vector<MHAPLine> overlaps, overlaps_filtered;
+//  ParseMHAP(mhap_path, overlaps);
+//  FilterMHAP(overlaps, overlaps_filtered);
+//  SequenceFile seqs_reads(SEQ_FORMAT_AUTO, reads_path);
+//  SequenceFile seqs_generated_sam;
+//  AlignMHAP(seqs_gfa, seqs_reads, overlaps_filtered, seqs_generated_sam);
+//
+//  //  Consensus(parameters, seqs_gfa, seqs_sam);
+//  ConsensusDirectFromAln(parameters, seqs_gfa, seqs_generated_sam);
 
 	return 0;
 }

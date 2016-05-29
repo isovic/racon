@@ -17,6 +17,7 @@ struct ProgramParameters {
   std::string temp_alt_contig_path = "";
   std::string consensus_path = "";
   std::string out_fmt = "fasta";
+  std::string reads_path = "";
   int64_t window_len = 500;
   int64_t batch_of_windows = 20000;
   int64_t num_batches = -1;
@@ -39,6 +40,7 @@ struct ProgramParameters {
   bool do_realign = false;
   std::string realigned_aln_path = "";
   bool do_pileup = false;
+  bool is_mhap = false;
 
   int32_t verbose_level = 1;
 };

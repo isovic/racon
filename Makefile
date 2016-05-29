@@ -59,7 +59,8 @@ tools/graphmap/bin/graphmap-not_release:
 	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make -j testing
 
 tools/edlib/src/aligner:
-	mkdir -p tools; cd tools; git clone https://github.com/Martinsos/edlib.git; cd edlib; git checkout 06d8e77f6ec5efb43aa04109caf53e9868695c75; cd src && make -j
+	mkdir -p tools; cd tools; git clone https://github.com/isovic/edlib.git; cd edlib; cd src && make -j
+	# mkdir -p tools; cd tools; git clone https://github.com/Martinsos/edlib.git; cd edlib; git checkout 06d8e77f6ec5efb43aa04109caf53e9868695c75; cd src && make -j
 
 
 
