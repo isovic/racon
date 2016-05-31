@@ -107,7 +107,6 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 
 		### Run nucmer to align the contig to the reference, also, filter the delta file and generate alignment coordinates.
 		nucmer_out_prefix = '%s/nucmer' % (temp_folder);
-		log('', sys.stderr, silent=silent);
 		log('Running MUMmer on contig: "%s"' % (contig_name), sys.stderr, silent=silent);
 		command = '%s --maxmatch --extend -p %s %s %s; delta-filter -r -q %s.delta > %s.filt.delta; show-coords -r -c %s.filt.delta > %s.filt.coords' % \
 					(NUCMER_PATH, nucmer_out_prefix, ref_path, single_contig_path, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix);
