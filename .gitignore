@@ -29,6 +29,7 @@ scripts/test-leftalign/data/
 !scripts/test-leftalign/data/msa2.txt
 # !scripts/circedlib.py
 !scripts/edcontigs.py
+!scripts/evalcontigs.py
 !scripts/lis.py
 !scripts/paf2mhap.pl
 *.tee
