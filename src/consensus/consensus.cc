@@ -463,7 +463,7 @@ void CreateConsensus(const ProgramParameters &parameters, const SingleSequence *
   std::stringstream ss_cons;
 
   if (fp_out_cons) {
-    fprintf (fp_out_cons, ">Consensus-%s\n", contig->get_header());
+    fprintf (fp_out_cons, ">Consensus_%s\n", contig->get_header());
     fflush (fp_out_cons);
   }
 
