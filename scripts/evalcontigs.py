@@ -24,7 +24,9 @@ DRY_RUN = False;
 import traceback;
 from time import gmtime, strftime
 ### Logs messages to STDERR and an output log file if provided (opened elsewhere).
-def log(message, fp_log):
+def log(message, fp_log, silent=False):
+    if (silent == True): return;
+
     timestamp = strftime("%Y/%m/%d %H:%M:%S", gmtime());
     if (message != ''):
     	prefix = '[%s] ' % (timestamp);
@@ -81,7 +83,7 @@ def parse_edlib_scores(rstdout):
 			scores[qid] = score;
 	return scores;
 
-def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=False):
+def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=False, silent=False):
 	if (not os.path.exists(temp_folder)):
 		os.makedirs(temp_folder);
 
@@ -105,14 +107,14 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 
 		### Run nucmer to align the contig to the reference, also, filter the delta file and generate alignment coordinates.
 		nucmer_out_prefix = '%s/nucmer' % (temp_folder);
-		log('', sys.stderr);
-		log('Running MUMmer on contig: "%s"' % (contig_name), sys.stderr);
+		log('', sys.stderr, silent=silent);
+		log('Running MUMmer on contig: "%s"' % (contig_name), sys.stderr, silent=silent);
 		command = '%s --maxmatch --extend -p %s %s %s; delta-filter -r -q %s.delta > %s.filt.delta; show-coords -r -c %s.filt.delta > %s.filt.coords' % \
 					(NUCMER_PATH, nucmer_out_prefix, ref_path, single_contig_path, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix);
 		[rc, rstdout, rstderr] = execute_command_with_ret(DRY_RUN, command, silent=True);
 
 		### Load the coordinates.
-		log('Parsing the coords file.', sys.stderr);
+		log('Parsing the coords file.', sys.stderr, silent=silent);
 		# fp = open('/home/isovic/work/eclipse-workspace/git/consise/temp2-mummer/test-data/out/nucmer.coords2', 'r');
 		coords_path = '%s.filt.coords' % (nucmer_out_prefix);
 		fp = open(coords_path, 'r');
@@ -124,7 +126,7 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 		avg_accuracy_contig = 0.0;
 		avg_id_contig = 0.0;
 
-		log('Running Edlib to determine the edit distance for each fragment...', sys.stderr);
+		log('Running Edlib to determine the edit distance for each fragment...', sys.stderr, silent=silent);
 		for frag in frags:
 			# print frag;
 
@@ -162,9 +164,9 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 
 		avg_accuracy_contig /= float(len(frags));
 		avg_id_contig /= float(len(frags));
-		log('Average ID for contig "%s": %f%%' % (contig_name, avg_id_contig), sys.stderr);
-		log('Average accuracy for contig "%s": %f%%' % (contig_name, 100.0*avg_accuracy_contig), sys.stderr);
-		log('', sys.stderr);
+		log('Average ID for contig "%s": %f%%' % (contig_name, avg_id_contig), sys.stderr, silent=silent);
+		log('Average accuracy for contig "%s": %f%%' % (contig_name, 100.0*avg_accuracy_contig), sys.stderr, silent=silent);
+		log('', sys.stderr, silent=silent);
 
 		avg_accuracy_overall += avg_accuracy_contig;
 		avg_id_overall += avg_id_contig;
@@ -172,12 +174,14 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 	avg_accuracy_overall /= float(len(seqs_contigs));
 	avg_id_overall /= float(len(seqs_contigs));
 
-	log('Overall average ID for the draft assembly: %f%%' % (avg_id_overall), sys.stderr);
-	log('Overall average accuracy for the draft assembly: %f%%' % (100.0*avg_accuracy_overall), sys.stderr);
+	log('Draft assembly: "%s"\n' % (contig_path), sys.stderr, silent=silent);
+	log('Overall average ID for the draft assembly: %f%%' % (avg_id_overall), sys.stderr, silent=silent);
+	log('Overall average accuracy for the draft assembly: %f%%' % (100.0*avg_accuracy_overall), sys.stderr, silent=silent);
 	log('', sys.stderr);
 
 	# sys.stdout.write('=============================================\n');
 	sys.stdout.write('================= Summary ===================\n');
+	sys.stdout.write('Draft assembly: "%s"\n' % (contig_path));
 	sys.stdout.write('Overall average ID for the draft assembly: %f%%\n' % (avg_id_overall));
 	sys.stdout.write('Overall average accuracy for the draft assembly: %f%%\n' % (100.0*avg_accuracy_overall));
 	sys.stderr.write('\n');
@@ -253,6 +257,7 @@ def main():
 
 	generate_kmer_spectrum = False;
 	temp_path = None;
+	silent_mode = False;
 
 	for i in xrange(3, len(sys.argv)):
 		arg = sys.argv[i];
@@ -261,6 +266,8 @@ def main():
 			i += 1;
 		elif (arg == '--spectrum'):
 			generate_kmer_spectrum = True;
+		elif (arg == '--silent'):
+			silent_mode = True;
 
 	if (temp_path == None):
 		if (len(os.path.dirname(contigs_path)) != 0):
@@ -268,7 +275,7 @@ def main():
 		else:
 			temp_path = './temp-ed';
 
-	eval_contigs(ref_path, contigs_path, temp_path, generate_kmer_spectrum=generate_kmer_spectrum);
+	eval_contigs(ref_path, contigs_path, temp_path, generate_kmer_spectrum=generate_kmer_spectrum, silent=silent_mode);
 
 if __name__ == "__main__":
 	main();
