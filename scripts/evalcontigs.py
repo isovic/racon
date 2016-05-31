@@ -95,6 +95,7 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 
 	avg_accuracy_overall = 0.0;
 	avg_id_overall = 0.0;
+	num_valid_contigs = 0;
 
 	single_contig_path = '%s/singlecontig.fasta' % (temp_folder);
 	for i in xrange(0, len(seqs_contigs)):
@@ -108,6 +109,7 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 		### Run nucmer to align the contig to the reference, also, filter the delta file and generate alignment coordinates.
 		nucmer_out_prefix = '%s/nucmer' % (temp_folder);
 		log('Running MUMmer on contig: "%s"' % (contig_name), sys.stderr, silent=silent);
+		log('Contig length: %d' % (len(contig_seq)), sys.stderr, silent=silent);
 		command = '%s --maxmatch --extend -p %s %s %s; delta-filter -r -q %s.delta > %s.filt.delta; show-coords -r -c %s.filt.delta > %s.filt.coords' % \
 					(NUCMER_PATH, nucmer_out_prefix, ref_path, single_contig_path, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix);
 		[rc, rstdout, rstderr] = execute_command_with_ret(DRY_RUN, command, silent=True);
@@ -161,17 +163,25 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 			avg_accuracy_contig += accuracy;
 			avg_id_contig += frag[7];
 
-		avg_accuracy_contig /= float(len(frags));
-		avg_id_contig /= float(len(frags));
-		log('Average ID for contig "%s": %f%%' % (contig_name, avg_id_contig), sys.stderr, silent=silent);
-		log('Average accuracy for contig "%s": %f%%' % (contig_name, 100.0*avg_accuracy_contig), sys.stderr, silent=silent);
-		log('', sys.stderr, silent=silent);
+		if (len(frags) > 0):
+			avg_accuracy_contig /= float(len(frags));
+			avg_id_contig /= float(len(frags));
+			log('Average ID for contig "%s": %f%%' % (contig_name, avg_id_contig), sys.stderr, silent=silent);
+			log('Average accuracy for contig "%s": %f%%' % (contig_name, 100.0*avg_accuracy_contig), sys.stderr, silent=silent);
+			log('', sys.stderr, silent=silent);
 
-		avg_accuracy_overall += avg_accuracy_contig;
-		avg_id_overall += avg_id_contig;
+			avg_accuracy_overall += avg_accuracy_contig;
+			avg_id_overall += avg_id_contig;
+			num_valid_contigs += 1;
+		else:
+			log('ERROR: There are no frags for contig "s"! Continuing, will not be taken into account.' % (contig_name), sys.stderr, silent=silent);
 
-	avg_accuracy_overall /= float(len(seqs_contigs));
-	avg_id_overall /= float(len(seqs_contigs));
+
+	if (num_valid_contigs > 0):
+		avg_accuracy_overall /= float(num_valid_contigs);
+		avg_id_overall /= float(num_valid_contigs);
+	else:
+		log('ERROR: There are no valid contigs in file "%s"! None of the contigs had valid MUMmer alignments.\n' % (contig_path), sys.stderr, silent=silent);
 
 	log('Draft assembly: "%s"' % (contig_path), sys.stderr, silent=silent);
 	log('Overall average ID for the draft assembly: %f%%' % (avg_id_overall), sys.stderr, silent=silent);
