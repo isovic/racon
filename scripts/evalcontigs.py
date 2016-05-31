@@ -179,7 +179,7 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 	log('', sys.stderr, silent=silent);
 
 	sys.stdout.write('================= Summary ===================\n');
-	sys.stdout.write('Draft assembly: "%s"' % (contig_path));
+	sys.stdout.write('Draft assembly: "%s"\n' % (contig_path));
 	sys.stdout.write('Overall average ID for the draft assembly: %f%%\n' % (avg_id_overall));
 	sys.stdout.write('Overall average accuracy for the draft assembly: %f%%\n' % (100.0*avg_accuracy_overall));
 	sys.stdout.write('=============================================\n\n');
