@@ -174,7 +174,7 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 			avg_id_overall += avg_id_contig;
 			num_valid_contigs += 1;
 		else:
-			log('ERROR: There are no frags for contig "s"! Continuing, will not be taken into account.' % (contig_name), sys.stderr, silent=silent);
+			log('ERROR: There are no frags for contig "%s"! Continuing, will not be taken into account.' % (contig_name), sys.stderr, silent=silent);
 
 
 	if (num_valid_contigs > 0):
