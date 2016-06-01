@@ -108,7 +108,7 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 
 		### Run nucmer to align the contig to the reference, also, filter the delta file and generate alignment coordinates.
 		nucmer_out_prefix = '%s/nucmer' % (temp_folder);
-		log('Running MUMmer on contig: "%s"' % (contig_name), sys.stderr, silent=silent);
+		log('Running MUMmer on contig %d / %d: "%s"' % ((i + 1), len(seqs_contigs), contig_name), sys.stderr, silent=silent);
 		log('Contig length: %d' % (len(contig_seq)), sys.stderr, silent=silent);
 		command = '%s --maxmatch --extend -p %s %s %s; delta-filter -r -q %s.delta > %s.filt.delta; show-coords -r -c %s.filt.delta > %s.filt.coords' % \
 					(NUCMER_PATH, nucmer_out_prefix, ref_path, single_contig_path, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix, nucmer_out_prefix);
@@ -128,6 +128,9 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 		avg_id_contig = 0.0;
 
 		log('Running Edlib to determine the edit distance for each fragment...', sys.stderr, silent=silent);
+		debug_frags_path = '%s/frags.%d.csv' % (temp_folder, i);
+		fp_frags = open(debug_frags_path, 'w');
+		fp_frags.write('frag_or_summary\trstart\trend\tqstart\tqend\tfwd\trname\tqname\tidentity\trlen\tqlen\tedit_dist\tnormalized_edit_dist\taccuracy\n')
 		for frag in frags:
 			# print frag;
 
@@ -149,12 +152,16 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 			command = '%s %s %s -m NW' % (EDLIB_PATH, nw_contig_path, nw_ref_path);
 			[rc, rstdout, rstderr] = execute_command_with_ret(DRY_RUN, command, silent=True);
 			scores = parse_edlib_scores(rstdout);
-			if (len(scores) == 0): log('ERROR: len(scores) == 0!\nreturn code: %d\nrstdout:\n%s' % (rc, rstdout), sys.stderr);
+			if (len(scores) == 0):
+				log('ERROR: len(scores) == 0!\nreturn code: %d\nrstdout:\n%s' % (rc, rstdout), sys.stderr);
+				continue;
 			# sys.stderr.write('Final edit distance: %d\n' % (scores[0]));
 
 			normalized_edit_dist = float(scores[0]) / float(abs(qend - qstart + 1));
 			accuracy = (1.0 - normalized_edit_dist);
 
+			frag.append(abs(rend - rstart + 1));
+			frag.append(abs(qend - qstart + 1));
 			frag.append(scores[0]);
 			frag.append(100.0 * normalized_edit_dist);
 			frag.append(100.0 * accuracy);
@@ -162,6 +169,8 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 
 			avg_accuracy_contig += accuracy;
 			avg_id_contig += frag[7];
+
+			fp_frags.write('f\t' + '\t'.join([str(val) for val in frag]) + '\n');
 
 		if (len(frags) > 0):
 			avg_accuracy_contig /= float(len(frags));
@@ -176,12 +185,17 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 		else:
 			log('ERROR: There are no frags for contig "%s"! Continuing, will not be taken into account.' % (contig_name), sys.stderr, silent=silent);
 
+		# fp_frags.write('s\t%s\t%f\t%f\n' % (rname, avg_id_contig, 100.0*avg_accuracy_contig))
+		fp_frags.write('s\t0\t0\t0\t0\t-\t%s\t-\t%f\t0\t0\t0\t0\t%f\n' % (rname, avg_id_contig, 100.0*avg_accuracy_contig))
+		fp_frags.close();
 
 	if (num_valid_contigs > 0):
 		avg_accuracy_overall /= float(num_valid_contigs);
 		avg_id_overall /= float(num_valid_contigs);
 	else:
 		log('ERROR: There are no valid contigs in file "%s"! None of the contigs had valid MUMmer alignments.\n' % (contig_path), sys.stderr, silent=silent);
+
+
 
 	log('Draft assembly: "%s"' % (contig_path), sys.stderr, silent=silent);
 	log('Overall average ID for the draft assembly: %f%%' % (avg_id_overall), sys.stderr, silent=silent);
