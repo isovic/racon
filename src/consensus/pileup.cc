@@ -16,12 +16,13 @@ Pileup::Pileup(const SingleSequence* ref, std::vector<const SingleSequence*>& re
   bases_.clear();
   bases_.resize(ref->get_sequence_length());
 
+  auto rdata = ref->get_data();
   for (int64_t i=0; i<ref->get_sequence_length(); i++) {
-    bases_[i].ref_base = ref->get_data()[i];
+    bases_[i].ref_base = rdata[i];
   }
 
   for (int64_t i=0; i<ref_alns.size(); i++) {
-    if ((i % 1000) == 0) { fprintf (stderr, "Adding alignment %d to the pileup...\n", i); }
+//    if ((i % 1000) == 0) { fprintf (stderr, "Adding alignment %d to the pileup...\n", i); }
     AddAlignment(ref, ref_alns[i], i);
   }
 }

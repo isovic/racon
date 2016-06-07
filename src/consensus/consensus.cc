@@ -257,9 +257,15 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
   GroupAlignmentsToContigs(alns, -1.0, ctg_names, all_ctg_alns);
 
   // Verbose.
-  LOG_MEDHIGH("In total, there are %ld contigs, each containing:\n", ctg_names.size());
-  for (int32_t i=0; i<ctg_names.size(); i++) {
-    LOG_MEDHIGH("\t[%ld] %s %ld alignments\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size());
+  // If we are doing error correction, parallelization is per-read and not per-window.
+  // We need to disable some of the debug info.
+  if (parameters.do_erc == false) {
+    LOG_MEDHIGH("In total, there are %ld contigs for consensus, each containing:\n", ctg_names.size());
+    for (int32_t i=0; i<ctg_names.size(); i++) {
+      LOG_MEDHIGH("\t[%ld] %s %ld alignments\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size());
+    }
+  } else {
+    LOG_MEDHIGH("In total, there are %ld sequences for error correction.\n", ctg_names.size());
   }
 
   // Hash the sequences by their name.
@@ -296,7 +302,12 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
     // This sorts ascending by the pos field.
     std::sort(ctg_alns.begin(), ctg_alns.end(), seqaln_sort_key());
 
-    LOG_ALL("Starting consensus for contig %ld / %ld (%.2f%%): %s\n", (i + 1), ctg_names.size(), 100.0*((float) (i + 1)) / ((float) ctg_names.size()), contig->get_header());
+    // If we are doing error correction, parallelization is per-read and not per-window.
+    // We need to disable some of the debug info.
+    if (parameters.do_erc == false) {
+      LOG_ALL("Starting consensus for contig %ld / %ld (%.2f%%): %s\n", (i + 1), ctg_names.size(), 100.0*((float) (i + 1)) / ((float) ctg_names.size()), contig->get_header());
+    }
+
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
     if (parameters.do_pileup == false) {
@@ -328,8 +339,10 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
     ///////////////////////////////////////
 //    LOG_MEDHIGH_NOHEADER("\n");
-    LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
-    LOG_MEDHIGH_NOHEADER("\n");
+    if (parameters.do_erc == false) {
+      LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
+      LOG_MEDHIGH_NOHEADER("\n");
+    }
   }
 
   return 0;

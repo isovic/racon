@@ -65,6 +65,18 @@ int FilterMHAPErc(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine
   return 0;
 }
 
+int DuplicateAndSwitch(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out) {
+  overlaps_out.clear();
+  overlaps_out.reserve(overlaps_in.size());
+  for (int64_t i=0; i<overlaps_in.size(); i++) {
+    overlaps_out.push_back(overlaps_in[i]);
+    MHAPLine o = overlaps_in[i];
+    o.Switch();
+    overlaps_out.push_back(o);
+  }
+  return 0;
+}
+
 int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::vector<MHAPLine> &overlaps, int32_t num_threads, SequenceFile &aligned) {
   aligned.Clear();
 

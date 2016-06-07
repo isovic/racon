@@ -121,22 +121,23 @@ int main(int argc, char* argv[]) {
   } else {
     std::string mhap = parameters.aln_path;
     LOG_ALL("Using MHAP for input alignments. (%s)\n", mhap.c_str());
-    std::vector<MHAPLine> overlaps, overlaps_filtered;
+    std::vector<MHAPLine> overlaps, overlaps_filtered, overlaps_final;
 
     LOG_ALL("Parsing the MHAP file.\n");
     ParseMHAP(mhap, overlaps);
     LOG_ALL("Filtering MHAP overlaps.\n");
     if (parameters.do_erc == false) {
-      FilterMHAP(overlaps, overlaps_filtered, parameters.error_rate);
+      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
     } else {
       FilterMHAPErc(overlaps, overlaps_filtered, parameters.error_rate);
+      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
     }
 
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
     seqs_sam = new SequenceFile();
     LOG_ALL("Aligning overlaps.\n");
-    AlignMHAP(seqs_gfa, seqs_reads, overlaps_filtered, parameters.num_threads, *seqs_sam);
+    AlignMHAP(seqs_gfa, seqs_reads, overlaps_final, parameters.num_threads, *seqs_sam);
   }
 
   // Sanity check to see if the reads have quality values.

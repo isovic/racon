@@ -31,6 +31,13 @@ class MHAPLine {
     return 0;
   }
 
+  void Switch() {
+    MHAPLine T = *this;
+    Aid = T.Bid; Bid = T.Aid;
+    Arev = T.Brev; Astart = T.Bstart; Aend = T.Bend; Alen = T.Blen;
+    Brev = T.Arev; Bstart = T.Astart; Bend = T.Aend; Blen = T.Alen;
+  }
+
   std::string Verbose() const {
     std::stringstream ss;
     ss << Aid << " " << Bid << " " << perc_err << " " << shared_minmers << " " << Arev << " " << Astart << " " << Aend << " " << Alen << " " << Brev << " " << Bstart << " " << Bend << " " << Blen;
@@ -55,6 +62,7 @@ class MHAPLine {
 int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps);
 int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate);
 int FilterMHAPErc(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate);
+int DuplicateAndSwitch(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out);
 int EdlibNWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
