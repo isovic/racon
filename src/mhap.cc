@@ -72,6 +72,7 @@ int DuplicateAndSwitch(const std::vector<MHAPLine> &overlaps_in, std::vector<MHA
     overlaps_out.push_back(overlaps_in[i]);
     MHAPLine o = overlaps_in[i];
     o.Switch();
+    if (o.Arev) { o.ReverseComplement(); }
     overlaps_out.push_back(o);
   }
   return 0;

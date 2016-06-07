@@ -38,6 +38,18 @@ class MHAPLine {
     Brev = T.Arev; Bstart = T.Astart; Bend = T.Aend; Blen = T.Alen;
   }
 
+  void ReverseComplement() {
+    MHAPLine T = *this;
+
+    Arev= 1 - T.Arev;
+    Astart = T.Alen - T.Aend - 1;
+    Aend = T.Alen - T.Astart - 1;
+
+    Brev = 1 - T.Brev;
+    Bstart = T.Blen - T.Bend - 1;
+    Bend = T.Blen - T.Bstart - 1;
+  }
+
   std::string Verbose() const {
     std::stringstream ss;
     ss << Aid << " " << Bid << " " << perc_err << " " << shared_minmers << " " << Arev << " " << Astart << " " << Aend << " " << Alen << " " << Brev << " " << Bstart << " " << Bend << " " << Blen;
