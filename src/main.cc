@@ -26,12 +26,14 @@ int main(int argc, char* argv[]) {
   bool help = false;
   ProgramParameters parameters;
   ArgumentParser argparser;
-  argparser.AddArgument(&(parameters.raw_contigs_path), VALUE_TYPE_STRING, "", "raw", "", "Path to the raw contig sequences (output from the layout step). GFA, FASTA/FASTQ or SAM formats allowed.", -3, "Input/Output options");
-  argparser.AddArgument(&(parameters.aln_path), VALUE_TYPE_STRING, "", "alnpath", "", "Path to a SAM file with read-to-raw contig alignments.", -2, "Input/Output options");
+  argparser.AddArgument(&(parameters.reads_path), VALUE_TYPE_STRING, "", "reads", "", "Reads in FASTQ format.", -4, "Input/Output options");
+  argparser.AddArgument(&(parameters.aln_path), VALUE_TYPE_STRING, "", "alnpath", "", "Path to a MHAP file with read-to-target overlaps.", -3, "Input/Output options");
+  argparser.AddArgument(&(parameters.raw_contigs_path), VALUE_TYPE_STRING, "", "raw", "", "Path to the raw contig/read sequences (output from the layout step). GFA, FASTA/FASTQ or SAM formats allowed.", -2, "Input/Output options");
   argparser.AddArgument(&(parameters.consensus_path), VALUE_TYPE_STRING, "", "out", "", "Output consensus sequence.", -1, "Input/Output options");
 
-  argparser.AddArgument(&(parameters.is_mhap), VALUE_TYPE_BOOL, "", "mhap", "0", "MHAP is provided instead of SAM. This requires an additional parameter '--reads' specifying the input reads FASTQ file.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.reads_path), VALUE_TYPE_STRING, "", "reads", "", "Reads in FASTQ format.", 0, "Input/Output options");
+  argparser.AddArgument(&(parameters.is_sam), VALUE_TYPE_BOOL, "", "sam", "0", "SAM is provided instead of MHAP. The reads file will be ignored, and seq and qual fields from the SAM file will be used.", 0, "Input/Output options");
+  argparser.AddArgument(&(parameters.is_paf), VALUE_TYPE_BOOL, "", "paf", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
+//  argparser.AddArgument(&(parameters.is_mhap), VALUE_TYPE_BOOL, "", "mhap", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
 
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
@@ -40,6 +42,8 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "20000", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Control");
   argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "The number of batches which to process", 0, "Control");
   argparser.AddArgument(&(parameters.start_window), VALUE_TYPE_INT64, "", "start-window", "0", "ID of the window to start processing from.", 0, "Control");
+  argparser.AddArgument(&(parameters.do_erc), VALUE_TYPE_BOOL, "", "erc", "0", "Perform error-correction instead of contig consensus. The only difference is in the type of parallelization to achieve better performance.", 0, "Control");
+  argparser.AddArgument(&(parameters.error_rate), VALUE_TYPE_DOUBLE, "e", "error-rate", "0.30", "Maximum allowed error rate. Used for filtering faulty overlaps.", 0, "Algorithm");
 
   argparser.AddArgument(&(parameters.match), VALUE_TYPE_INT32, "M", "match", "5", "Match score (positive value).", 0, "Alignment");
   argparser.AddArgument(&(parameters.mismatch), VALUE_TYPE_INT32, "X", "mismatch", "-4", "Mismatch penalty (negative value expected).", 0, "Alignment");
@@ -61,7 +65,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
 
   if (argc == 1) {
-    fprintf (stderr, "  %s [options] <raw_contigs.fasta> <alignments.sam> <out_consensus.fasta>\n\n", argv[0]);
+    fprintf (stderr, "  %s [options] <reads.fastq> <overlaps.mhap> <raw_contigs.fasta> <out_consensus.fasta>\n\n", argv[0]);
     fprintf (stderr, "%s\n", argparser.VerboseUsage().c_str());
     exit(1);
   }
@@ -76,8 +80,11 @@ int main(int argc, char* argv[]) {
   //  fprintf (stderr, "%s\n\n", argparser.VerboseArguments().c_str());
 
   // Sanity check on parameter values.
-  if (parameters.is_mhap == true && parameters.reads_path == "") {
-//    FATAL_REPORT("Reads file not specified! Exiting.");
+  if (parameters.is_sam == true && parameters.is_paf == true) {
+    fprintf (stderr, "ERROR: More than one input overlap/alignment format specified. Exiting.\n");
+    exit(1);
+  }
+  if (parameters.is_sam == false && parameters.reads_path == "") {
     fprintf (stderr, "ERROR: Reads file not specified! Exiting.\n");
     exit(1);
   }
@@ -106,7 +113,7 @@ int main(int argc, char* argv[]) {
 
   SequenceFile *seqs_sam = NULL;
 
-  if (parameters.is_mhap == false) {
+  if (parameters.is_sam == true) {
     std::string sam = parameters.aln_path;
     LOG_ALL("Using SAM for input alignments. (%s)\n", sam.c_str());
     LOG_ALL("Parsing the SAM file.\n");
@@ -119,13 +126,25 @@ int main(int argc, char* argv[]) {
     LOG_ALL("Parsing the MHAP file.\n");
     ParseMHAP(mhap, overlaps);
     LOG_ALL("Filtering MHAP overlaps.\n");
-    FilterMHAP(overlaps, overlaps_filtered);
+    if (parameters.do_erc == false) {
+      FilterMHAP(overlaps, overlaps_filtered, parameters.error_rate);
+    } else {
+      FilterMHAPErc(overlaps, overlaps_filtered, parameters.error_rate);
+    }
 
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
     seqs_sam = new SequenceFile();
     LOG_ALL("Aligning overlaps.\n");
     AlignMHAP(seqs_gfa, seqs_reads, overlaps_filtered, parameters.num_threads, *seqs_sam);
+  }
+
+  // Sanity check to see if the reads have quality values.
+  for (int64_t i=0; i<seqs_sam->get_sequences().size(); i++) {
+    if (seqs_sam->get_sequences()[i]->get_quality() == NULL || seqs_sam->get_sequences()[i]->get_quality_length() == 0) {
+      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
+      exit(1);
+    }
   }
 
   ConsensusDirectFromAln(parameters, seqs_gfa, *seqs_sam);

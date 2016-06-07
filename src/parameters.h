@@ -40,7 +40,12 @@ struct ProgramParameters {
   bool do_realign = false;
   std::string realigned_aln_path = "";
   bool do_pileup = false;
+  bool is_sam = false;
+  bool is_paf = false;
   bool is_mhap = false;
+
+  bool do_erc = false;
+  double error_rate = 0.30;
 
   int32_t verbose_level = 1;
 };

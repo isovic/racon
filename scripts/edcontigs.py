@@ -157,8 +157,11 @@ def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=Fals
 		lines = fp.readlines();
 		fp.close();
 		coords = parse_coords_lines(lines, contig_name, seqs_ref, ref_hash, seqs_contigs, contig_hash);
+		print '';
 		print 'coords: "%s"' % (coords);
-		print 'lines:\n', lines;
+		print 'lines:';
+		for line in lines:
+			print line;
 		sys.stdout.flush();
 		[rstart, rend, qstart, qend, is_fwd, rname, qname] = coords;
 		extract_seqs_for_edlib(temp_folder, '.%d' % (i), ref_path, contig_path, rstart, rend, qstart, qend, is_fwd, rname, qname, generate_kmer_spectrum=generate_kmer_spectrum);

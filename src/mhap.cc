@@ -30,11 +30,11 @@ int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps)
   return 0;
 }
 
-int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out) {
+int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate) {
   std::map<int64_t, MHAPLine> fmap;     // Filtering map.
 
   for (int64_t i=0; i<overlaps_in.size(); i++) {
-    if (!overlaps_in[i].CheckConstraints(0.30)) {
+    if (!overlaps_in[i].CheckConstraints(error_rate)) {
       auto it = fmap.find(overlaps_in[i].Aid);
       if (it == fmap.end() || overlaps_in[i].shared_minmers > it->second.shared_minmers) {
         fmap[overlaps_in[i].Aid] = overlaps_in[i];
@@ -51,6 +51,17 @@ int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &
 
 //  std::sort(overlaps_out.begin(), overlaps_out.end(), [](const MHAPLine &a, const MHAPLine &b) { return a.Bstart < b.Bstart; });
 
+  return 0;
+}
+
+int FilterMHAPErc(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate) {
+  overlaps_out.clear();
+  overlaps_out.reserve(overlaps_in.size());
+  for (int64_t i=0; i<overlaps_in.size(); i++) {
+    if (!overlaps_in[i].CheckConstraints(error_rate)) {
+      overlaps_out.push_back(overlaps_in[i]);
+    }
+  }
   return 0;
 }
 

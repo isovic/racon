@@ -53,7 +53,8 @@ class MHAPLine {
 };
 
 int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps);
-int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out);
+int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate);
+int FilterMHAPErc(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate);
 int EdlibNWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
