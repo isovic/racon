@@ -26,7 +26,7 @@ consensus=results/consensus-${dataset}-${suffix}-iter1.fasta
 
 tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o $memtime \
-	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${contigs} ${sam} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --sam -t ${threads} ${reads} ${sam} ${contigs} ${consensus}
 ############################################
 
 #### Run the second iteration ###
@@ -36,7 +36,7 @@ consensus=results/consensus-${dataset}-${suffix}-iter2.fasta
 
 tools/graphmap/bin/Linux-x64/graphmap align -a anchor --rebuild-index -B 0 -r ${contigs} -d ${reads} -o ${sam} --extcigar -t ${threads}
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o $memtime \
-	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${contigs} ${sam} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --sam -t ${threads} ${reads} ${sam} ${contigs} ${consensus}
 ############################################
 
 ### Run dnadiff to get the Avg. Identity ###

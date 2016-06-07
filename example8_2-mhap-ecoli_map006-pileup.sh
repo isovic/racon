@@ -9,12 +9,12 @@ threads=4
 mkdir -p results/temp
 mkdir -p temp
 
-### E. Coli PacBio P6C4 ~160x
-dataset=ecoli_pacbio_p6c4
-layout_gfa=test-data/DATASETS_FOR_CONSENSUS/$dataset/layout.gfa
-reads=test-data/DATASETS_FOR_CONSENSUS/$dataset/reads.fastq
-reference=test-data/DATASETS_FOR_CONSENSUS/$dataset/ecoli_K12_MG1655_U00096.3.fasta
-suffix=mhap
+### E. Coli MAP006 54x
+layout_gfa=test-data/DATASETS_FOR_CONSENSUS/ecoli_map006_ont/layout.gfa
+reads=test-data/DATASETS_FOR_CONSENSUS/ecoli_map006_ont/reads.fastq
+reference=test-data/DATASETS_FOR_CONSENSUS/ecoli_map006_ont/ecoli_K12_MG1655_U00096.3.fasta
+dataset=ecoli_map006
+suffix=mhap-pileup
 
 layout_fasta=${layout_gfa}.fasta
 awk '$1 ~/S/ {print ">"$2"\n"$3}' ${layout_gfa} > ${layout_fasta}
@@ -51,7 +51,7 @@ echo $mhap
 echo "Running Racon:"
 echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} --mhap --reads $reads ${contigs} ${mhap} ${consensus}"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
-	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${mhap} ${contigs} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --pileup -t ${threads} ${reads} ${mhap} ${contigs} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} --mhap --reads $reads ${contigs} ${sam} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
@@ -100,7 +100,7 @@ echo $mhap
 echo "Running Racon:"
 echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} --mhap --reads $reads ${contigs} ${mhap} ${consensus}"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
-	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${mhap} ${contigs} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --pileup -t ${threads} ${reads} ${mhap} ${contigs} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
 ############################################
