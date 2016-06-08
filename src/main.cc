@@ -126,12 +126,14 @@ int main(int argc, char* argv[]) {
     LOG_ALL("Parsing the MHAP file.\n");
     ParseMHAP(mhap, overlaps);
     LOG_ALL("Filtering MHAP overlaps.\n");
-    if (parameters.do_erc == false) {
-      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-    } else {
-      FilterMHAPErc(overlaps, overlaps_filtered, parameters.error_rate);
-      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
-    }
+    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
+
+//    if (parameters.do_erc == false) {
+//      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
+//    } else {
+//      FilterMHAPErc(overlaps, overlaps_filtered, parameters.error_rate);
+//      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
+//    }
 
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
