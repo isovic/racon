@@ -316,14 +316,15 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
       } else {
         if (thread_id == 0) {
-          LOG_MEDHIGH("\r(thread_id = %d) Processing contig %ld / %ld (%.2f%%), len: %ld", thread_id, (i + 1), ctg_names.size(), 100.0f*(((float) (i)) / ((float) ctg_names.size())), contig->get_header(), contig->get_sequence_length());
+          LOG_MEDHIGH("\r(thread_id = %d) Processing contig %ld / %ld (%.2f%%), len: %10ld", thread_id, (i + 1), ctg_names.size(), 100.0f*(((float) (i)) / ((float) ctg_names.size())), contig->get_header(), contig->get_sequence_length());
         }
 
         CreateConsensus(parameters, num_window_threads, contig, ctg_alns, aln_lens_on_ref, consensus, NULL);
         #pragma omp critical
-        fprintf (fp_out_cons, ">Consensus_%s\n%s\n", contig->get_header(), consensus.c_str());
-        #pragma omp critical
-        fflush (fp_out_cons);
+        {
+          fprintf (fp_out_cons, ">Consensus_%s\n%s\n", contig->get_header(), consensus.c_str());
+//          fflush (fp_out_cons);
+        }
       }
 
     } else {
@@ -497,7 +498,7 @@ int MajorityVoteFromMSA(std::vector<std::string> &msa, std::string &consensus) {
 void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig, std::vector<const SingleSequence *> &ctg_alns, std::map<const SingleSequence *, int64_t> &aln_lens_on_ref, std::string &ret_consensus, FILE *fp_out_cons) {
   std::stringstream ss_cons;
 
-  if (fp_out_cons) {
+  if (parameters.do_erc == false && fp_out_cons) {
     fprintf (fp_out_cons, ">Consensus_%s\n", contig->get_header());
     fflush (fp_out_cons);
   }
@@ -633,7 +634,7 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
       int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
       int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
       ss_cons << consensus_windows[id_in_batch];
-      if (fp_out_cons) {
+      if (parameters.do_erc == false && fp_out_cons) {
         fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
         fflush(fp_out_cons);
       }
@@ -730,7 +731,7 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
   }
 
   ret_consensus = ss_cons.str();
-  if (fp_out_cons) {
+  if (parameters.do_erc == false && fp_out_cons) {
     fprintf (fp_out_cons, "\n");
   }
 }
