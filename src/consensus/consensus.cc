@@ -316,7 +316,7 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
       } else {
         if (thread_id == 0) {
-          LOG_MEDHIGH("\r(thread_id = %d) Processing contig %ld / %ld (%.2f%%), len: %ld", thread_id, (i + 1), 100.0f*(((float) (i)) / ((float) ctg_names.size())), contig->get_header(), contig->get_sequence_length());
+          LOG_MEDHIGH("\r(thread_id = %d) Processing contig %ld / %ld (%.2f%%), len: %ld", thread_id, (i + 1), ctg_names.size(), 100.0f*(((float) (i)) / ((float) ctg_names.size())), contig->get_header(), contig->get_sequence_length());
         }
 
         CreateConsensus(parameters, num_window_threads, contig, ctg_alns, aln_lens_on_ref, consensus, NULL);
