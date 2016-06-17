@@ -99,6 +99,15 @@ int main(int argc, char* argv[]) {
 
   std::string alt_contig_path = argv[3];
 
+
+  // Sanity check to see if the reads have quality values.
+  for (int64_t i=0; i<seqs_sam.get_sequences().size(); i++) {
+    if (seqs_sam.get_sequences()[i]->get_quality() == NULL || seqs_sam.get_sequences()[i]->get_quality_length() == 0) {
+      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
+      exit(1);
+    }
+  }
+
 //  Consensus(parameters, seqs_gfa, seqs_sam);
   ConsensusDirectFromAln(parameters, seqs_gfa, seqs_sam);
 
