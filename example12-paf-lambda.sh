@@ -9,12 +9,12 @@ threads=4
 mkdir -p results/temp
 mkdir -p temp
 
-### E. Coli PacBio P6C4 ~160x
-dataset=ecoli_pacbio_p6c4
-layout_gfa=test-data/DATASETS_FOR_CONSENSUS/$dataset/layout.gfa
-reads=test-data/DATASETS_FOR_CONSENSUS/$dataset/reads.fastq
-reference=test-data/DATASETS_FOR_CONSENSUS/$dataset/ecoli_K12_MG1655_U00096.3.fasta
-suffix=mhap-1111
+### Lambda:
+layout_gfa=test-data/lambda/layout-miniasm.gfa
+reads=test-data/lambda/reads.fastq
+reference=test-data/lambda/NC_001416.fa
+dataset=lambda_30x_ont
+suffix=mhap
 
 layout_fasta=${layout_gfa}.fasta
 awk '$1 ~/S/ {print ">"$2"\n"$3}' ${layout_gfa} > ${layout_fasta}
@@ -32,7 +32,7 @@ curriter=iter1
 contigs=results/consensus-${dataset}-${suffix}-$previter.fasta
 sam=results/temp/consensus-${dataset}-${suffix}-$curriter.sam
 paf=results/temp/consensus-${dataset}-${suffix}-$curriter.paf
-mhap=results/temp/consensus-${dataset}-${suffix}-$curriter.mhap
+# mhap=results/temp/consensus-${dataset}-${suffix}-$curriter.mhap
 consensus=results/consensus-${dataset}-${suffix}-$curriter.fasta
 memtime_minimap=results/consensus-${dataset}-${suffix}-$curriter.minimap.memtime
 memtime_racon=results/consensus-${dataset}-${suffix}-$curriter.racon.memtime
@@ -43,15 +43,15 @@ memtime_racon=results/consensus-${dataset}-${suffix}-$curriter.racon.memtime
 echo "tools/minimap/minimap $contigs $readsfasta > $paf"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_minimap} \
 	tools/minimap/minimap $contigs $readsfasta > $paf
-echo "tools/miniasm/misc/paf2mhap.pl $contigs $readsfasta $paf > $mhap"
-scripts/paf2mhap.pl $contigs $readsfasta $paf > $mhap
+# echo "tools/miniasm/misc/paf2mhap.pl $contigs $readsfasta $paf > $mhap"
+# scripts/paf2mhap.pl $contigs $readsfasta $paf > $mhap
 echo $reads
 echo $mhap
 
 echo "Running Racon:"
-echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --mhap -t ${threads} --mhap --reads $reads ${contigs} ${mhap} ${consensus}"
+echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
-	bin/racon -M 1 -X -1 -G -1 -E -1 --bq 10 --mhap -t ${threads} ${reads} ${mhap} ${contigs} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} --mhap --reads $reads ${contigs} ${sam} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
@@ -81,7 +81,7 @@ curriter=iter2
 contigs=results/consensus-${dataset}-${suffix}-$previter.fasta
 sam=results/temp/consensus-${dataset}-${suffix}-$curriter.sam
 paf=results/temp/consensus-${dataset}-${suffix}-$curriter.paf
-mhap=results/temp/consensus-${dataset}-${suffix}-$curriter.mhap
+# mhap=results/temp/consensus-${dataset}-${suffix}-$curriter.mhap
 consensus=results/consensus-${dataset}-${suffix}-$curriter.fasta
 memtime_minimap=results/consensus-${dataset}-${suffix}-$curriter.minimap.memtime
 memtime_racon=results/consensus-${dataset}-${suffix}-$curriter.racon.memtime
@@ -92,15 +92,15 @@ memtime_racon=results/consensus-${dataset}-${suffix}-$curriter.racon.memtime
 echo "tools/minimap/minimap $contigs $readsfasta > $paf"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_minimap} \
 	tools/minimap/minimap $contigs $readsfasta > $paf
-echo "tools/miniasm/misc/paf2mhap.pl $contigs $readsfasta $paf > $mhap"
-scripts/paf2mhap.pl $contigs $readsfasta $paf > $mhap
+# echo "tools/miniasm/misc/paf2mhap.pl $contigs $readsfasta $paf > $mhap"
+# scripts/paf2mhap.pl $contigs $readsfasta $paf > $mhap
 echo $reads
 echo $mhap
 
 echo "Running Racon:"
-echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --mhap -t ${threads} --mhap --reads $reads ${contigs} ${mhap} ${consensus}"
+echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
-	bin/racon -M 1 -X -1 -G -1 -E -1 --bq 10 --mhap -t ${threads} ${reads} ${mhap} ${contigs} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
 ############################################

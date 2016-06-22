@@ -47,7 +47,7 @@ echo $mhap
 
 echo "Running Racon:"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
-	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --erc -t ${threads} ${reads} ${mhap} ${reads} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --mhap --erc -t ${threads} ${reads} ${mhap} ${reads} ${consensus}
 echo "Racon exited."
 
 rawreadssam=results/temp/consensus-${dataset}-${suffix}-$curriter.rawreads.ref.sam

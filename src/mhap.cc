@@ -7,7 +7,6 @@
 
 #include <map>
 #include <algorithm>
-#include "utility/utility_general.h"
 #include "libs/edlib.h"
 #include "mhap.h"
 #include <omp.h>
@@ -21,7 +20,7 @@ int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps)
   {
     std::istringstream iss(line);
     MHAPLine mhap_line;
-    if (!mhap_line.Parse(line)) {
+    if (!mhap_line.ParseMHAP(line)) {
       ret_overlaps.push_back(mhap_line);
     }
   }
@@ -29,6 +28,26 @@ int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps)
 
   return 0;
 }
+
+int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<MHAPLine> &ret_overlaps) {
+  ret_overlaps.clear();
+  std::ifstream infile(mhap_path);
+  std::string line;
+//  printf ("Parsing the MHAP file '%s'.\n", mhap_path.c_str());
+  while (std::getline(infile, line))
+  {
+    std::istringstream iss(line);
+    MHAPLine mhap_line;
+    if (!mhap_line.ParsePAF(line, qname_to_ids)) {
+      ret_overlaps.push_back(mhap_line);
+    }
+  }
+  infile.close();
+
+  return 0;
+}
+
+
 
 int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate) {
   std::map<int64_t, MHAPLine> fmap;     // Filtering map.
@@ -111,7 +130,8 @@ int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::ve
     int32_t thread_id = omp_get_thread_num();
 
     if (thread_id == 0) {
-      fprintf (stderr, "\rAligning overlap: %ld / %ld", i, overlaps.size());
+//      fprintf (stderr, "\rAligning overlap: %ld / %ld", i, overlaps.size());
+      LOG_ALL("\rAligning overlap: %ld / %ld (%.2f\%)", i, overlaps.size(), ((float) (i + 1)) / ((float) overlaps.size()));
       fflush(stderr);
     }
 

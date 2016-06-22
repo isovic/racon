@@ -256,23 +256,23 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
   LOG_MEDHIGH("Separating alignments to individual contigs.\n");
   GroupAlignmentsToContigs(alns, -1.0, ctg_names, all_ctg_alns);
 
+  // Hash the sequences by their name.
+  std::map<std::string, const SingleSequence *> rname_to_seq;
+  for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
+    rname_to_seq[contigs.get_sequences()[i]->get_header()] = contigs.get_sequences()[i];
+    rname_to_seq[TrimToFirstSpace(contigs.get_sequences()[i]->get_header())] = contigs.get_sequences()[i];
+  }
+
   // Verbose.
   // If we are doing error correction, parallelization is per-read and not per-window.
   // We need to disable some of the debug info.
   if (parameters.do_erc == false) {
     LOG_MEDHIGH("In total, there are %ld contigs for consensus, each containing:\n", ctg_names.size());
     for (int32_t i=0; i<ctg_names.size(); i++) {
-      LOG_MEDHIGH("\t[%ld] %s %ld alignments\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size());
+      LOG_MEDHIGH("\t[%ld] %s %ld alignments, contig len: %ld\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size(), rname_to_seq[ctg_names[i]]->get_sequence_length());
     }
   } else {
     LOG_MEDHIGH("In total, there are %ld sequences for error correction.\n", ctg_names.size());
-  }
-
-  // Hash the sequences by their name.
-  std::map<std::string, const SingleSequence *> rname_to_seq;
-  for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
-    rname_to_seq[contigs.get_sequences()[i]->get_header()] = contigs.get_sequences()[i];
-    rname_to_seq[TrimToFirstSpace(contigs.get_sequences()[i]->get_header())] = contigs.get_sequences()[i];
   }
 
   // Hash all the alignment lengths (which will be used a lot).

@@ -32,8 +32,8 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.consensus_path), VALUE_TYPE_STRING, "", "out", "", "Output consensus sequence.", -1, "Input/Output options");
 
   argparser.AddArgument(&(parameters.is_sam), VALUE_TYPE_BOOL, "", "sam", "0", "SAM is provided instead of MHAP. The reads file will be ignored, and seq and qual fields from the SAM file will be used.", 0, "Input/Output options");
-  argparser.AddArgument(&(parameters.is_paf), VALUE_TYPE_BOOL, "", "paf", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
-//  argparser.AddArgument(&(parameters.is_mhap), VALUE_TYPE_BOOL, "", "mhap", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
+//  argparser.AddArgument(&(parameters.is_paf), VALUE_TYPE_BOOL, "", "paf", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
+  argparser.AddArgument(&(parameters.is_mhap), VALUE_TYPE_BOOL, "", "mhap", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
 
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
@@ -118,10 +118,14 @@ int main(int argc, char* argv[]) {
     LOG_ALL("Using SAM for input alignments. (%s)\n", sam.c_str());
     LOG_ALL("Parsing the SAM file.\n");
     seqs_sam = new SequenceFile(SEQ_FORMAT_SAM, parameters.aln_path);
-  } else {
+
+  } else if (parameters.is_mhap == true) {
     std::string mhap = parameters.aln_path;
     LOG_ALL("Using MHAP for input alignments. (%s)\n", mhap.c_str());
     std::vector<MHAPLine> overlaps, overlaps_filtered, overlaps_final;
+
+    LOG_ALL("Loading reads.\n");
+    SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
 
     LOG_ALL("Parsing the MHAP file.\n");
     ParseMHAP(mhap, overlaps);
@@ -135,8 +139,48 @@ int main(int argc, char* argv[]) {
 //      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
     }
 
+    seqs_sam = new SequenceFile();
+    LOG_ALL("Aligning overlaps.\n");
+    AlignMHAP(seqs_gfa, seqs_reads, overlaps_final, parameters.num_threads, *seqs_sam);
+
+  } else {  // Using PAF for input overlaps.
+    std::string mhap = parameters.aln_path;
+    LOG_ALL("Using MHAP for input alignments. (%s)\n", mhap.c_str());
+    std::vector<MHAPLine> overlaps, overlaps_filtered, overlaps_final;
+
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
+
+    LOG_ALL("Hashing qnames.\n");
+    // Hash the read sequences by their name.
+    std::map<std::string, int64_t> qname_to_ids;
+    for (int32_t i=0; i<seqs_reads.get_sequences().size(); i++) {
+      std::string header = std::string(seqs_reads.get_sequences()[i]->get_header());
+      qname_to_ids[header] = i;
+      qname_to_ids[TrimToFirstSpace(header)] = i;
+      std::size_t found = header.find(":");
+      qname_to_ids[header.substr(0, found)] = i;
+    }
+    // Hash the contig sequences by their name.
+    for (int32_t i=0; i<seqs_gfa.get_sequences().size(); i++) {
+      std::string header = std::string(seqs_gfa.get_sequences()[i]->get_header());
+      qname_to_ids[header] = i;
+      qname_to_ids[TrimToFirstSpace(header)] = i;
+      std::size_t found = header.find(":");
+      qname_to_ids[header.substr(0, found)] = i;
+    }
+    LOG_ALL("Parsing the PAF file.\n");
+    ParsePAF(mhap, qname_to_ids, overlaps);
+    LOG_ALL("Filtering overlaps.\n");
+//    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
+
+    if (parameters.do_erc == false) {
+      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
+    } else {
+      FilterMHAPErc(overlaps, overlaps_final, parameters.error_rate);
+//      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
+    }
+
     seqs_sam = new SequenceFile();
     LOG_ALL("Aligning overlaps.\n");
     AlignMHAP(seqs_gfa, seqs_reads, overlaps_final, parameters.num_threads, *seqs_sam);
