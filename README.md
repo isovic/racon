@@ -28,7 +28,7 @@ Tip: Running Racon iteratively will produce better consensus sequences. (But don
 1. gcc >= 4.8  
 
 Optional:  
-MUMmer needs to be installed to successfully execute the example1-lambdas.sh script (for evaluation purposes).  
+MUMmer needs to be installed to successfully execute the example scripts (for evaluation purposes).  
 On Ubuntu-based systems:  
 ```  
 sudo apt-get install mummer  
