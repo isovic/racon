@@ -157,37 +157,27 @@ int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::ve
 //  }
 
   fprintf (stderr, "\n");
+  int64_t num_skipped_overlaps = 0;
 
   #pragma omp parallel for num_threads(num_threads) shared(aligned) schedule(dynamic, 1)
   for (int64_t i=0; i<overlaps.size(); i++) {
     int32_t thread_id = omp_get_thread_num();
 
     if (thread_id == 0) {
-//      fprintf (stderr, "\rAligning overlap: %ld / %ld", i, overlaps.size());
-      LOG_ALL("\rAligning overlap: %ld / %ld (%.2f\%)", i, overlaps.size(), ((float) (i + 1)) / ((float) overlaps.size()));
+      LOG_ALL("\rAligning overlap: %ld / %ld (%.2f\%), skipped %ld / %ld (%.2f\%)", i, overlaps.size(), 100.0f*((float) (i + 1)) / ((float) overlaps.size()), num_skipped_overlaps, overlaps.size(), 100.0f*((float) (num_skipped_overlaps)) / ((float) overlaps.size()));
       fflush(stderr);
     }
 
     auto &mhap = overlaps[i];
     MHAPLine omhap = mhap;
 
-//    if (!omhap.Brev) { continue; }
-//    if (omhap.Brev) { continue; }
-
     // Get the read.
     const SingleSequence* read = reads.get_sequences()[omhap.Aid - 1];
     // Get the reference. It could be reversed.
     const SingleSequence* ref = NULL;
     ref = refs.get_sequences()[omhap.Bid - 1];
-    //    if (omhap.Brev == 0) { ref = refs.get_sequences()[omhap.Bid - 1]; }
-//    else { ref = rev_refs.get_sequences()[omhap.Bid - 1]; }
 
     std::string ref_name(ref->get_header(), ref->get_header_length());
-
-//    printf ("%s\t%s\n", overlaps[i].Verbose().c_str(), read->get_header());
-//    fflush(stdout);
-
-
 
     SingleSequence *seq = new SingleSequence();
     seq->InitAllFromAscii((char *) read->get_header(), read->get_header_length(),
@@ -197,14 +187,13 @@ int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::ve
       seq->ReverseComplement();
       omhap.Astart = mhap.Alen - mhap.Aend;
       omhap.Aend = mhap.Alen - mhap.Astart - 1;
-//      omhap.Bstart = mhap.Blen - mhap.Bend;
-//      omhap.Bend = mhap.Blen - mhap.Bstart - 1;
     }
 
-    #pragma omp critical
-    aligned.AddSequence(seq, true);
-
-    SequenceAlignment aln;
+//    LOG_ALL(", len = %ld", seq->get_sequence_length());
+//    if (omhap.Alen != seq->get_sequence_length()) {
+//      printf ("\nWrong len! i = %ld, qname: '%s', len = %ld, omhap.Alen = %ld\n", i, seq->get_header(), seq->get_sequence_length(), omhap.Alen);
+//      exit(1);
+//    }
 
     int64_t aln_start = 0, aln_end = 0, editdist = 0;
     std::vector<unsigned char> alignment;
@@ -212,63 +201,85 @@ int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::ve
                             ref->get_data() + omhap.Bstart, (omhap.Bend - omhap.Bstart),
                             &aln_start, &aln_end, &editdist, alignment);
 
-    char *cigar_cstring = NULL;
-    int rccig = edlibAlignmentToCigar(&alignment[0], alignment.size(), EDLIB_CIGAR_EXTENDED, &cigar_cstring);
+//    if (i == 1710 || i == 1712 || i == 1714 || i == 1722) {
+//      printf ("\ni = %ld, qname: '%s', len = %ld\n", i, seq->get_header(), seq->get_sequence_length());
+//      printf ("Read coords start: %ld, end: %ld, len: %ld:\n%s\n", omhap.Astart, omhap.Aend, omhap.Alen, GetSubstring((char *) (seq->get_data() + omhap.Astart), (omhap.Aend - omhap.Astart)).c_str());
+//      printf ("Ref coords start: %ld, end: %ld, len: %ld:\n%s\n", omhap.Bstart, omhap.Bend, omhap.Blen, GetSubstring((char *) (ref->get_data() + omhap.Bstart), (omhap.Bend - omhap.Bstart)).c_str());
+//      printf ("\n");
+//      fflush(stdout);
+//    }
 
-    std::string cigar_string(cigar_cstring);
+    if (!rcaln) {
+      char *cigar_cstring = NULL;
+      int rccig = edlibAlignmentToCigar(&alignment[0], alignment.size(), EDLIB_CIGAR_EXTENDED, &cigar_cstring);
 
-    aln.SetCigarFromString(cigar_string);
-    aln.set_pos(omhap.Bstart + aln_start + 1);
-    aln.set_flag((int32_t) (16 * omhap.Brev));     // 0 if fwd and 16 if rev.
-    aln.set_mapq(40);
-    aln.set_rname(ref_name);
+      std::string cigar_string(cigar_cstring);
 
-    // Remove insertions at front.
-    for (int32_t j=0; j<aln.cigar().size(); j++) {
-      if (aln.cigar()[j].count == 0) { continue; }
-      if (aln.cigar()[j].op != 'D') { break; }
-      aln.cigar()[j].count = 0;
-    }
-    for (int32_t j=0; j<aln.cigar().size(); j++) {
-      if (aln.cigar()[j].count == 0) { continue; }
-      if (aln.cigar()[j].op != 'I') { break; }
-      aln.cigar()[j].op = 'S';
-    }
-    // Remove insertions at back.
-    for (int32_t j=(aln.cigar().size()-1); j>=0; j--) {
-      if (aln.cigar()[j].count == 0) { continue; }
-      if (aln.cigar()[j].op != 'D') { break; }
-      aln.cigar()[j].count = 0;
-    }
-    for (int32_t j=(aln.cigar().size()-1); j>=0; j--) {
-      if (aln.cigar()[j].count == 0) { continue; }
-      if (aln.cigar()[j].op != 'I') { break; }
-      aln.cigar()[j].op = 'S';
+      SequenceAlignment aln;
+      aln.SetCigarFromString(cigar_string);
+      aln.set_pos(omhap.Bstart + aln_start + 1);
+      aln.set_flag((int32_t) (16 * omhap.Brev));     // 0 if fwd and 16 if rev.
+      aln.set_mapq(40);
+      aln.set_rname(ref_name);
+
+      // Remove insertions at front.
+      for (int32_t j=0; j<aln.cigar().size(); j++) {
+        if (aln.cigar()[j].count == 0) { continue; }
+        if (aln.cigar()[j].op != 'D') { break; }
+        aln.cigar()[j].count = 0;
+      }
+      for (int32_t j=0; j<aln.cigar().size(); j++) {
+        if (aln.cigar()[j].count == 0) { continue; }
+        if (aln.cigar()[j].op != 'I') { break; }
+        aln.cigar()[j].op = 'S';
+      }
+      // Remove insertions at back.
+      for (int32_t j=(aln.cigar().size()-1); j>=0; j--) {
+        if (aln.cigar()[j].count == 0) { continue; }
+        if (aln.cigar()[j].op != 'D') { break; }
+        aln.cigar()[j].count = 0;
+      }
+      for (int32_t j=(aln.cigar().size()-1); j>=0; j--) {
+        if (aln.cigar()[j].count == 0) { continue; }
+        if (aln.cigar()[j].op != 'I') { break; }
+        aln.cigar()[j].op = 'S';
+      }
+
+      // If the overlap does not cover the entire read (and most likely it does not).
+      if (omhap.Astart > 0) {
+        if (aln.cigar().size() > 0 && aln.cigar().front().op == 'S') { aln.cigar().front().count += omhap.Astart; }
+        else { CigarOp new_op; new_op.op = 'S'; new_op.count = omhap.Astart; aln.cigar().insert(aln.cigar().begin(), new_op); }
+      }
+      if ((omhap.Aend) < (omhap.Alen)) {
+        if (aln.cigar().size() > 0 && aln.cigar().back().op == 'S') { aln.cigar().back().count += (omhap.Alen - omhap.Aend); }
+        else { CigarOp new_op; new_op.op = 'S'; new_op.count = (omhap.Alen - omhap.Aend); aln.cigar().insert(aln.cigar().end(), new_op); }
+      }
+
+      aln.RecalcCigarPositions();
+
+      int64_t m=0, x=0, eq=0, ins=0, del=0;
+      for (int32_t j=0; j<aln.cigar().size(); j++) {
+        if (aln.cigar()[j].op == 'M') { m += aln.cigar()[j].count; }
+        if (aln.cigar()[j].op == '=') { eq += aln.cigar()[j].count; }
+        if (aln.cigar()[j].op == 'X') { x += aln.cigar()[j].count; }
+        if (aln.cigar()[j].op == 'I') { ins += aln.cigar()[j].count; }
+        if (aln.cigar()[j].op == 'D') { del += aln.cigar()[j].count; }
+      }
+      aln.optional().push_back(FormatString("X1:Z:equal=%ld_x=%ld_ins=%ld_del=%ld", eq, x, ins, del));
+
+      seq->InitAlignment(aln);
+
+      #pragma omp critical
+      aligned.AddSequence(seq, true);
+
+    } else {
+      if (seq) {
+        delete seq;
+        seq = NULL;
+      }
+      num_skipped_overlaps += 1;
     }
 
-    // If the overlap does not cover the entire read (and most likely it does not).
-    if (omhap.Astart > 0) {
-      if (aln.cigar().size() > 0 && aln.cigar().front().op == 'S') { aln.cigar().front().count += omhap.Astart; }
-      else { CigarOp new_op; new_op.op = 'S'; new_op.count = omhap.Astart; aln.cigar().insert(aln.cigar().begin(), new_op); }
-    }
-    if ((omhap.Aend) < (omhap.Alen)) {
-      if (aln.cigar().size() > 0 && aln.cigar().back().op == 'S') { aln.cigar().back().count += (omhap.Alen - omhap.Aend); }
-      else { CigarOp new_op; new_op.op = 'S'; new_op.count = (omhap.Alen - omhap.Aend); aln.cigar().insert(aln.cigar().end(), new_op); }
-    }
-
-    aln.RecalcCigarPositions();
-
-    int64_t m=0, x=0, eq=0, ins=0, del=0;
-    for (int32_t j=0; j<aln.cigar().size(); j++) {
-      if (aln.cigar()[j].op == 'M') { m += aln.cigar()[j].count; }
-      if (aln.cigar()[j].op == '=') { eq += aln.cigar()[j].count; }
-      if (aln.cigar()[j].op == 'X') { x += aln.cigar()[j].count; }
-      if (aln.cigar()[j].op == 'I') { ins += aln.cigar()[j].count; }
-      if (aln.cigar()[j].op == 'D') { del += aln.cigar()[j].count; }
-    }
-    aln.optional().push_back(FormatString("X1:Z:equal=%ld_x=%ld_ins=%ld_del=%ld", eq, x, ins, del));
-
-    seq->InitAlignment(aln);
   }
 
   fprintf (stderr, "\n");
