@@ -34,3 +34,4 @@ scripts/test-leftalign/data/
 !scripts/paf2mhap.pl
 *.tee
 *.memtime
+comparison*.sh

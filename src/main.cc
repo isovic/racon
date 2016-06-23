@@ -61,7 +61,6 @@ int main(int argc, char* argv[]) {
 //  argparser.AddArgument(&(parameters.do_realign), VALUE_TYPE_BOOL, "", "realign", "0", "If enabled, input SAM file will be realigned. In this mode, BQ filtering cannot be used. Realigned SAM will be output to stdout unless --rsam is specified.", 0, "Control");
 //  argparser.AddArgument(&(parameters.realigned_aln_path), VALUE_TYPE_STRING, "", "rsam", "", "If specified, the input SAM file will be realigned and output to the specified path.", 0, "Control");
 
-
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
 
   if (argc == 1) {
@@ -76,8 +75,8 @@ int main(int argc, char* argv[]) {
   for (int32_t i=0; i<argc; i++) { parameters.cmd_arguments.push_back(argv[i]); }
   parameters.program_folder = parameters.cmd_arguments[0].substr(0, parameters.cmd_arguments[0].find_last_of("\\/"));
   parameters.program_bin = parameters.cmd_arguments[0].substr(parameters.cmd_arguments[0].find_last_of("\\/") + 1);
-  //  // Verbose the current state of the parameters after.
-  //  fprintf (stderr, "%s\n\n", argparser.VerboseArguments().c_str());
+    // Verbose the current state of the parameters after.
+    fprintf (stderr, "%s\n\n", argparser.VerboseArguments().c_str());
 
   // Sanity check on parameter values.
   if (parameters.is_sam == true && parameters.is_paf == true) {
@@ -170,6 +169,7 @@ int main(int argc, char* argv[]) {
       qname_to_ids[header.substr(0, found)] = i;
     }
     LOG_ALL("Parsing the PAF file.\n");
+    // If mhap == "-", then ParsePAF will automatically load lines from stdin.
     ParsePAF(mhap, qname_to_ids, overlaps);
     LOG_ALL("Filtering overlaps.\n");
 //    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
