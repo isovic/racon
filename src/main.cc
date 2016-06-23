@@ -75,8 +75,8 @@ int main(int argc, char* argv[]) {
   for (int32_t i=0; i<argc; i++) { parameters.cmd_arguments.push_back(argv[i]); }
   parameters.program_folder = parameters.cmd_arguments[0].substr(0, parameters.cmd_arguments[0].find_last_of("\\/"));
   parameters.program_bin = parameters.cmd_arguments[0].substr(parameters.cmd_arguments[0].find_last_of("\\/") + 1);
-    // Verbose the current state of the parameters after.
-    fprintf (stderr, "%s\n\n", argparser.VerboseArguments().c_str());
+//    // Verbose the current state of the parameters after.
+//    fprintf (stderr, "%s\n\n", argparser.VerboseArguments().c_str());
 
   // Sanity check on parameter values.
   if (parameters.is_sam == true && parameters.is_paf == true) {
@@ -127,6 +127,9 @@ int main(int argc, char* argv[]) {
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
 
     LOG_ALL("Parsing the MHAP file.\n");
+    if (mhap == "-") {
+      LOG_ALL("Stdin will be used to load the MHAP lines.\n");
+    }
     ParseMHAP(mhap, overlaps);
     LOG_ALL("Filtering MHAP overlaps.\n");
 //    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
@@ -143,8 +146,8 @@ int main(int argc, char* argv[]) {
     AlignMHAP(seqs_gfa, seqs_reads, overlaps_final, parameters.num_threads, *seqs_sam);
 
   } else {  // Using PAF for input overlaps.
-    std::string mhap = parameters.aln_path;
-    LOG_ALL("Using MHAP for input alignments. (%s)\n", mhap.c_str());
+    std::string paf = parameters.aln_path;
+    LOG_ALL("Using PAF for input alignments. (%s)\n", paf.c_str());
     std::vector<MHAPLine> overlaps, overlaps_filtered, overlaps_final;
 
     LOG_ALL("Loading reads.\n");
@@ -169,8 +172,11 @@ int main(int argc, char* argv[]) {
       qname_to_ids[header.substr(0, found)] = i;
     }
     LOG_ALL("Parsing the PAF file.\n");
+    if (paf == "-") {
+      LOG_ALL("Stdin will be used to load the PAF lines.\n");
+    }
     // If mhap == "-", then ParsePAF will automatically load lines from stdin.
-    ParsePAF(mhap, qname_to_ids, overlaps);
+    ParsePAF(paf, qname_to_ids, overlaps);
     LOG_ALL("Filtering overlaps.\n");
 //    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
 

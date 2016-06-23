@@ -15,34 +15,15 @@
 
 int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps) {
   ret_overlaps.clear();
-  std::ifstream infile(mhap_path);
-  std::string line;
-//  printf ("Parsing the MHAP file '%s'.\n", mhap_path.c_str());
-  while (std::getline(infile, line))
-  {
-    std::istringstream iss(line);
-    MHAPLine mhap_line;
-    if (!mhap_line.ParseMHAP(line)) {
-      ret_overlaps.push_back(mhap_line);
-    }
-  }
-  infile.close();
-
-  return 0;
-}
-
-int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<MHAPLine> &ret_overlaps) {
-  ret_overlaps.clear();
 
   if (mhap_path != "-") {
     std::ifstream infile(mhap_path);
-
     std::string line;
     while (std::getline(infile, line))
     {
       std::istringstream iss(line);
       MHAPLine mhap_line;
-      if (!mhap_line.ParsePAF(line, qname_to_ids)) {
+      if (!mhap_line.ParseMHAP(line)) {
         ret_overlaps.push_back(mhap_line);
       }
     }
@@ -56,8 +37,41 @@ int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> 
 
       std::istringstream iss(line);
       MHAPLine mhap_line;
-      if (!mhap_line.ParsePAF(line, qname_to_ids)) {
+      if (!mhap_line.ParseMHAP(line)) {
         ret_overlaps.push_back(mhap_line);
+      }
+    }
+
+  }
+  return 0;
+}
+
+int ParsePAF(const std::string &paf_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<MHAPLine> &ret_overlaps) {
+  ret_overlaps.clear();
+
+  if (paf_path != "-") {
+    std::ifstream infile(paf_path);
+    std::string line;
+    while (std::getline(infile, line))
+    {
+      std::istringstream iss(line);
+      MHAPLine paf_line;
+      if (!paf_line.ParsePAF(line, qname_to_ids)) {
+        ret_overlaps.push_back(paf_line);
+      }
+    }
+    infile.close();
+
+  } else {
+    std::string line;
+    while (std::getline(std::cin, line))
+    {
+      if (line.size() == 0) { break; }
+
+      std::istringstream iss(line);
+      MHAPLine paf_line;
+      if (!paf_line.ParsePAF(line, qname_to_ids)) {
+        ret_overlaps.push_back(paf_line);
       }
     }
 
