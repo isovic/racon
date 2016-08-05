@@ -244,8 +244,8 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<const
 int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
   LOG_MEDHIGH("Running consensus - directly from alignments.\n");
 
-  int32_t num_read_threads = 1;
-  int32_t num_window_threads = parameters.num_threads;
+  int32_t num_read_threads = (parameters.do_erc) ? (parameters.num_threads) : 1;
+  int32_t num_window_threads = (!parameters.do_erc) ? (parameters.num_threads) : 1;
 
   std::vector<std::string> ctg_names;
   std::map<std::string, std::vector<const SingleSequence *> > all_ctg_alns;
@@ -256,19 +256,23 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
   LOG_MEDHIGH("Separating alignments to individual contigs.\n");
   GroupAlignmentsToContigs(alns, -1.0, ctg_names, all_ctg_alns);
 
-  // Verbose.
-  // If we are doing error correction, parallelization is per-read and not per-window.
-  // We need to disable some of the debug info.
-  LOG_MEDHIGH("In total, there are %ld contigs for consensus, each containing:\n", ctg_names.size());
-  for (int32_t i=0; i<ctg_names.size(); i++) {
-    LOG_MEDHIGH("\t[%ld] %s %ld alignments\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size());
-  }
-
   // Hash the sequences by their name.
   std::map<std::string, const SingleSequence *> rname_to_seq;
   for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
     rname_to_seq[contigs.get_sequences()[i]->get_header()] = contigs.get_sequences()[i];
     rname_to_seq[TrimToFirstSpace(contigs.get_sequences()[i]->get_header())] = contigs.get_sequences()[i];
+  }
+
+  // Verbose.
+  // If we are doing error correction, parallelization is per-read and not per-window.
+  // We need to disable some of the debug info.
+  if (parameters.do_erc == false) {
+    LOG_MEDHIGH("In total, there are %ld contigs for consensus, each containing:\n", ctg_names.size());
+    for (int32_t i=0; i<ctg_names.size(); i++) {
+      LOG_MEDHIGH("\t[%ld] %s %ld alignments, contig len: %ld\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size(), rname_to_seq[ctg_names[i]]->get_sequence_length());
+    }
+  } else {
+    LOG_MEDHIGH("In total, there are %ld sequences for error correction.\n", ctg_names.size());
   }
 
   // Hash all the alignment lengths (which will be used a lot).
@@ -300,12 +304,28 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
     // If we are doing error correction, parallelization is per-read and not per-window.
     // We need to disable some of the debug info.
-    LOG_ALL("Starting consensus for contig %ld / %ld (%.2f%%): %s\n", (i + 1), ctg_names.size(), 100.0*((float) (i + 1)) / ((float) ctg_names.size()), contig->get_header());
+    if (parameters.do_erc == false) {
+      LOG_ALL("Starting consensus for contig %ld / %ld (%.2f%%): %s\n", (i + 1), ctg_names.size(), 100.0*((float) (i + 1)) / ((float) ctg_names.size()), contig->get_header());
+    }
 
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
     if (parameters.do_pileup == false) {
-      CreateConsensus(parameters, num_window_threads, contig, ctg_alns, aln_lens_on_ref, consensus, fp_out_cons);
+      if (parameters.do_erc == false) {
+        CreateConsensus(parameters, num_window_threads, contig, ctg_alns, aln_lens_on_ref, consensus, fp_out_cons);
+
+      } else {
+        if (thread_id == 0) {
+          LOG_MEDHIGH("\r(thread_id = %d) Processing contig %ld / %ld (%.2f%%), len: %10ld", thread_id, (i + 1), ctg_names.size(), 100.0f*(((float) (i)) / ((float) ctg_names.size())), contig->get_sequence_length());
+        }
+
+        CreateConsensus(parameters, num_window_threads, contig, ctg_alns, aln_lens_on_ref, consensus, NULL);
+        #pragma omp critical
+        {
+          fprintf (fp_out_cons, ">Consensus_%s\n%s\n", contig->get_header(), consensus.c_str());
+//          fflush (fp_out_cons);
+        }
+      }
 
     } else {
       Pileup pileup(contig, ctg_alns);
@@ -320,8 +340,10 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
     ///////////////////////////////////////
 //    LOG_MEDHIGH_NOHEADER("\n");
-    LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
-    LOG_MEDHIGH_NOHEADER("\n");
+    if (parameters.do_erc == false) {
+      LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
+      LOG_MEDHIGH_NOHEADER("\n");
+    }
   }
 
   return 0;
@@ -476,13 +498,15 @@ int MajorityVoteFromMSA(std::vector<std::string> &msa, std::string &consensus) {
 void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig, std::vector<const SingleSequence *> &ctg_alns, std::map<const SingleSequence *, int64_t> &aln_lens_on_ref, std::string &ret_consensus, FILE *fp_out_cons) {
   std::stringstream ss_cons;
 
-  if (fp_out_cons) {
+  if (parameters.do_erc == false && fp_out_cons) {
     fprintf (fp_out_cons, ">Consensus_%s\n", contig->get_header());
     fflush (fp_out_cons);
   }
 
   int64_t num_windows = ceil((float) contig->get_sequence_length() / (float) parameters.window_len);
-  LOG_DEBUG ("current_contig->get_sequence_length() = %ld, parameters.window_len = %ld, num_windows = %ld\n", contig->get_sequence_length(), parameters.window_len, num_windows);
+  if (parameters.do_erc == false) {
+    LOG_DEBUG ("current_contig->get_sequence_length() = %ld, parameters.window_len = %ld, num_windows = %ld\n", contig->get_sequence_length(), parameters.window_len, num_windows);
+  }
 
   // Build the interval tree for fast overlap calculation.
   std::vector<IntervalSS> aln_intervals;
@@ -523,7 +547,7 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
        int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin) - 1;
        int32_t thread_id = omp_get_thread_num();
 
-       if (thread_id == 0) {
+       if (parameters.do_erc == false && thread_id == 0) {
          LOG_MEDHIGH("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length()));
        }
 
@@ -543,7 +567,7 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
                              windows_for_msa, quals_for_msa, refs_for_msa,
                              starts_for_msa, ends_for_msa, starts_on_read, ends_on_read, NULL);
        //       ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree, window_start, window_end, qv_threshold, windows_for_msa, quals_for_msa, refs_for_msa, starts_for_msa, ends_for_msa, NULL);
-       if (thread_id == 0) { LOG_MEDHIGH_NOHEADER(", coverage: %ldx", windows_for_msa.size()) }
+       if (parameters.do_erc == false && thread_id == 0) { LOG_MEDHIGH_NOHEADER(", coverage: %ldx", windows_for_msa.size()) }
        if (windows_for_msa.size() == 0) {
          consensus_windows[id_in_batch] = "";
          ERROR_REPORT(ERR_UNEXPECTED_VALUE, "windows_for_msa.size() == 0!");
@@ -601,14 +625,16 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
        }
     }
 
-    LOG_MEDHIGH_NOHEADER("\n");
-    LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
+    if (parameters.do_erc == false) {
+      LOG_MEDHIGH_NOHEADER("\n");
+      LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
+    }
 
     for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
       int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
       int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
       ss_cons << consensus_windows[id_in_batch];
-      if (fp_out_cons) {
+      if (parameters.do_erc == false && fp_out_cons) {
         fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
         fflush(fp_out_cons);
       }
@@ -690,7 +716,9 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
 //     }
 
 //     LOG_MEDHIGH_NOHEADER("\n");
-    LOG_MEDHIGH("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
+    if (parameters.do_erc == false) {
+      LOG_MEDHIGH("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
+    }
   }
 
   if (parameters.do_realign) {
@@ -703,7 +731,7 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
   }
 
   ret_consensus = ss_cons.str();
-  if (fp_out_cons) {
+  if (parameters.do_erc == false && fp_out_cons) {
     fprintf (fp_out_cons, "\n");
   }
 }

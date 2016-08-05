@@ -16,6 +16,7 @@ import copy;
 from lis import *;
 
 EDLIB_PATH = '%s/../tools/edlib/src/aligner' % (SCRIPT_PATH);
+KMERCOMP_PATH = '%s/../tools/edlib/src/kmercomp' % (SCRIPT_PATH);
 NUCMER_PATH = 'nucmer';
 
 DRY_RUN = False;
@@ -121,7 +122,7 @@ def get_circular_score(ref_path, contig_path, temp_folder):
 	# 	orient = 'fwd' if (scores_fwd[i] >= scores_rev[i]) else 'rev';
 	# 	sys.stdout.write('[%d] %d %s\n' % (i, score_max, orient));
 
-def eval_contigs(ref_path, contig_path, temp_folder):
+def eval_contigs(ref_path, contig_path, temp_folder, generate_kmer_spectrum=False):
 	if (not os.path.exists(temp_folder)):
 		os.makedirs(temp_folder);
 
@@ -156,11 +157,14 @@ def eval_contigs(ref_path, contig_path, temp_folder):
 		lines = fp.readlines();
 		fp.close();
 		coords = parse_coords_lines(lines, contig_name, seqs_ref, ref_hash, seqs_contigs, contig_hash);
+		print '';
 		print 'coords: "%s"' % (coords);
-		print 'lines:\n', lines;
+		print 'lines:';
+		for line in lines:
+			print line;
 		sys.stdout.flush();
 		[rstart, rend, qstart, qend, is_fwd, rname, qname] = coords;
-		extract_seqs_for_edlib(temp_folder, ref_path, contig_path, rstart, rend, qstart, qend, is_fwd, rname, qname);
+		extract_seqs_for_edlib(temp_folder, '.%d' % (i), ref_path, contig_path, rstart, rend, qstart, qend, is_fwd, rname, qname, generate_kmer_spectrum=generate_kmer_spectrum);
 		sys.stderr.write('\n');
 
 
@@ -281,7 +285,7 @@ def hash_headers(headers):
 		ret[headers[i].split()[0]] = i;
 	return ret;
 
-def extract_seqs_for_edlib(temp_folder, ref_path, contig_path, rstart, rend, qstart, qend, is_fwd, rname, qname):
+def extract_seqs_for_edlib(temp_folder, temp_suffix, ref_path, contig_path, rstart, rend, qstart, qend, is_fwd, rname, qname, generate_kmer_spectrum=False):
 	if (not os.path.exists(temp_folder)):
 		os.makedirs(temp_folder);
 
@@ -324,8 +328,9 @@ def extract_seqs_for_edlib(temp_folder, ref_path, contig_path, rstart, rend, qst
 
 		contig_seq = fastqparser.revcomp_seq(contig_seq);
 
-	nw_ref_path = '%s/nw-ref.fasta' % (temp_folder);
-	nw_contig_path = '%s/nw-contig.fasta' % (temp_folder);
+	nw_ref_path = '%s/nw-ref%s.fasta' % (temp_folder, temp_suffix);
+	nw_contig_path = '%s/nw-contig%s.fasta' % (temp_folder, temp_suffix);
+	nw_kmer_comp_path ='%s/nw-kmers%s.spect' % (temp_folder, temp_suffix);
 
 	fp_nw_ref = open(nw_ref_path, 'w');
 	fp_nw_contig = open(nw_contig_path, 'w');
@@ -336,14 +341,25 @@ def extract_seqs_for_edlib(temp_folder, ref_path, contig_path, rstart, rend, qst
 
 	sys.stderr.write('Running Edlib to determine the edit distance...\n');
 	command = '%s %s %s -m NW' % (EDLIB_PATH, nw_contig_path, nw_ref_path);
+
 	[rc, rstdout, rstderr] = execute_command_with_ret(DRY_RUN, command);
 	# execute_command(command, None, False);
 	scores = parse_edlib_scores(rstdout);
 	unaligned_len = len(seqs_ref[rid]) - len(ref_seq);
+	if (len(scores) == 0): sys.stderr.write('ERROR: len(scores) == 0!\nreturn code: %d\nrstdout:\n%s\n' % (rc, rstdout));
 	sys.stderr.write('Final edit distance: %d, aligned edit distance: %d, unaligned ref len: %d, aligned ref len: %d, aligned contig len: %d\n' % ((scores[0] + unaligned_len), scores[0], unaligned_len, len(ref_seq), len(contig_seq)));
 #	for i in xrange(0, len(scores)):
 #		sys.stdout.write('[%d] edit dist: %d\tunaligned len: %d\n' % (i, scores[i], unaligned_len));
+
 	sys.stdout.write('\n');
+
+
+	if (generate_kmer_spectrum == True):
+		sys.stderr.write('Generating the kmer spectrum.\n');
+		command = '%s -o %s %s %s' % (KMERCOMP_PATH, nw_kmer_comp_path, nw_contig_path, nw_ref_path);
+		[rc, rstdout, rstderr] = execute_command_with_ret(DRY_RUN, command);
+		sys.stderr.write('Stdout:\n%s\nStderr:\n%s\n' % (rstdout, rstderr));
+		sys.stderr.write('Done generating the kmer spectrum!\n');
 
 #	[rc_rev, rstdout_rev, rstderr_rev] = execute_command_with_ret(DRY_RUN, command);
 #	scores_rev = parse_edlib_scores(rstdout_rev);
@@ -359,17 +375,30 @@ def main():
 	if (len(sys.argv) < 3):
 		sys.stderr.write('Tool for calculating the edit distance of two sequences using Edlib.\n');
 		sys.stderr.write('Usage:\n');
-		sys.stderr.write('\t%s <ref.fa> <contigs.fa>\n' % (sys.argv[0]));
+		sys.stderr.write('\t%s <ref.fa> <contigs.fa> [options]\n' % (sys.argv[0]));
 		exit(1);
 
 	ref_path = sys.argv[1];
 	contigs_path = sys.argv[2];
-	if (len(os.path.dirname(contigs_path)) != 0):
-		temp_path = os.path.dirname(contigs_path) + '/temp-ed';
-	else:
-		temp_path = './temp-ed';
 
-	eval_contigs(ref_path, contigs_path, temp_path);
+	generate_kmer_spectrum = False;
+	temp_path = None;
+
+	for i in xrange(3, len(sys.argv)):
+		arg = sys.argv[i];
+		if (arg == '--temp-path'):
+			temp_path = sys.argv[i+1];
+			i += 1;
+		elif (arg == '--spectrum'):
+			generate_kmer_spectrum = True;
+
+	if (temp_path == None):
+		if (len(os.path.dirname(contigs_path)) != 0):
+			temp_path = os.path.dirname(contigs_path) + '/temp-ed';
+		else:
+			temp_path = './temp-ed';
+
+	eval_contigs(ref_path, contigs_path, temp_path, generate_kmer_spectrum=generate_kmer_spectrum);
 
 if __name__ == "__main__":
 	main();
