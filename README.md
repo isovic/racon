@@ -20,7 +20,7 @@ git clone https://github.com/isovic/racon.git  && cd racon && make modules && ma
 ```
 Run an example script:  
 ```  
-./example12-paf-lambda.sh   
+./example1-paf-lambda.sh   
 ```  
 Tip: Running Racon iteratively will produce better consensus sequences. (But don't forget to re-run the overlap/alignment of your reads to the consensus sequence from the previous iteration.)  
 
@@ -52,17 +52,17 @@ Racon can also be run in pipe with other tools: overlaps can be read directly fr
 A concrete example is below.  
 Generate overlaps using, e.g., Minimap:  
 ```  
-tools/minimap/minimap test-data/lambda/layout-miniasm.fasta test-data/lambda/reads.fastq > test-data/lambda/overlaps.paf  
+tools/minimap/minimap test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda/reads.fastq > test-data/lambda/overlaps.paf  
 ```  
 
 Run Racon on the overlaps:  
 ```  
-bin/racon test-data/lambda/reads.fastq test-data/lambda/overlaps.paf test-data/lambda/layout-miniasm.fasta test-data/lambda/consensus.fasta  
+bin/racon test-data/lambda/reads.fastq test-data/lambda/overlaps.paf test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda/consensus.fasta  
 ```  
 
 Conversely, the same can be done using a one-liner:  
 ```  
-tools/minimap/minimap test-data/lambda/layout-miniasm.fasta test-data/lambda/reads.fastq | bin/racon test-data/lambda/reads.fastq - test-data/lambda/layout-miniasm.fasta test-data/lambda/consensus.fasta  
+tools/minimap/minimap test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda/reads.fastq | bin/racon test-data/lambda/reads.fastq - test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda/consensus.fasta  
 ```  
 
 ## Contact information
