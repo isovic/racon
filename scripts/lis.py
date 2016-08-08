@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 # Source: https://rosettacode.org/wiki/Longest_increasing_subsequence#Python
 

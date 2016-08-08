@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 import os
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__));

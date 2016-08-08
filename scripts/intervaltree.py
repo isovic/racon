@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 # Original implementation by: Tyler Kahn
 # http://zurb.com/forrst/posts/Interval_Tree_implementation_in_python-e0K
