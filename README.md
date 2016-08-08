@@ -67,9 +67,11 @@ tools/minimap/minimap test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda
 
 ## Contact information
 
-For additional information, help and bug reports please send an email to one of the following: ivan.sovic@irb.hr, robert.vaser@fer.hr, mile.sikic@fer.hr
+For additional information, help and bug reports please send an email to one of the following: ivan.sovic@irb.hr, robert.vaser@fer.hr, mile.sikic@fer.hr, nagarajann@gis.a-star.edu.sg
 
 
 ## Acknowledgment
 
-This work has been supported in part by Croatian Science Foundation under the project UIP-11-2013-7353.
+This work has been supported in part by Croatian Science Foundation under the project UIP-11-2013-7353.  
+IS is supported in part by the Croatian Academy of Sciences and Arts under the project "Methods for alignment and assembly of DNA sequences using nanopore sequencing data".  
+NN is supported by funding from A*STAR, Singapore.
