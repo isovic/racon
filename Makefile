@@ -68,6 +68,7 @@ tools/minimap/minimap:
 tools/miniasm/miniasm:
 	mkdir -p tools; cd tools; git clone https://github.com/lh3/miniasm.git; cd miniasm; make -j
 
+mm: tools/minimap/minimap tools/miniasm/miniasm tools/edlib/src/aligner
 
 
 gcc_version_check:
