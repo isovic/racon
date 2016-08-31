@@ -121,7 +121,7 @@ int main(int argc, char* argv[]) {
   } else if (parameters.is_mhap == true) {
     std::string mhap = parameters.aln_path;
     LOG_ALL("Using MHAP for input alignments. (%s)\n", mhap.c_str());
-    std::vector<MHAPLine> overlaps, overlaps_filtered, overlaps_final;
+    std::vector<OverlapLine> overlaps, overlaps_filtered, overlaps_final;
 
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
   } else {  // Using PAF for input overlaps.
     std::string paf = parameters.aln_path;
     LOG_ALL("Using PAF for input alignments. (%s)\n", paf.c_str());
-    std::vector<MHAPLine> overlaps, overlaps_filtered, overlaps_final;
+    std::vector<OverlapLine> overlaps, overlaps_filtered, overlaps_final;
 
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);

@@ -18,9 +18,9 @@
 #include "sequences/sequence_file.h"
 #include "utility/utility_general.h"
 
-class MHAPLine {
+class OverlapLine {
  public:
-  MHAPLine() :
+  OverlapLine() :
     Aid(0), Bid(0), Aname(""), Bname(""), perc_err(0.0), shared_minmers(0), Arev(0), Astart(0), Aend(0), Alen(0), Brev(0), Bstart(0), Bend(0), Blen(0) {
   }
 
@@ -71,14 +71,14 @@ class MHAPLine {
   }
 
   void Switch() {
-    MHAPLine T = *this;
+    OverlapLine T = *this;
     Aid = T.Bid; Bid = T.Aid;
     Arev = T.Brev; Astart = T.Bstart; Aend = T.Bend; Alen = T.Blen;
     Brev = T.Arev; Bstart = T.Astart; Bend = T.Aend; Blen = T.Alen;
   }
 
   void ReverseComplement() {
-    MHAPLine T = *this;
+    OverlapLine T = *this;
 
     Arev= 1 - T.Arev;
     Astart = T.Alen - T.Aend - 1;
@@ -111,15 +111,15 @@ class MHAPLine {
   int64_t Brev, Bstart, Bend, Blen;
 };
 
-int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps);
-int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<MHAPLine> &ret_overlaps);
-int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate);
-int FilterMHAPErc(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate);
-int DuplicateAndSwitch(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out);
+int ParseMHAP(const std::string &mhap_path, std::vector<OverlapLine> &ret_overlaps);
+int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<OverlapLine> &ret_overlaps);
+int FilterMHAP(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out, float error_rate);
+int FilterMHAPErc(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out, float error_rate);
+int DuplicateAndSwitch(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out);
 int EdlibNWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                    int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
-int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::vector<MHAPLine> &overlaps, int32_t num_threads, SequenceFile &aligned);
+int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned);
 
 #endif /* SRC_MHAP_H_ */

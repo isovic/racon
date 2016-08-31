@@ -13,7 +13,7 @@
 #include <vector>
 #include <iostream>
 
-int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps) {
+int ParseMHAP(const std::string &mhap_path, std::vector<OverlapLine> &ret_overlaps) {
   ret_overlaps.clear();
 
   if (mhap_path != "-") {
@@ -22,7 +22,7 @@ int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps)
     while (std::getline(infile, line))
     {
       std::istringstream iss(line);
-      MHAPLine mhap_line;
+      OverlapLine mhap_line;
       if (!mhap_line.ParseMHAP(line)) {
         ret_overlaps.push_back(mhap_line);
       }
@@ -36,7 +36,7 @@ int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps)
       if (line.size() == 0) { break; }
 
       std::istringstream iss(line);
-      MHAPLine mhap_line;
+      OverlapLine mhap_line;
       if (!mhap_line.ParseMHAP(line)) {
         ret_overlaps.push_back(mhap_line);
       }
@@ -46,7 +46,36 @@ int ParseMHAP(const std::string &mhap_path, std::vector<MHAPLine> &ret_overlaps)
   return 0;
 }
 
-int ParsePAF(const std::string &paf_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<MHAPLine> &ret_overlaps) {
+/**
+ * PAF is a bit of a strange format. Both query and target coordinates are given in the fwd strand of both sequences, even though the strand flag
+ * might be equal to '-'. Minimap also tends to generate strange overlaps as well. Here is an example (fake) input dataset and the corresponding overlaps:
+>read3
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+>read4
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+>read4_rev
+GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+  * read3 has exactly 100 T bases and 200 A bases
+  * read4 has exactly 200 A bases and 100 C bases
+  * read4_rev is the reverse complement of read4
+  *
+  * Output from Minimap 1cd6ae3bc7c7a6f9e7c03c0b7a93a12647bba244 run as minimap/minimap -Sw5 -L100 -m0 -t8 reads.fasta reads34.fasta > reads34.paf
+read3 300 1 300 + read3 300 0 299 298 299 255 cm:i:269
+read3 300 100 300 - read4_rev 300 100 300 200 200 255 cm:i:186
+read3 300 0 199 - read3 300 0 300 199 300 255 cm:i:176
+read4 300 0 299 - read4_rev 300 0 300 299 300 255 cm:i:275
+read4 300 1 300 + read4 300 0 299 298 299 255 cm:i:269
+read4_rev 300 1 300 + read4_rev 300 0 299 298 299 255 cm:i:269
+  *
+  * Output from MHAP 2.1.1:
+2 1 0.000000 72.000000 0 0 72 300 1 10 83 300
+2 1 0.000000 152.000000 0 0 152 300 0 136 289 300
+3 1 0.000272 152.000000 0 99 252 300 1 110 263 300
+3 1 0.000782 52.000000 0 99 152 300 0 36 89 300
+3 2 0.012697 164.000000 0 0 232 300 1 10 243 300
+  *
+ */
+int ParsePAF(const std::string &paf_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<OverlapLine> &ret_overlaps) {
   ret_overlaps.clear();
 
   if (paf_path != "-") {
@@ -55,7 +84,7 @@ int ParsePAF(const std::string &paf_path, const std::map<std::string, int64_t> &
     while (std::getline(infile, line))
     {
       std::istringstream iss(line);
-      MHAPLine paf_line;
+      OverlapLine paf_line;
       if (!paf_line.ParsePAF(line, qname_to_ids)) {
         ret_overlaps.push_back(paf_line);
       }
@@ -69,7 +98,7 @@ int ParsePAF(const std::string &paf_path, const std::map<std::string, int64_t> &
       if (line.size() == 0) { break; }
 
       std::istringstream iss(line);
-      MHAPLine paf_line;
+      OverlapLine paf_line;
       if (!paf_line.ParsePAF(line, qname_to_ids)) {
         ret_overlaps.push_back(paf_line);
       }
@@ -82,8 +111,8 @@ int ParsePAF(const std::string &paf_path, const std::map<std::string, int64_t> &
 
 
 
-int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate) {
-  std::map<int64_t, MHAPLine> fmap;     // Filtering map.
+int FilterMHAP(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out, float error_rate) {
+  std::map<int64_t, OverlapLine> fmap;     // Filtering map.
 
   for (int64_t i=0; i<overlaps_in.size(); i++) {
     if (!overlaps_in[i].CheckConstraints(error_rate)) {
@@ -106,7 +135,7 @@ int FilterMHAP(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &
   return 0;
 }
 
-int FilterMHAPErc(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out, float error_rate) {
+int FilterMHAPErc(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out, float error_rate) {
   overlaps_out.clear();
   overlaps_out.reserve(overlaps_in.size());
   for (int64_t i=0; i<overlaps_in.size(); i++) {
@@ -117,12 +146,12 @@ int FilterMHAPErc(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine
   return 0;
 }
 
-int DuplicateAndSwitch(const std::vector<MHAPLine> &overlaps_in, std::vector<MHAPLine> &overlaps_out) {
+int DuplicateAndSwitch(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out) {
   overlaps_out.clear();
   overlaps_out.reserve(overlaps_in.size());
   for (int64_t i=0; i<overlaps_in.size(); i++) {
     overlaps_out.push_back(overlaps_in[i]);
-    MHAPLine o = overlaps_in[i];
+    OverlapLine o = overlaps_in[i];
     o.Switch();
     if (o.Arev) { o.ReverseComplement(); }
     overlaps_out.push_back(o);
@@ -130,7 +159,7 @@ int DuplicateAndSwitch(const std::vector<MHAPLine> &overlaps_in, std::vector<MHA
   return 0;
 }
 
-int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::vector<MHAPLine> &overlaps, int32_t num_threads, SequenceFile &aligned) {
+int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned) {
   aligned.Clear();
 
   // Generate the SAM file header, for debugging.
@@ -169,7 +198,7 @@ int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::ve
     }
 
     auto &mhap = overlaps[i];
-    MHAPLine omhap = mhap;
+    OverlapLine omhap = mhap;
 
     // Get the read.
     const SingleSequence* read = reads.get_sequences()[omhap.Aid - 1];
