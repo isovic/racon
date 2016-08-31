@@ -26,6 +26,7 @@ Tip: Running Racon iteratively will produce better consensus sequences. (But don
 
 ## Dependencies
 1. gcc >= 4.8  
+2. Zlib - sudo apt-get install zlib1g-dev  
 
 Optional:  
 MUMmer needs to be installed to successfully execute the example scripts (for evaluation purposes).  
@@ -33,6 +34,11 @@ On Ubuntu-based systems:
 ```  
 sudo apt-get install mummer  
 ```  
+Numpy is also required for evaluation purposes:  
+```  
+sudo apt-get install python-numpy  
+```  
+
 
 ## Installation
 ```  
