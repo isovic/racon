@@ -38,7 +38,7 @@ typedef struct {
 
 class Pileup {
  public:
-  Pileup(const SingleSequence *ref, std::vector<const SingleSequence *> &ref_alns);
+  Pileup(const SingleSequence *ref, const std::vector<SingleSequence *> &ref_alns);
   ~Pileup();
 
   void AddAlignment(const SingleSequence* ref, const SingleSequence *seq, int64_t qid);

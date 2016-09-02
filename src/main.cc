@@ -20,6 +20,16 @@ void RunTests() {
   exit(0);
 }
 
+void HashQnames(const SequenceFile &seqs, std::map<std::string, int64_t> &qname_to_ids) {
+  for (int32_t i=0; i<seqs.get_sequences().size(); i++) {
+    std::string header = std::string(seqs.get_sequences()[i]->get_header());
+    qname_to_ids[header] = i;
+    qname_to_ids[TrimToFirstSpace(header)] = i;
+    std::size_t found = header.find(":");
+    qname_to_ids[header.substr(0, found)] = i;
+  }
+}
+
 int main(int argc, char* argv[]) {
   //  RunTests();
 
@@ -117,6 +127,11 @@ int main(int argc, char* argv[]) {
     LOG_ALL("Using SAM for input alignments. (%s)\n", sam.c_str());
     LOG_ALL("Parsing the SAM file.\n");
     seqs_sam = new SequenceFile(SEQ_FORMAT_SAM, parameters.aln_path);
+    // Sanity check to see if the reads have quality values.
+    if (seqs_sam->HasQV() == false) {
+      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
+      exit(1);
+    }
 
   } else if (parameters.is_mhap == true) {
     std::string mhap = parameters.aln_path;
@@ -125,6 +140,11 @@ int main(int argc, char* argv[]) {
 
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
+    // Sanity check to see if the reads have quality values.
+    if (seqs_reads.HasQV() == false) {
+      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
+      exit(1);
+    }
 
     LOG_ALL("Parsing the MHAP file.\n");
     if (mhap == "-") {
@@ -152,71 +172,43 @@ int main(int argc, char* argv[]) {
 
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
+    // Sanity check to see if the reads have quality values.
+    if (seqs_reads.HasQV() == false) {
+      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
+      exit(1);
+    }
 
-    LOG_ALL("Hashing qnames.\n");
     // Hash the read sequences by their name.
+    LOG_ALL("Hashing qnames.\n");
     std::map<std::string, int64_t> qname_to_ids;
-    for (int32_t i=0; i<seqs_reads.get_sequences().size(); i++) {
-      std::string header = std::string(seqs_reads.get_sequences()[i]->get_header());
-      qname_to_ids[header] = i;
-      qname_to_ids[TrimToFirstSpace(header)] = i;
-      std::size_t found = header.find(":");
-      qname_to_ids[header.substr(0, found)] = i;
-    }
-    // Hash the contig sequences by their name.
-    for (int32_t i=0; i<seqs_gfa.get_sequences().size(); i++) {
-      std::string header = std::string(seqs_gfa.get_sequences()[i]->get_header());
-      qname_to_ids[header] = i;
-      qname_to_ids[TrimToFirstSpace(header)] = i;
-      std::size_t found = header.find(":");
-      qname_to_ids[header.substr(0, found)] = i;
-    }
+    HashQnames(seqs_reads, qname_to_ids);
+    HashQnames(seqs_gfa, qname_to_ids);
+
     LOG_ALL("Parsing the PAF file.\n");
-    if (paf == "-") {
-      LOG_ALL("Stdin will be used to load the PAF lines.\n");
-    }
-    // If mhap == "-", then ParsePAF will automatically load lines from stdin.
+    // If paf == "-", then ParsePAF will automatically load lines from stdin.
+    if (paf == "-") { LOG_ALL("Stdin will be used to load the PAF lines.\n"); }
     ParsePAF(paf, qname_to_ids, overlaps);
     LOG_ALL("Filtering overlaps.\n");
 //    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
 
     if (parameters.do_erc == false) {
       FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
+      overlaps.clear();
     } else {
       FilterMHAPErc(overlaps, overlaps_final, parameters.error_rate);
 //      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
     }
 
-    seqs_sam = new SequenceFile();
+    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return a.Bid < b.Bid; } );
+//    seqs_sam = new SequenceFile();
     LOG_ALL("Aligning overlaps.\n");
-    AlignMHAP(seqs_gfa, seqs_reads, overlaps_final, parameters.num_threads, *seqs_sam);
+//    AlignMHAP(seqs_gfa, seqs_reads, overlaps_final, parameters.num_threads, *seqs_sam);
+    ConsensusDirectFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
   }
 
-  // Sanity check to see if the reads have quality values.
-  for (int64_t i=0; i<seqs_sam->get_sequences().size(); i++) {
-    if (seqs_sam->get_sequences()[i]->get_quality() == NULL || seqs_sam->get_sequences()[i]->get_quality_length() == 0) {
-      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
-      exit(1);
-    }
-  }
-
-  ConsensusDirectFromAln(parameters, seqs_gfa, *seqs_sam);
+//  ConsensusDirectFromAln(parameters, seqs_gfa, *seqs_sam);
   seqs_sam->Clear();
   if (seqs_sam) { delete seqs_sam; }
-
-//  std::string alt_contig_path = argv[3];
-
-//  std::string mhap_path = "results/temp/consensus-lambda_30x_ont-mhap-iter1.mhap";
-//  std::string reads_path = "test-data/lambda/reads.fastq";
-//  std::vector<MHAPLine> overlaps, overlaps_filtered;
-//  ParseMHAP(mhap_path, overlaps);
-//  FilterMHAP(overlaps, overlaps_filtered);
-//  SequenceFile seqs_reads(SEQ_FORMAT_AUTO, reads_path);
-//  SequenceFile seqs_generated_sam;
-//  AlignMHAP(seqs_gfa, seqs_reads, overlaps_filtered, seqs_generated_sam);
-//
-//  //  Consensus(parameters, seqs_gfa, seqs_sam);
-//  ConsensusDirectFromAln(parameters, seqs_gfa, seqs_generated_sam);
 
 	return 0;
 }

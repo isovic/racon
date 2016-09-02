@@ -12,7 +12,7 @@
 #include "spoa.hpp"
 #include "graph.hpp"
 
-Pileup::Pileup(const SingleSequence* ref, std::vector<const SingleSequence*>& ref_alns) : ref_(ref) {
+Pileup::Pileup(const SingleSequence* ref, const std::vector<SingleSequence*>& ref_alns) : ref_(ref) {
   bases_.clear();
   bases_.resize(ref->get_sequence_length());
 
