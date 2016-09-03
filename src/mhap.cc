@@ -172,7 +172,7 @@ int DuplicateAndSwitch(const std::vector<OverlapLine> &overlaps_in, std::vector<
   return 0;
 }
 
-int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned) {
+int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug) {
   aligned.Clear();
 
   // Generate the SAM file header, for debugging.
@@ -198,14 +198,14 @@ int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::ve
 //    rev_refs.AddSequence(seq, true);
 //  }
 
-  fprintf (stderr, "\n");
+//  fprintf (stderr, "\n");
   int64_t num_skipped_overlaps = 0;
 
   #pragma omp parallel for num_threads(num_threads) shared(aligned) schedule(dynamic, 1)
   for (int64_t i=0; i<overlaps.size(); i++) {
     int32_t thread_id = omp_get_thread_num();
 
-    if (thread_id == 0) {
+    if (verbose_debug == true && thread_id == 0) {
       LOG_ALL("\rAligning overlap: %ld / %ld (%.2f\%), skipped %ld / %ld (%.2f\%)", i, overlaps.size(), 100.0f*((float) (i + 1)) / ((float) overlaps.size()), num_skipped_overlaps, overlaps.size(), 100.0f*((float) (num_skipped_overlaps)) / ((float) overlaps.size()));
       fflush(stderr);
     }
@@ -324,8 +324,10 @@ int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::ve
 
   }
 
-  fprintf (stderr, "\n");
-  fflush(stderr);
+  if (verbose_debug == true) {
+    fprintf (stderr, "\n");
+    fflush(stderr);
+  }
 
 //  FILE *fp = fopen("temp/debug.sam", "w");
 //  for (int32_t i=0; i<aligned.get_file_header().size(); i++) {

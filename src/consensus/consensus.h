@@ -37,6 +37,7 @@ int MajorityVoteFromMSALocal(std::string pir_path, std::string *cons);
 int RunMSAFromSystemLocal(const ProgramParameters &parameters, std::string window_path, std::string &cons);
 //void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> window_seqs, FILE *fp_window);
 void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, std::vector<const SingleSequence *> &window_refs, std::vector<int32_t> &window_starts, std::vector<uint32_t> &window_ends, FILE *fp_window);
+int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns);
 int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads, const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &overlaps);
 void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig, const std::vector<SingleSequence *> &ctg_alns, std::map<const SingleSequence *, int64_t> &aln_lens_on_ref, std::string &ret_consensus, FILE *fp_out_cons);
 std::string MajorityVotePos(const std::vector<std::string> &msa, int32_t first_seq, int32_t last_seq, int32_t pos);

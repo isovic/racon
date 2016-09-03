@@ -242,17 +242,124 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<Singl
 
 
 
+int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
+  LOG_MEDHIGH("Running consensus - directly from alignments.\n");
+
+  int32_t num_read_threads = (parameters.do_erc) ? (parameters.num_threads) : 1;
+  int32_t num_window_threads = (!parameters.do_erc) ? (parameters.num_threads) : 1;
+
+  std::vector<std::string> ctg_names;
+  std::map<std::string, std::vector<const SingleSequence *> > all_ctg_alns;
+
+  // Separate alignments into groups for each contig.
+  // Alignments which are called unmapped will be skipped in this step.
+  // Also, alignments are filtered by the base quality if available.
+  LOG_MEDHIGH("Separating alignments to individual contigs.\n");
+  GroupAlignmentsToContigs(alns, -1.0, ctg_names, all_ctg_alns);
+
+  // Hash the sequences by their name.
+  std::map<std::string, const SingleSequence *> rname_to_seq;
+  for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
+    rname_to_seq[contigs.get_sequences()[i]->get_header()] = contigs.get_sequences()[i];
+    rname_to_seq[TrimToFirstSpace(contigs.get_sequences()[i]->get_header())] = contigs.get_sequences()[i];
+  }
+
+  // Verbose.
+  // If we are doing error correction, parallelization is per-read and not per-window.
+  // We need to disable some of the debug info.
+  if (parameters.do_erc == false) {
+    LOG_MEDHIGH("In total, there are %ld contigs for consensus, each containing:\n", ctg_names.size());
+    for (int32_t i=0; i<ctg_names.size(); i++) {
+      LOG_MEDHIGH("\t[%ld] %s %ld alignments, contig len: %ld\n", i, ctg_names[i].c_str(), all_ctg_alns.find(ctg_names[i])->second.size(), rname_to_seq[ctg_names[i]]->get_sequence_length());
+    }
+  } else {
+    LOG_MEDHIGH("In total, there are %ld sequences for error correction.\n", ctg_names.size());
+  }
+
+  // Hash all the alignment lengths (which will be used a lot).
+  std::map<const SingleSequence *, int64_t> aln_lens_on_ref;
+  for (int64_t i=0; i<alns.get_sequences().size(); i++) {
+    aln_lens_on_ref[alns.get_sequences()[i]] = alns.get_sequences()[i]->get_aln().GetReferenceLengthFromCigar();
+  }
+
+  // Clear the output file for consensus.
+  FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "w");
+  fclose(fp_out_cons);
+
+  // For each contig (draft can contain multiple contigs), process alignments which only map to that particular contig.
+  #pragma omp parallel for num_threads(num_read_threads) schedule(dynamic, 1)
+  for (int32_t i=0; i<ctg_names.size(); i++) {
+    int32_t thread_id = omp_get_thread_num();
+
+    const SingleSequence *contig = rname_to_seq[ctg_names[i]];
+    auto it = all_ctg_alns.find(ctg_names[i]);
+    if (it == all_ctg_alns.end()) {
+      FATAL_REPORT(ERR_UNEXPECTED_VALUE, "Something strange happened. Contig name, which was extracted from alignments, cannot be found in the std::map containing those same alignments.");
+      // Exits.
+    }
+    // Get alignments for current contig.
+    std::vector<SingleSequence *> &ctg_alns = (std::vector<SingleSequence *> &) it->second;
+
+    // This sorts ascending by the pos field.
+    std::sort(ctg_alns.begin(), ctg_alns.end(), seqaln_sort_key());
+
+    // If we are doing error correction, parallelization is per-read and not per-window.
+    // We need to disable some of the debug info.
+    if (parameters.do_erc == false) {
+      LOG_ALL("Starting consensus for contig %ld / %ld (%.2f%%): %s\n", (i + 1), ctg_names.size(), 100.0*((float) (i + 1)) / ((float) ctg_names.size()), contig->get_header());
+    }
+
+    FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
+    std::string consensus;
+    if (parameters.do_pileup == false) {
+      if (parameters.do_erc == false) {
+        CreateConsensus(parameters, num_window_threads, contig, ctg_alns, aln_lens_on_ref, consensus, fp_out_cons);
+
+      } else {
+        if (thread_id == 0) {
+          LOG_MEDHIGH("\r(thread_id = %d) Processing contig %ld / %ld (%.2f%%), len: %10ld", thread_id, (i + 1), ctg_names.size(), 100.0f*(((float) (i)) / ((float) ctg_names.size())), contig->get_sequence_length());
+        }
+
+        CreateConsensus(parameters, num_window_threads, contig, ctg_alns, aln_lens_on_ref, consensus, NULL);
+        #pragma omp critical
+        {
+          fprintf (fp_out_cons, ">Consensus_%s\n%s\n", contig->get_header(), consensus.c_str());
+//          fflush (fp_out_cons);
+        }
+      }
+
+    } else {
+      Pileup pileup(contig, ctg_alns);
+//      pileup.Verbose(stdout);
+      pileup.GenerateConsensus(5, consensus);
+      #pragma omp critical
+      fprintf (fp_out_cons, ">Consensus_%s\n%s\n", contig->get_header(), consensus.c_str());
+      #pragma omp critical
+      fflush (fp_out_cons);
+    }
+    fclose(fp_out_cons);
+
+    ///////////////////////////////////////
+//    LOG_MEDHIGH_NOHEADER("\n");
+    if (parameters.do_erc == false) {
+      LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
+      LOG_MEDHIGH_NOHEADER("\n");
+    }
+  }
+
+  return 0;
+}
+
+
+
 struct ContigOverlapLocation {
   int64_t start = 0, end = 0, ctg_id = 0;
 };
 
-int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std::map<std::string, ContigOverlapLocation> &map_ctg_to_overlaps) {
+int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std::map<int64_t, ContigOverlapLocation> &map_ctg_to_overlaps) {
   map_ctg_to_overlaps.clear();
 
-  if (sorted_overlaps.size() == 0) {
-	  printf ("There are no input overlaps! sorted_overlaps.size() = %ld\n", sorted_overlaps.size());
-	  return 1;
-  }
+  if (sorted_overlaps.size() == 0) { return 1; }
 
 //  map_ctg_to_overlaps[sorted_overlaps[0].Bname] = (std::make_pair(0, 0));
 //  std::pair ctg_location = std::make_tuple(0, 0);
@@ -262,33 +369,27 @@ int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std:
     if (sorted_overlaps[i].Bid == ctg_loc.ctg_id) {
       ctg_loc.end = i;
     } else {
-      map_ctg_to_overlaps[sorted_overlaps[i-1].Bname] = ctg_loc;
-      printf ("Added ctg_loc %ld, ctg_loc.start = %ld, ctg_loc.end = %ld, ctg_loc.ctg_id = %ld, sorted_overlaps[i].Bname = '%s'\n", map_ctg_to_overlaps.size(), ctg_loc.start, ctg_loc.end, ctg_loc.ctg_id, sorted_overlaps[i].Bname.c_str());
-      fflush(stdout);
+      map_ctg_to_overlaps[sorted_overlaps[i-1].Bid] = ctg_loc;
       ctg_loc.start = ctg_loc.end = i;
       ctg_loc.ctg_id = sorted_overlaps[i].Bid;
     }
   }
 
   // Last update and push the last streak to the map.
-  map_ctg_to_overlaps[sorted_overlaps.back().Bname] = ctg_loc;
-  printf ("Added last ctg_loc %ld, ctg_loc.start = %ld, ctg_loc.end = %ld, ctg_loc.ctg_id = %ld, sorted_overlaps.back().Bname = '%s'\n", map_ctg_to_overlaps.size(), ctg_loc.start, ctg_loc.end, ctg_loc.ctg_id,sorted_overlaps.back().Bname.c_str());
-  fflush(stdout);
+  map_ctg_to_overlaps[sorted_overlaps.back().Bid] = ctg_loc;
 
   return 0;
 }
 
 int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
                                 const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &sorted_overlaps) {
-  LOG_MEDHIGH("Running consensus - directly from alignments.\n");
+  LOG_MEDHIGH("Running consensus.\n");
 
   int32_t num_read_threads = (parameters.do_erc) ? (parameters.num_threads) : 1;
   int32_t num_window_threads = (!parameters.do_erc) ? (parameters.num_threads) : 1;
 
-//  std::vector<std::string> ctg_names;
-//  std::map<std::string, std::vector<const SingleSequence *> > all_ctg_alns;
   // For a given contig name (qname), the value is a range of indexes in the sorted overlaps vector.
-  std::map<std::string, ContigOverlapLocation> map_ctg_to_overlaps;
+  std::map<int64_t, ContigOverlapLocation> map_ctg_to_overlaps;
 
   // Separate overlaps into groups for each contig.
   // Alignments which are called unmapped will be skipped in this step.
@@ -296,11 +397,11 @@ int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const Seque
   LOG_MEDHIGH("Separating overlaps to individual contigs.\n");
 //  GroupAlignmentsToContigs(alns, -1.0, ctg_names, all_ctg_alns);
   GroupOverlapsToContigs(sorted_overlaps, map_ctg_to_overlaps);
-  int64_t it_id = 0;
-  for (std::map<std::string, ContigOverlapLocation>::iterator it = map_ctg_to_overlaps.begin(); it != map_ctg_to_overlaps.end(); it++) {
-	  printf ("[%ld] start = %ld, end = %ld, ctg_id = %ld\n", it_id, it->second.start, it->second.end, it->second.ctg_id);
-	  it_id += 1;
-  }
+//  int64_t i1 = 0;
+//  for (auto it = map_ctg_to_overlaps.begin(); it != map_ctg_to_overlaps.end(); it++) {
+//    i1 += 1;
+//    printf ("[%ld] %ld %ld %ld %ld\n", i1, it->second.start, it->second.end, it->second.ctg_id, it->first);
+//  }
 
   // Hash the sequences by their name.
   std::map<std::string, const SingleSequence *> rname_to_seq;
@@ -316,11 +417,12 @@ int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const Seque
     LOG_MEDHIGH("In total, there are %ld contigs for consensus, each containing:\n", contigs.get_sequences().size());
     for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
       std::string contig_name = contigs.get_sequences()[i]->get_header();
-      auto it = map_ctg_to_overlaps.find(contig_name);
+      int64_t contig_id = qname_to_ids.find(contig_name)->second + 1;
+      auto it = map_ctg_to_overlaps.find(contig_id);
       if (it == map_ctg_to_overlaps.end()) {
         LOG_MEDHIGH("\t[%ld] %s %ld alignments, contig len: %ld\n", i, contigs.get_sequences()[i]->get_header(), 0, contigs.get_sequences()[i]->get_sequence_length());
       } else {
-        auto &ovl_range = map_ctg_to_overlaps[contigs.get_sequences()[i]->get_header()];
+        auto &ovl_range = map_ctg_to_overlaps[contig_id];
         LOG_MEDHIGH("\t[%ld] %s %ld alignments, contig len: %ld\n", i, contigs.get_sequences()[i]->get_header(), ovl_range.end - ovl_range.start + 1, contigs.get_sequences()[i]->get_sequence_length());
       }
     }
@@ -328,6 +430,7 @@ int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const Seque
     LOG_MEDHIGH("In total, there are %ld sequences for error correction.\n", contigs.get_sequences().size());
   }
 
+  LOG_NEWLINE;
 
   // Clear the output file for consensus.
   FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "w");
@@ -336,15 +439,54 @@ int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const Seque
   // For each contig (draft can contain multiple contigs), process alignments which only map to that particular contig.
   #pragma omp parallel for num_threads(num_read_threads) schedule(dynamic, 1)
   for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
-    auto it = map_ctg_to_overlaps.find(contigs.get_sequences()[i]->get_header());
+	  const SingleSequence *contig = contigs.get_sequences()[i];
+    std::string contig_name = contig->get_header();
+    int64_t contig_id = qname_to_ids.find(contig_name)->second + 1;
+    int32_t thread_id = omp_get_thread_num();
+
+    // If we are doing error correction, parallelization is per-read and not per-window.
+    // We need to disable some of the debug info.
+    if (parameters.do_erc == false) {
+      LOG_ALL("Started processing contig %ld / %ld (%.2f%%): %s\n", (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), contig->get_header());
+    }
+
+    auto it = map_ctg_to_overlaps.find(contig_id);
+//    printf ("contigs.get_sequences()[%ld]->get_header() = '%s'\n", i, contigs.get_sequences()[i]->get_header());
+//    fflush(stdout);
+    // Minimap tends to trim headers after the first ':'. Also, most mappers trim on ' '.
+    // Before we give up on the contig, let's try all these various options.
+//    if (it == map_ctg_to_overlaps.end()) {
+//
+//    }
+
+//    // In this case, the contig name was not found. It is possible that the name was replaced by contig's ID.
+//    // Test that first, and if still no hit, then escape.
+//    if (it == map_ctg_to_overlaps.end()) {
+//      std::string header = std::string(contigs.get_sequences()[i]->get_header());
+//      auto it_id = qname_to_ids.find(header);
+//      std::stringstream id_as_header;
+//      id_as_header << it_id->second + 1;  // MHAP IDs are 1-based.
+//      it = map_ctg_to_overlaps.find(id_as_header.str());
+//    }
+
     if (it == map_ctg_to_overlaps.end()) {
-      LOG_MEDHIGH("Contig %ld has 0 overlaps, contig len: %ld, name: '%s'\n", i, contigs.get_sequences()[i]->get_sequence_length(), contigs.get_sequences()[i]->get_header());
+      if (parameters.do_erc == false || (parameters.do_erc == true && thread_id == 0)) {
+        LOG_MEDHIGH("Contig %ld has 0 overlaps, contig len: %ld, name: '%s'\n", i, contig->get_sequence_length(), contig->get_header());
+      }
       continue;
+    }
+
+    if (parameters.do_erc == false || (parameters.do_erc == true && thread_id == 0)) {
+      LOG_ALL("(thread_id = %d) Aligning overlaps for contig %ld / %ld (%.2f%%): %s\n", thread_id, (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), contig->get_header());
     }
 
     SequenceFile alns;
     std::vector<OverlapLine> extracted_overlaps(sorted_overlaps.begin()+it->second.start, sorted_overlaps.begin()+it->second.end);
-    AlignMHAP(contigs, reads, extracted_overlaps, parameters.num_threads, alns);
+    if (parameters.do_erc == false) {
+      AlignOverlaps(contigs, reads, extracted_overlaps, parameters.num_threads, alns, true);
+    } else {
+      AlignOverlaps(contigs, reads, extracted_overlaps, 1, alns, thread_id == 0);
+    }
 
     // Hash all the alignment lengths (which will be used a lot).
     std::map<const SingleSequence *, int64_t> aln_lens_on_ref;
@@ -352,26 +494,8 @@ int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const Seque
       aln_lens_on_ref[alns.get_sequences()[i]] = alns.get_sequences()[i]->get_aln().GetReferenceLengthFromCigar();
     }
 
-    int32_t thread_id = omp_get_thread_num();
-
-    const SingleSequence *contig = contigs.get_sequences()[i];
-//    auto it = all_ctg_alns.find(ctg_names[i]);
-//    if (it == all_ctg_alns.end()) {
-//      FATAL_REPORT(ERR_UNEXPECTED_VALUE, "Something strange happened. Contig name, which was extracted from alignments, cannot be found in the std::map containing those same alignments.");
-//      // Exits.
-//    }
-//    // Get alignments for current contig.
-//    std::vector<const SingleSequence *> &ctg_alns = it->second;
-
     // This sorts ascending by the pos field.
-//    std::sort(alns.get_sequences().begin(), alns.get_sequences().end(), seqaln_sort_key());
     alns.Sort();
-
-    // If we are doing error correction, parallelization is per-read and not per-window.
-    // We need to disable some of the debug info.
-    if (parameters.do_erc == false) {
-      LOG_ALL("Starting consensus for contig %ld / %ld (%.2f%%): %s\n", (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), contig->get_header());
-    }
 
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
@@ -407,8 +531,8 @@ int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const Seque
 //    LOG_MEDHIGH_NOHEADER("\n");
     if (parameters.do_erc == false) {
       LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
-      LOG_MEDHIGH_NOHEADER("\n");
     }
+    LOG_MEDHIGH_NOHEADER("\n");
   }
 
   return 0;

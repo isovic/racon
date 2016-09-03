@@ -120,6 +120,6 @@ int EdlibNWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                    int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
-int AlignMHAP(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned);
+int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug);
 
 #endif /* SRC_MHAP_H_ */

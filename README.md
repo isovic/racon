@@ -34,9 +34,10 @@ On Ubuntu-based systems:
 ```  
 sudo apt-get install mummer  
 ```  
-Numpy is also required for evaluation purposes:  
+Numpy and Matplotlib are also required for evaluation purposes:  
 ```  
 sudo apt-get install python-numpy  
+sudo apt-get install python-matplotlib  
 ```  
 
 

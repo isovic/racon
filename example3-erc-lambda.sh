@@ -41,13 +41,14 @@ echo "tools/minimap/minimap -Sw5 -L100 -m0 $readsfasta $readsfasta > $paf"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_minimap} \
 	tools/minimap/minimap -Sw5 -L100 -m0 $readsfasta $readsfasta > $paf
 echo "tools/miniasm/misc/paf2mhap.pl $contigs $readsfasta $paf > $mhap"
-scripts/paf2mhap.pl $readsfasta $readsfasta $paf > $mhap
+# scripts/paf2mhap.pl $readsfasta $readsfasta $paf > $mhap
 echo $reads
+echo $paf
 echo $mhap
 
 echo "Running Racon:"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
-	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --mhap --erc -t ${threads} ${reads} ${mhap} ${reads} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --erc -t ${threads} ${reads} ${paf} ${reads} ${consensus}
 echo "Racon exited."
 
 rawreadssam=results/temp/consensus-${dataset}-${suffix}-$curriter.rawreads.ref.sam
@@ -59,6 +60,8 @@ ercreadssam=results/temp/consensus-${dataset}-${suffix}-$curriter.rawreads.erc.s
 tools/graphmap/bin/graphmap-not_release align -a anchor --rebuild-index -B 0 -b 3 -r ${reference} -d ${consensus} -o ${ercreadssam} --extcigar -t ${threads}
 echo "Error-corrected reads statistics:"
 codebase/samscripts/src/errorrates.py base ${reference} ${ercreadssam}
+
+cat ${memtime_racon}
 
 # ### Run the seconditeration ###
 # previter=iter1
