@@ -246,10 +246,13 @@ struct ContigOverlapLocation {
   int64_t start = 0, end = 0, ctg_id = 0;
 };
 
-int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std::map<std::string, ContigOverlapLocation> map_ctg_to_overlaps) {
+int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std::map<std::string, ContigOverlapLocation> &map_ctg_to_overlaps) {
   map_ctg_to_overlaps.clear();
 
-  if (sorted_overlaps.size() == 0) { return 1; }
+  if (sorted_overlaps.size() == 0) {
+	  printf ("There are no input overlaps! sorted_overlaps.size() = %ld\n", sorted_overlaps.size());
+	  return 1;
+  }
 
 //  map_ctg_to_overlaps[sorted_overlaps[0].Bname] = (std::make_pair(0, 0));
 //  std::pair ctg_location = std::make_tuple(0, 0);
@@ -259,8 +262,8 @@ int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std:
     if (sorted_overlaps[i].Bid == ctg_loc.ctg_id) {
       ctg_loc.end = i;
     } else {
-      map_ctg_to_overlaps[sorted_overlaps[i].Bname] = ctg_loc;
-      printf ("Added ctg_loc %ld, ctg_loc.start = %ld, ctg_loc.end = %ld, ctg_loc.ctg_id = %ld\n", map_ctg_to_overlaps.size(), ctg_loc.start, ctg_loc.end, ctg_loc.ctg_id);
+      map_ctg_to_overlaps[sorted_overlaps[i-1].Bname] = ctg_loc;
+      printf ("Added ctg_loc %ld, ctg_loc.start = %ld, ctg_loc.end = %ld, ctg_loc.ctg_id = %ld, sorted_overlaps[i].Bname = '%s'\n", map_ctg_to_overlaps.size(), ctg_loc.start, ctg_loc.end, ctg_loc.ctg_id, sorted_overlaps[i].Bname.c_str());
       fflush(stdout);
       ctg_loc.start = ctg_loc.end = i;
       ctg_loc.ctg_id = sorted_overlaps[i].Bid;
@@ -269,7 +272,7 @@ int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std:
 
   // Last update and push the last streak to the map.
   map_ctg_to_overlaps[sorted_overlaps.back().Bname] = ctg_loc;
-  printf ("Added last ctg_loc %ld, ctg_loc.start = %ld, ctg_loc.end = %ld, ctg_loc.ctg_id = %ld\n", map_ctg_to_overlaps.size(), ctg_loc.start, ctg_loc.end, ctg_loc.ctg_id);
+  printf ("Added last ctg_loc %ld, ctg_loc.start = %ld, ctg_loc.end = %ld, ctg_loc.ctg_id = %ld, sorted_overlaps.back().Bname = '%s'\n", map_ctg_to_overlaps.size(), ctg_loc.start, ctg_loc.end, ctg_loc.ctg_id,sorted_overlaps.back().Bname.c_str());
   fflush(stdout);
 
   return 0;
@@ -293,6 +296,11 @@ int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const Seque
   LOG_MEDHIGH("Separating overlaps to individual contigs.\n");
 //  GroupAlignmentsToContigs(alns, -1.0, ctg_names, all_ctg_alns);
   GroupOverlapsToContigs(sorted_overlaps, map_ctg_to_overlaps);
+  int64_t it_id = 0;
+  for (std::map<std::string, ContigOverlapLocation>::iterator it = map_ctg_to_overlaps.begin(); it != map_ctg_to_overlaps.end(); it++) {
+	  printf ("[%ld] start = %ld, end = %ld, ctg_id = %ld\n", it_id, it->second.start, it->second.end, it->second.ctg_id);
+	  it_id += 1;
+  }
 
   // Hash the sequences by their name.
   std::map<std::string, const SingleSequence *> rname_to_seq;

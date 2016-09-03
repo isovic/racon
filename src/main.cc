@@ -199,6 +199,8 @@ int main(int argc, char* argv[]) {
 //      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
     }
 
+    printf ("Before sort: overlaps_final.size() = %ld\n", overlaps_final.size());
+
     std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return a.Bid < b.Bid; } );
 //    seqs_sam = new SequenceFile();
     LOG_ALL("Aligning overlaps.\n");
@@ -207,8 +209,10 @@ int main(int argc, char* argv[]) {
   }
 
 //  ConsensusDirectFromAln(parameters, seqs_gfa, *seqs_sam);
-  seqs_sam->Clear();
-  if (seqs_sam) { delete seqs_sam; }
+  if (seqs_sam) {
+	  seqs_sam->Clear();
+	  delete seqs_sam;
+  }
 
-	return 0;
+  return 0;
 }

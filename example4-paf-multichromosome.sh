@@ -69,9 +69,9 @@ cat $memtime_racon
 ############################################
 
 # Edit distance calculation - Avg. Identity doesn't take deletions into account ###
-echo ""
-echo "Evaluating the results."
-scripts/edcontigs.py ${reference} ${consensus}
+# echo ""
+# echo "Evaluating the results."
+# scripts/edcontigs.py ${reference} ${consensus}
 ##########################################
 
 
