@@ -24,6 +24,9 @@ Run an example script:
 ```  
 Tip: Running Racon iteratively will produce better consensus sequences. (But don't forget to re-run the overlap/alignment of your reads to the consensus sequence from the previous iteration.)  
 
+## Updates
+- Significant reduction in memory consumption: 3x less memory required for C. Elegans compared to our preprint  
+
 ## Dependencies
 1. gcc >= 4.8  
 2. Zlib - sudo apt-get install zlib1g-dev  
