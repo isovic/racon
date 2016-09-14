@@ -141,7 +141,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<Singl
   int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
   window_refs.push_back(contig);
   window_seqs.push_back(GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1)));
-  if (use_contig_qvs == false) {
+  if (use_contig_qvs == false || contig->get_quality() == NULL || contig->get_quality_length() == 0) {
     std::string dummy_quals((temp_window_end - window_start + 1), '!');
     window_qv.push_back(dummy_quals);
   } else {
