@@ -47,6 +47,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.is_mhap), VALUE_TYPE_BOOL, "", "mhap", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
 
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.use_contig_qvs), VALUE_TYPE_BOOL, "", "use-contig-qv", "0", "If false, dummy QVs equal to '!' will be assigned to each contig base during window consensus. Otherwise, QVs will be loaded from the contigs file if the file is in FASTQ format.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.do_pileup), VALUE_TYPE_BOOL, "", "pileup", "0", "Simple pileup + majority vote consensus will be performed instead of using Spoa. Much faster, but less accurate.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.num_threads), VALUE_TYPE_INT32, "t", "threads", "4", "Number of threads to use.", 0, "Control");
@@ -75,7 +76,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
 
   if (argc == 1) {
-    fprintf (stderr, "  %s [options] <reads.fastq> <overlaps.mhap> <raw_contigs.fasta> <out_consensus.fasta>\n\n", argv[0]);
+    fprintf (stderr, "  %s [options] <reads.fastq> <overlaps.paf> <raw_contigs.fasta> <out_consensus.fasta>\n\n", argv[0]);
     fprintf (stderr, "%s\n", argparser.VerboseUsage().c_str());
     exit(1);
   }

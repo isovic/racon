@@ -25,6 +25,8 @@ struct ProgramParameters {
   double qv_threshold = 10.0;
   int32_t num_threads = 4;
 
+  bool use_contig_qvs = false;      // If true and contigs are in FASTQ format, the QVs which are in the file will be used for window consensuses. If false, dummy QVs of 0 will be used instead.
+
   std::string program_bin;
   std::string program_folder;
   std::vector<std::string> cmd_arguments;

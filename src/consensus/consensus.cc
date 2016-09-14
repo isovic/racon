@@ -130,7 +130,7 @@ void ExtractWindowFromAlns1(const SingleSequence *contig, const std::vector<cons
 }
 
 void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens,
-                           IntervalTreeSS &aln_interval_tree, int64_t window_start, int64_t window_end, double qv_threshold,
+                           IntervalTreeSS &aln_interval_tree, int64_t window_start, int64_t window_end, double qv_threshold, bool use_contig_qvs,
                            std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, std::vector<const SingleSequence *> &window_refs,
                            std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends,
                            std::vector<uint32_t> &starts_on_read, std::vector<uint32_t> &ends_on_read, FILE *fp_window) {
@@ -141,8 +141,12 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<Singl
   int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
   window_refs.push_back(contig);
   window_seqs.push_back(GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1)));
-  std::string dummy_quals((temp_window_end - window_start + 1), '!');
-  window_qv.push_back(dummy_quals);
+  if (use_contig_qvs == false) {
+    std::string dummy_quals((temp_window_end - window_start + 1), '!');
+    window_qv.push_back(dummy_quals);
+  } else {
+    window_qv.push_back(GetSubstring((char *) (contig->get_quality() + window_start), (temp_window_end - window_start + 1)));
+  }
   window_starts.push_back(0);
   window_ends.push_back(temp_window_end - window_start);
   starts_on_read.push_back(window_start);
@@ -752,7 +756,7 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
        // When realigning reads, we cannot use the QV filtering because chunks of reads would not get realigned.
        double qv_threshold = (parameters.do_realign) ? -1.0 : parameters.qv_threshold;
        ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree,
-                             window_start, window_end, qv_threshold,
+                             window_start, window_end, qv_threshold, parameters.use_contig_qvs,
                              windows_for_msa, quals_for_msa, refs_for_msa,
                              starts_for_msa, ends_for_msa, starts_on_read, ends_on_read, NULL);
        //       ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree, window_start, window_end, qv_threshold, windows_for_msa, quals_for_msa, refs_for_msa, starts_for_msa, ends_for_msa, NULL);
