@@ -54,7 +54,7 @@ git clone https://github.com/isovic/racon.git && cd racon && make modules && mak
 ```  
 bin/racon [options] <reads.fastq> <mappings.paf> <raw_contigs.fasta> <out_consensus.fasta>  
 ```  
-Racon depends on quality values - the reads file/SAM file needs to have them included.  
+Racon depends on **quality values** - the reads file/SAM file needs to have them included.  
 For detailed info on various options, run ```bin/racon``` without arguments.  
 
 Racon can also be run in pipe with other tools: overlaps can be read directly from ```stdin``` if the parameter ```<mappings.paf>``` is equal to ```-```.  
