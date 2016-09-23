@@ -60,7 +60,7 @@ For detailed info on various options, run ```bin/racon``` without arguments.
 Racon can also be run in pipe with other tools: overlaps can be read directly from ```stdin``` if the parameter ```<mappings.paf>``` is equal to ```-```.  
 
 A concrete example is below.  
-Generate overlaps using, e.g., Minimap:  
+Generate mappings of reads to the layout using, e.g., Minimap:  
 ```  
 tools/minimap/minimap test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda/reads.fastq > test-data/lambda/mappings.paf  
 ```  
