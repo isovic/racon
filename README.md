@@ -52,22 +52,23 @@ git clone https://github.com/isovic/racon.git && cd racon && make modules && mak
 
 ## Usage
 ```  
-bin/racon [options] <reads.fastq> <overlaps.paf> <raw_contigs.fasta> <out_consensus.fasta>  
+bin/racon [options] <reads.fastq> <mappings.paf> <raw_contigs.fasta> <out_consensus.fasta>  
 ```  
-Racon depends on quality values - the reads file/SAM file needs to have them included.  
+Racon depends on **quality values** - the reads file/SAM file needs to have them included.  
 For detailed info on various options, run ```bin/racon``` without arguments.  
 
-Racon can also be run in pipe with other tools: overlaps can be read directly from ```stdin``` if the parameter ```<overlaps.paf>``` is equal to ```-```.  
+Racon can also be run in pipe with other tools: overlaps can be read directly from ```stdin``` if the parameter ```<mappings.paf>``` is equal to ```-```.  
 
 A concrete example is below.  
-Generate overlaps using, e.g., Minimap:  
+Generate mappings of reads to the layout using, e.g., Minimap:  
 ```  
-tools/minimap/minimap test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda/reads.fastq > test-data/lambda/overlaps.paf  
+tools/minimap/minimap test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda/reads.fastq > test-data/lambda/mappings.paf  
 ```  
+**Important note:** ```mappings.paf``` are not the same as the overlaps used to generate the original assembly. Once the assembly is generated (e.g. Minimap for overlapping and Miniasm for layout), reads need to be mapped to the layout (e.g. using Minimap in the mapping mode (default usage with no additional parameters) as in the example above).  
 
-Run Racon on the overlaps:  
+Run Racon on the mappings:  
 ```  
-bin/racon test-data/lambda/reads.fastq test-data/lambda/overlaps.paf test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda/consensus.fasta  
+bin/racon test-data/lambda/reads.fastq test-data/lambda/mappings.paf test-data/lambda/layout-miniasm.gfa.fasta test-data/lambda/consensus.fasta  
 ```  
 
 Conversely, the same can be done using a one-liner:  
