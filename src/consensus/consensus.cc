@@ -819,7 +819,7 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
       LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
     }
 
-    for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
+    /*for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
       int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
       int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
       ss_cons << consensus_windows[id_in_batch];
@@ -827,82 +827,82 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
         fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
         fflush(fp_out_cons);
       }
-    }
+  }*/
 
     // Deprecated, used for window overlapping.
-//     LOG_MEDHIGH_NOHEADER("\n");
-//     LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
-//     for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
-//       int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
-//       int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
-//
-//       if (id_in_batch == 0) {
-//         ss_cons << consensus_windows[id_in_batch];
-//         if (fp_out_cons) {
-//           fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
-//           fflush(fp_out_cons);
-//         }
-//
-//       } else {
-//         if (parameters.win_ovl_margin <= 0.0) {  // If overlapping windows is turned off.
-//           ss_cons << consensus_windows[id_in_batch];
-//           if (fp_out_cons) {
-//             fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
-//             fflush(fp_out_cons);
-//           }
-//
-//         } else {     // Otherwise, do the overlap alignment.
-//           fprintf (stderr, "Overlapping windows.\n");
-//           fflush(stderr);
-//
-//           std::string trimmed_window = consensus_windows[id_in_batch-1].substr((1.0 - parameters.win_ovl_margin * 3) * consensus_windows[id_in_batch-1].size());
-//
-//           std::vector<std::string> windows_for_alignment = {trimmed_window, consensus_windows[id_in_batch]};
-//           std::vector<std::string> msa;
-//
-//           SPOA::generate_msa(msa, windows_for_alignment, SPOA::AlignmentParams(1, -1, -1, -1, SPOA::AlignmentType::kOV), false);
-//
-//           std::stringstream ss_clipped_window;
-//           int32_t clip_pos = 0;
-//           int32_t trimmed_id = 0, curr_window_id = 1;
-//           for (clip_pos=(msa[trimmed_id].size()-1); clip_pos>=0 && msa[trimmed_id][clip_pos] == '-'; clip_pos--);
-//
-//           for (clip_pos++; clip_pos<msa[curr_window_id].size(); clip_pos++) {
-//             if (msa[curr_window_id][clip_pos] != '-') { ss_clipped_window << msa[curr_window_id][clip_pos]; }
-//           }
-//           std::string clipped_window = ss_clipped_window.str();
-//
-//           if (clipped_window.size() > 0) {
-//             ss_cons << clipped_window;
-//             if (fp_out_cons) {
-//               fprintf (fp_out_cons, "%s", clipped_window.c_str());
-//               fflush(fp_out_cons);
-//             }
-////               printf ("[good] window_start = %ld, window_end = %ld, clipped_window.size() = %ld\n", window_start, window_end, clipped_window.size());
-////               fflush(stdout);
-//           } else {
-//             printf ("\n");
-//             printf ("[bad] window_start = %ld, window_end = %ld, clipped_window.size() = %ld\n", window_start, window_end, clipped_window.size());
-//             printf ("\n");
-//             for (int32_t i2=0; i2<windows_for_alignment.size(); i2++) {
-//               printf ("%s\n\n", windows_for_alignment[i2].c_str());
-//             }
-//             printf ("\n");
-//             printf ("Alignment:\n\n");
-//             fflush(stdout);
-//             for (int32_t i2=0; i2<msa.size(); i2++) {
-//               printf ("%s\n\n", msa[i2].c_str());
-//             }
-//             printf ("\n");
-//
-//             fflush(stdout);
-//             exit(1);
-//           }
-//
-////             exit(1);
-//         }
-//       }
-//     }
+     LOG_MEDHIGH_NOHEADER("\n");
+     LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
+     for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
+       int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
+       int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
+
+       if (id_in_batch == 0) {
+         ss_cons << consensus_windows[id_in_batch];
+         if (fp_out_cons) {
+           fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+           fflush(fp_out_cons);
+         }
+
+       } else {
+         if (parameters.win_ovl_margin <= 0.0) {  // If overlapping windows is turned off.
+           ss_cons << consensus_windows[id_in_batch];
+           if (fp_out_cons) {
+             fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+             fflush(fp_out_cons);
+           }
+
+         } else {     // Otherwise, do the overlap alignment.
+           // fprintf (stderr, "Overlapping windows.\n");
+           // fflush(stderr);
+
+           std::string trimmed_window = consensus_windows[id_in_batch-1].substr(std::max((1.0 - parameters.win_ovl_margin * 1.3), 0.0) * consensus_windows[id_in_batch-1].size());
+
+           std::vector<std::string> windows_for_alignment = {trimmed_window, consensus_windows[id_in_batch]};
+           std::vector<std::string> msa;
+
+           SPOA::generate_msa(msa, windows_for_alignment, SPOA::AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, SPOA::AlignmentType::kOV), false);
+
+           std::stringstream ss_clipped_window;
+           int32_t clip_pos = 0;
+           int32_t trimmed_id = 0, curr_window_id = 1;
+           for (clip_pos=(msa[trimmed_id].size()-1); clip_pos>=0 && msa[trimmed_id][clip_pos] == '-'; clip_pos--);
+
+           for (clip_pos++; clip_pos<msa[curr_window_id].size(); clip_pos++) {
+             if (msa[curr_window_id][clip_pos] != '-') { ss_clipped_window << msa[curr_window_id][clip_pos]; }
+           }
+           std::string clipped_window = ss_clipped_window.str();
+
+           if (clipped_window.size() > 0) {
+             ss_cons << clipped_window;
+             if (fp_out_cons) {
+               fprintf (fp_out_cons, "%s", clipped_window.c_str());
+               fflush(fp_out_cons);
+             }
+               // printf ("[good] window_start = %ld, window_end = %ld, clipped_window.size() = %ld\n", window_start, window_end, clipped_window.size());
+               // fflush(stdout);
+           } else {
+             printf ("\n");
+             printf ("[bad] window_start = %ld, window_end = %ld, clipped_window.size() = %ld\n", window_start, window_end, clipped_window.size());
+             printf ("\n");
+             for (int32_t i2=0; i2<windows_for_alignment.size(); i2++) {
+               printf ("%s\n\n", windows_for_alignment[i2].c_str());
+             }
+             printf ("\n");
+             printf ("Alignment:\n\n");
+             fflush(stdout);
+             for (int32_t i2=0; i2<msa.size(); i2++) {
+               printf ("%s\n\n", msa[i2].c_str());
+             }
+             printf ("\n");
+
+             fflush(stdout);
+             exit(1);
+           }
+
+
+         }
+       }
+     }
 
 //     LOG_MEDHIGH_NOHEADER("\n");
     if (parameters.do_erc == false) {

@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.verbose_level), VALUE_TYPE_INT32, "v", "verbose", "5", "Verbose level. 0 off, 1 low, 2 medium, 3 high, 4 and 5 all levels, 6-9 debug.", 0, "Other");
 
   // TODO: Deprecated feature. Consider removing permanently.
-//  argparser.AddArgument(&(parameters.win_ovl_margin), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.win_ovl_margin), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
 //  argparser.AddArgument(&(parameters.temp_alt_contig_path), VALUE_TYPE_STRING, "", "altctgs", "", "Extracted alternate contigs. Output is in SAM format.", 0, "Debug");
 
   // TODO: These two options are currently in dev.
