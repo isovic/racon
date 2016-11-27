@@ -34,6 +34,12 @@ class OverlapLine {
     return 0;
   }
 
+  std::string WriteMHAP() {
+    std::stringstream ss;
+    ss << Aid << " " << Bid << " " << perc_err << " " << shared_minmers << " " << Arev << " " << Astart << " " << Aend << " " << Alen << " " << Brev << " " << Bstart << " " << Bend << " " << Blen;
+    return ss.str();
+  }
+
   int ParsePAF(std::string &line, const std::map<std::string, int64_t> &qname_to_ids) {
     std::istringstream iss(line);
     std::string tempAstrand, cm;
