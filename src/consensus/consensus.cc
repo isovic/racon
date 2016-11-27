@@ -158,11 +158,10 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<Singl
       #endif
     }
   }
-
 }
 
 // Used when alignments are specified via a SAM file.
-int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
+int ConsensusFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
   LOG_MEDHIGH("Running consensus - directly from alignments.\n");
 
   int32_t num_read_threads = (parameters.do_erc) ? (parameters.num_threads) : 1;
@@ -296,7 +295,7 @@ int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std:
 }
 
 // Used for consensus when overlaps are input to the main program (MHAP, PAF) instead of alignments (SAM).
-int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
+int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
                                 const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &sorted_overlaps) {
   LOG_MEDHIGH("Running consensus.\n");
 
@@ -598,21 +597,6 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
   }
   IntervalTreeSS aln_interval_tree(aln_intervals);
 
-  // For realignment, we need a vector of new alignment objects which will update the existing ones.
-  std::map<const SingleSequence *, SequenceAlignment> realigns;
-  if (parameters.do_realign) {
-    for (int64_t i=0; i<ctg_alns.size(); i++) {
-      realigns[ctg_alns[i]] = SequenceAlignment();
-      SequenceAlignment &r = realigns[ctg_alns[i]];
-      r.CopyFrom(ctg_alns[i]->get_aln());
-      r.cigar().clear();
-      r.set_pos(0);
-      r.set_as(0);
-      r.set_evalue(0.0);
-      r.optional().clear();
-    }
-  }
-
   // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
   // then the results are collected and output to file. After that, a new batch is loaded.
   for (int64_t window_batch_start = parameters.start_window, num_batches = 0; window_batch_start < num_windows && (parameters.num_batches < 0 || num_batches < parameters.num_batches); window_batch_start += parameters.batch_of_windows, num_batches++) {
@@ -642,9 +626,9 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
        std::vector<const SingleSequence *> refs_for_msa;
 
        // When realigning reads, we cannot use the QV filtering because chunks of reads would not get realigned.
-       double qv_threshold = (parameters.do_realign) ? -1.0 : parameters.qv_threshold;
+       // Realignment mode has been removed for now, so the upper comment can be ignored. Left here for future reference, so it doesn't get forgotten.
        ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree,
-                             window_start, window_end, qv_threshold, parameters.use_contig_qvs,
+                             window_start, window_end, parameters.qv_threshold, parameters.use_contig_qvs,
                              windows_for_msa, quals_for_msa, refs_for_msa,
                              starts_for_msa, ends_for_msa, starts_on_read, ends_on_read, NULL);
        //       ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree, window_start, window_end, qv_threshold, windows_for_msa, quals_for_msa, refs_for_msa, starts_for_msa, ends_for_msa, NULL);
@@ -695,15 +679,6 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
 //       }
 //       fclose(fp_debug);
 
-       if (parameters.do_realign) {
-         std::vector<std::string> msa;
-         graph->generate_msa(msa, true);
-         // Sequence at msa[0] is the reference sequence.
-         for (int64_t i=1; i<msa.size(); i++) {
-           auto seq = refs_for_msa[i];
-           ConvertMSAToAln(msa[0], msa[i], window_start, realigns[seq]);
-         }
-       }
     }
 
     if (parameters.do_erc == false) {
@@ -799,15 +774,6 @@ void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_thr
 //     LOG_MEDHIGH_NOHEADER("\n");
     if (parameters.do_erc == false) {
       LOG_MEDHIGH("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
-    }
-  }
-
-  if (parameters.do_realign) {
-    for (int64_t i=0; i<ctg_alns.size(); i++) {
-      const SequenceAlignment &r = realigns[ctg_alns[i]];
-      ((SingleSequence *) ctg_alns[i])->aln().CopyFrom(r);
-      std::string sam_line = ctg_alns[i]->MakeSAMLine();
-      fprintf (stdout, "%s\n", sam_line.c_str());
     }
   }
 

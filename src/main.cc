@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
       fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
       exit(1);
     }
-    ConsensusDirectFromAln(parameters, seqs_gfa, *seqs_sam);
+    ConsensusFromAln(parameters, seqs_gfa, *seqs_sam);
     if (seqs_sam) {
       seqs_sam->Clear();
       delete seqs_sam;
@@ -183,7 +183,7 @@ int main(int argc, char* argv[]) {
 
 //    printf ("overlaps_final.size() = %ld\n", overlaps_final.size());
     std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return a.Bid < b.Bid; } );
-    ConsensusDirectFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
+    ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
   }
 
 //  } else if (parameters.is_mhap == true) {
