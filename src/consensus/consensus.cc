@@ -48,87 +48,6 @@ int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std:
   return 0;
 }
 
-void ExtractWindowFromAlns1(const SingleSequence *contig, const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens,
-                           IntervalTreeSS &aln_interval_tree, int64_t window_start, int64_t window_end, double qv_threshold,
-                           std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, std::vector<const SingleSequence *> &window_refs,
-                           std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends, FILE *fp_window) {
-  if (window_start > window_end) {
-    return;
-  }
-
-  int64_t temp_window_end = std::min((int64_t) window_end, (int64_t) (contig->get_sequence_length()-1));
-  window_refs.push_back(contig);
-  window_seqs.push_back(GetSubstring((char *) (contig->get_data() + window_start), (temp_window_end - window_start + 1)));
-  std::string dummy_quals((temp_window_end - window_start + 1), '!');
-  window_qv.push_back(dummy_quals);
-  window_starts.push_back(0);
-  window_ends.push_back(temp_window_end - window_start);
-
-  // Find seqs which fall into the window region.
-  std::vector<IntervalSS> intervals;
-  aln_interval_tree.findOverlapping(window_start, temp_window_end, intervals);
-
-  // For each seq, extract its segment which falls into the window.
-  for (int64_t i=0; i<intervals.size(); i++) {
-    auto seq = intervals[i].value;
-    auto aln = seq->get_aln();
-
-    int64_t start_cig_id = 0, end_cig_id = 0;
-    int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
-    int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
-    uint32_t seq_start_in_window = 0;
-    uint32_t seq_end_in_window = temp_window_end - window_start;
-
-    if (start_seq == -1) {
-      start_seq = aln.GetClippedBasesFront();
-
-      seq_start_in_window = aln.get_pos() - 1 - window_start;
-      seq_start_in_window = std::max((uint32_t) 0, (uint32_t) ((int32_t) seq_start_in_window - 0));
-
-    } else if (start_seq < 0) {
-      fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1);
-    }
-
-    if (end_seq == -2) {
-      end_seq = seq->get_data_length() - 1 - aln.GetClippedBasesBack();
-      seq_end_in_window = (aln.get_pos() - 1 + aln.GetReferenceLengthFromCigar()) - window_start;
-      seq_end_in_window = std::min((uint32_t) (temp_window_end - window_start), (uint32_t) ((int32_t) seq_end_in_window + 0));
-    } else if (end_seq < 0) {
-      fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1);
-    }
-
-    std::string seq_data = GetSubstring((char *) (seq->get_data() + start_seq), end_seq - start_seq + 1);
-    std::string seq_qual = (seq->get_quality() != NULL) ? (GetSubstring((char *) (seq->get_quality() + start_seq), end_seq - start_seq + 1)) : (std::string((end_seq - start_seq + 1), '!' + 0));
-
-    // Safety percaution.
-    if (seq_data.size() < 2) { continue; }
-
-    double avg_qual;
-    for (int64_t j=0; j<seq_qual.size(); j++) {
-      avg_qual += (double) (seq_qual[j] - '!');
-    }
-    avg_qual /= std::max((double) seq_qual.size(), 1.0);
-
-    if (avg_qual >= qv_threshold) {
-      window_refs.push_back(seq);
-      window_seqs.push_back(seq_data);
-      window_starts.push_back(seq_start_in_window);
-      window_ends.push_back(seq_end_in_window);
-      window_qv.push_back(seq_qual);
-    }
-
-    if (fp_window) {
-      #ifndef WINDOW_OUTPUT_IN_FASTQ
-        fprintf (fp_window, ">%s Window_%d_to_%d\n%s\n", seq->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
-      #else
-        fprintf (fp_window, "@%s Window_%d_to_%d\n%s\n", seq->get_header(), window_start, temp_window_end, window_seqs.back().c_str());
-        fprintf (fp_window, "+\n%s\n", window_qv.back().c_str());
-      #endif
-    }
-  }
-
-}
-
 void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens,
                            IntervalTreeSS &aln_interval_tree, int64_t window_start, int64_t window_end, double qv_threshold, bool use_contig_qvs,
                            std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, std::vector<const SingleSequence *> &window_refs,
@@ -162,9 +81,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<Singl
     auto aln = seq->get_aln();
 
     int64_t start_cig_id = 0, end_cig_id = 0;
-//    printf ("\n1.\n");
     int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
-//    printf ("2.\n");
     int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
     uint32_t seq_start_in_window = 0;
     uint32_t seq_end_in_window = temp_window_end - window_start;
@@ -244,8 +161,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<Singl
 
 }
 
-
-
+// Used when alignments are specified via a SAM file.
 int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns) {
   LOG_MEDHIGH("Running consensus - directly from alignments.\n");
 
@@ -356,17 +272,11 @@ int ConsensusDirectFromAln(const ProgramParameters &parameters, const SequenceFi
 
 
 
-struct ContigOverlapLocation {
-  int64_t start = 0, end = 0, ctg_id = 0;
-};
-
 int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std::map<int64_t, ContigOverlapLocation> &map_ctg_to_overlaps) {
   map_ctg_to_overlaps.clear();
 
   if (sorted_overlaps.size() == 0) { return 1; }
 
-//  map_ctg_to_overlaps[sorted_overlaps[0].Bname] = (std::make_pair(0, 0));
-//  std::pair ctg_location = std::make_tuple(0, 0);
   ContigOverlapLocation ctg_loc;
   ctg_loc.ctg_id = sorted_overlaps[0].Bid;
   for (int64_t i=1; i<sorted_overlaps.size(); i++) {
@@ -385,6 +295,7 @@ int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std:
   return 0;
 }
 
+// Used for consensus when overlaps are input to the main program (MHAP, PAF) instead of alignments (SAM).
 int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
                                 const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &sorted_overlaps) {
   LOG_MEDHIGH("Running consensus.\n");
@@ -399,13 +310,7 @@ int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const Seque
   // Alignments which are called unmapped will be skipped in this step.
   // Also, alignments are filtered by the base quality if available.
   LOG_MEDHIGH("Separating overlaps to individual contigs.\n");
-//  GroupAlignmentsToContigs(alns, -1.0, ctg_names, all_ctg_alns);
   GroupOverlapsToContigs(sorted_overlaps, map_ctg_to_overlaps);
-//  int64_t i1 = 0;
-//  for (auto it = map_ctg_to_overlaps.begin(); it != map_ctg_to_overlaps.end(); it++) {
-//    i1 += 1;
-//    printf ("[%ld] %ld %ld %ld %ld\n", i1, it->second.start, it->second.end, it->second.ctg_id, it->first);
-//  }
 
   // Hash the sequences by their name.
   std::map<std::string, const SingleSequence *> rname_to_seq;
@@ -455,23 +360,6 @@ int ConsensusDirectFromOverlaps(const ProgramParameters &parameters, const Seque
     }
 
     auto it = map_ctg_to_overlaps.find(contig_id);
-//    printf ("contigs.get_sequences()[%ld]->get_header() = '%s'\n", i, contigs.get_sequences()[i]->get_header());
-//    fflush(stdout);
-    // Minimap tends to trim headers after the first ':'. Also, most mappers trim on ' '.
-    // Before we give up on the contig, let's try all these various options.
-//    if (it == map_ctg_to_overlaps.end()) {
-//
-//    }
-
-//    // In this case, the contig name was not found. It is possible that the name was replaced by contig's ID.
-//    // Test that first, and if still no hit, then escape.
-//    if (it == map_ctg_to_overlaps.end()) {
-//      std::string header = std::string(contigs.get_sequences()[i]->get_header());
-//      auto it_id = qname_to_ids.find(header);
-//      std::stringstream id_as_header;
-//      id_as_header << it_id->second + 1;  // MHAP IDs are 1-based.
-//      it = map_ctg_to_overlaps.find(id_as_header.str());
-//    }
 
     if (it == map_ctg_to_overlaps.end()) {
       if (parameters.do_erc == false || (parameters.do_erc == true && thread_id == 0)) {
