@@ -12,6 +12,36 @@
 #include "spoa.hpp"
 #include "graph.hpp"
 
+int MajorityVoteFromMSA(std::vector<std::string> &msa, std::string &consensus) {
+  if (msa.size() == 0) { return 1; }
+
+  int64_t seq_len = msa[0].size();
+  std::stringstream ss;
+
+  for (int64_t i=0; i<seq_len; i++) {
+    // Count occurrences for the column.
+    int32_t base_counts[256] = {0};
+    for (int32_t j=1; j<(msa.size()-1); j++) {
+      base_counts[toupper(msa[j][i])] += 1;
+    }
+
+    int64_t sum_base_counts = base_counts['A'] + base_counts['C'] + base_counts['T'] + base_counts['G'];
+    int64_t sum_gap_counts = base_counts['-'] + base_counts['.'];
+    if (sum_base_counts > sum_gap_counts) {
+      std::vector<int8_t> bases = {'A', 'C', 'T', 'G'};
+      int8_t max_base = 'A';
+      for (int32_t j=0; j<bases.size(); j++) {
+        if (base_counts[bases[j]] > base_counts[max_base]) max_base = bases[j];
+      }
+      ss << (char) max_base;
+    }
+  }
+
+  consensus = ss.str();
+
+  return 0;
+}
+
 Pileup::Pileup(const SingleSequence* ref, const std::vector<SingleSequence*>& ref_alns) : ref_(ref) {
   bases_.clear();
   bases_.resize(ref->get_sequence_length());

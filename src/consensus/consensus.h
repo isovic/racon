@@ -16,12 +16,11 @@
 #include "parameters.h"
 #include "mhap.h"
 
-#define MAX_COV 100
+#include "intervaltree/IntervalTree.h"
+typedef Interval<const SingleSequence *> IntervalSS;
+typedef IntervalTree<const SingleSequence *> IntervalTreeSS;
 
 struct seqaln_sort_key {
-//    inline bool operator() (const SingleSequence** op1, const SingleSequence** op2) {
-//      return ((*op1)->get_aln().pos < (*op2)->get_aln().pos);
-//    }
   inline bool operator() (const SingleSequence* op1, const SingleSequence* op2) {
     return ((op1)->get_aln().get_pos() < (op2)->get_aln().get_pos());
   }
@@ -32,19 +31,17 @@ struct ContigOverlapLocation {
 };
 
 int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns);
-//int ExtractAltContigs(std::vector<const SingleSequence *> &ctg_alns, int64_t raw_ctg_len, double coverage_threshold, double percent_overlap, double qv_threshold, std::vector<std::vector<const SingleSequence *> *> &ret_alt_contigs, std::vector<const SingleSequence *> &rejected_alns);
-//int ConstructContigFromAlns(const SingleSequence &orig_contig, const std::vector<const SingleSequence *> *seq_alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, SingleSequence &new_contig);
-//int Consensus(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns);
-//int RunMSAFromSystem(const ProgramParameters &parameters, std::string &cons);
-
-int MajorityVoteFromMSALocal(std::string pir_path, std::string *cons);
-int RunMSAFromSystemLocal(const ProgramParameters &parameters, std::string window_path, std::string &cons);
-//void ExtractWindowFromAlns(const std::vector<const SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> window_seqs, FILE *fp_window);
-// void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens, int64_t window_start, int64_t window_end, std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, std::vector<const SingleSequence *> &window_refs, std::vector<int32_t> &window_starts, std::vector<uint32_t> &window_ends, FILE *fp_window);
 int ConsensusFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns);
+
+int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std::map<int64_t, ContigOverlapLocation> &map_ctg_to_overlaps);
 int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads, const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &overlaps);
+
+void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens,
+                           IntervalTreeSS &aln_interval_tree, int64_t window_start, int64_t window_end, double qv_threshold, bool use_contig_qvs,
+                           std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, std::vector<const SingleSequence *> &window_refs,
+                           std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends,
+                           std::vector<uint32_t> &starts_on_read, std::vector<uint32_t> &ends_on_read, FILE *fp_window);
+
 void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig, const std::vector<SingleSequence *> &ctg_alns, std::map<const SingleSequence *, int64_t> &aln_lens_on_ref, std::string &ret_consensus, FILE *fp_out_cons);
-std::string MajorityVotePos(const std::vector<std::string> &msa, int32_t first_seq, int32_t last_seq, int32_t pos);
-int FilterOverhangsFromMsa(const std::vector<std::string> &msa, std::string &consensus);
 
 #endif /* SRC_CONSENSUS_CONSENSUS_H_ */
