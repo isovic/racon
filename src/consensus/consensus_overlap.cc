@@ -176,4 +176,3 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
 
   return 0;
 }
-

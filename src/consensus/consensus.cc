@@ -20,15 +20,6 @@
 
 // #define WINDOW_OUTPUT_IN_FASTQ
 
-
-
-
-
-
-
-
-
-
 void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig, const std::vector<SingleSequence *> &ctg_alns, std::map<const SingleSequence *, int64_t> &aln_lens_on_ref, std::string &ret_consensus, FILE *fp_out_cons) {
   std::stringstream ss_cons;
 

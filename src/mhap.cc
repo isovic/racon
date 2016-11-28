@@ -8,6 +8,7 @@
 #include <map>
 #include <algorithm>
 #include "libs/edlib.h"
+#include "libs/edlibcigar.h"
 #include "mhap.h"
 #include <omp.h>
 #include <vector>

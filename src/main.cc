@@ -182,7 +182,8 @@ int main(int argc, char* argv[]) {
     }
 
 //    printf ("overlaps_final.size() = %ld\n", overlaps_final.size());
-    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return a.Bid < b.Bid; } );
+//    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid) || (a.Bid == b.Bid && a.Bstart < b.Bstart); } );
+    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid); } );
     ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
   }
 

@@ -13,12 +13,13 @@
 #include <sstream>
 #include <stdlib.h>
 #include <omp.h>
+#include <assert.h>
 
-void ExtractWindowFromSeqs(const SingleSequence *contig, const std::vector<SingleSequence *> &alns,
-                           IntervalTreeSS &aln_interval_tree, int64_t window_start, int64_t window_end, double qv_threshold, bool use_contig_qvs,
-                           std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, std::vector<const SingleSequence *> &window_refs,
-                           std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends,
-                           std::vector<uint32_t> &starts_on_read, std::vector<uint32_t> &ends_on_read, FILE *fp_window) {
+void ExtractWindowFromSampledSeqs(const SingleSequence *contig, IntervalTreeSampled &interval_tree,
+                                  int64_t window_start, int64_t window_end, double qv_threshold, bool use_contig_qvs,
+                                  std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, std::vector<const SingleSequence *> &window_refs,
+                                  std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends,
+                                  std::vector<uint32_t> &starts_on_read, std::vector<uint32_t> &ends_on_read, FILE *fp_window) {
   if (window_start > window_end) {
     return;
   }
@@ -38,58 +39,37 @@ void ExtractWindowFromSeqs(const SingleSequence *contig, const std::vector<Singl
   ends_on_read.push_back(window_end - 1);
 
   // Find seqs which fall into the window region.
-  std::vector<IntervalSS> intervals;
-  aln_interval_tree.findOverlapping(window_start, temp_window_end, intervals);
+  std::vector<IntervalSampled> intervals;
+  interval_tree.findOverlapping(window_start, temp_window_end, intervals);
 
   // For each seq, extract its segment which falls into the window.
   for (int64_t i=0; i<intervals.size(); i++) {
-    auto seq = intervals[i].value;
-    auto aln = seq->get_aln();
+    std::shared_ptr<SampledAlignment> sal = intervals[i].value;
+    std::shared_ptr<SingleSequence> seq = sal->seq;
 
-    int64_t start_cig_id = 0, end_cig_id = 0;
-    int64_t start_seq = aln.FindBasePositionOnRead(window_start, &start_cig_id);
-    int64_t end_seq = aln.FindBasePositionOnRead(temp_window_end, &end_cig_id);
+    int32_t start_seq = sal->find(window_start);
+    int32_t end_seq = sal->find(temp_window_end);
+
+    auto aln = sal->seq->get_aln();
+
     uint32_t seq_start_in_window = 0;
     uint32_t seq_end_in_window = temp_window_end - window_start;
 
-    if (start_seq == -1) {
-      start_seq = aln.GetClippedBasesFront();
-
-      seq_start_in_window = aln.get_pos() - 1 - window_start;
+    // If the window starts within the interval (after the window_start location).
+    if (start_seq == -1 && intervals[i].start > window_start) {
+      start_seq = intervals[i].value->mhap.Astart;
+      seq_start_in_window = intervals[i].start - window_start;
       seq_start_in_window = std::max((uint32_t) 0, (uint32_t) ((int32_t) seq_start_in_window - 0));
-      start_cig_id = 0;
-
     } else if (start_seq < 0) {
-      fprintf (stderr, "ERROR: start_seq is < 0 and != -1! start_seq = %ld\n", start_seq); exit(1);
+      assert(start_seq >= 0 && "ERROR: start_seq is < 0");
     }
 
-    if (aln.get_cigar()[start_cig_id].op == 'D' || aln.get_cigar()[start_cig_id].op == 'I' || aln.get_cigar()[start_cig_id].op == 'S') {
-
-      for (; start_cig_id < aln.get_cigar().size(); start_cig_id++) {
-        if (aln.get_cigar()[start_cig_id].op == 'M' || aln.get_cigar()[start_cig_id].op == '=' || aln.get_cigar()[start_cig_id].op == 'X') { break; }
-      }
-      start_seq = aln.get_cigar()[start_cig_id].pos_query;
-      seq_start_in_window = (aln.get_cigar()[start_cig_id].pos_ref + aln.get_pos() - 1) - window_start;
-      seq_start_in_window = std::max((uint32_t) 0, (uint32_t) ((int32_t) seq_start_in_window - 0));
-    }
-
-    if (end_seq == -2) {
-      end_seq = seq->get_data_length() - 1 - aln.GetClippedBasesBack();
-      seq_end_in_window = (aln.get_pos() - 1 + aln.GetReferenceLengthFromCigar()) - window_start;
+    if (end_seq == -1 && intervals[i].stop < window_end) {
+      end_seq = intervals[i].value->mhap.Aend;
+      seq_end_in_window = intervals[i].stop - window_start;
       seq_end_in_window = std::min((uint32_t) (temp_window_end - window_start), (uint32_t) ((int32_t) seq_end_in_window + 0));
-      end_cig_id = aln.get_cigar().size() - 1;
-    } else if (end_seq < 0) {
-      fprintf (stderr, "ERROR: end_seq is < 0 and != -2!\n"); exit(1);
-    }
-
-    if (aln.get_cigar()[end_cig_id].op == 'D' || aln.get_cigar()[end_cig_id].op == 'I' || aln.get_cigar()[end_cig_id].op == 'S') {
-
-      for (; end_cig_id >= 0; end_cig_id--) {
-        if (aln.get_cigar()[end_cig_id].op == 'M' || aln.get_cigar()[end_cig_id].op == '=' || aln.get_cigar()[end_cig_id].op == 'X') { break; }
-      }
-      end_seq = aln.get_cigar()[end_cig_id].pos_query + aln.get_cigar()[end_cig_id].count - 1;
-      seq_end_in_window = (aln.get_cigar()[end_cig_id].pos_ref + aln.get_cigar()[end_cig_id].count - 1 + aln.get_pos() - 1) - window_start;
-      seq_end_in_window = std::max((uint32_t) 0, (uint32_t) ((int32_t) seq_end_in_window - 0));
+    } else if (start_seq < 0) {
+      assert(end_seq >= 0 && ("ERROR: start_seq is < 0"));
     }
 
     std::string seq_data = GetSubstring((char *) (seq->get_data() + start_seq), end_seq - start_seq + 1);
@@ -105,7 +85,7 @@ void ExtractWindowFromSeqs(const SingleSequence *contig, const std::vector<Singl
     avg_qual /= std::max((double) seq_qual.size(), 1.0);
 
     if (avg_qual >= qv_threshold) {
-      window_refs.push_back(seq);
+      window_refs.push_back(&(*seq));
       window_seqs.push_back(seq_data);
       window_starts.push_back(seq_start_in_window);
       window_ends.push_back(seq_end_in_window);
