@@ -18,6 +18,7 @@
 #include "libs/edlib.h"
 #include "pileup.h"
 #include "libs/edlibcigar.h"
+#include "tictoc.h"
 
 // Used for consensus when overlaps are input to the main program (MHAP, PAF) instead of alignments (SAM).
 int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
@@ -96,6 +97,8 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
       LOG_ALL("(thread_id = %d) Sampling overlaps for contig %ld / %ld (%.2f%%): %s\n", thread_id, (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), contig->get_header());
     }
 
+    TicToc clock_sampling;
+    clock_sampling.start();
     // Extract all overlaps for the current contig, and initialize the objects.
     std::vector<std::shared_ptr<SampledAlignment>> sampled_overlaps;
     if (parameters.do_erc == false) {
@@ -103,6 +106,8 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
     } else {
       CreateExtractedOverlaps(contigs, reads, sorted_overlaps, it->second.start, it->second.end, 1, sampled_overlaps, thread_id == 0);
     }
+    clock_sampling.stop();
+    LOG_ALL("CPU time spent on sampling: %.2lf sec.\n", clock_sampling.get_secs());
 
     // Create an interval tree.
     std::vector<IntervalSampled> intervals;
@@ -119,6 +124,8 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
 //    alns.Sort();
 //    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid) || (a.Bid == b.Bid && a.Bstart < b.Bstart); } );
 
+    TicToc clock_cons;
+    clock_cons.start();
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
     if (parameters.do_pileup == false) {
@@ -151,6 +158,10 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
 //      fflush (fp_out_cons);
     }
     fclose(fp_out_cons);
+    clock_cons.stop();
+
+    LOG_ALL("CPU time spent on consensus: %.2lf sec.\n", clock_cons.get_secs());
+    LOG_ALL("Total CPU time spent on this contig: %.2lf sec.\n", (clock_sampling.get_secs() + clock_cons.get_secs()));
 
     ///////////////////////////////////////
 //    LOG_MEDHIGH_NOHEADER("\n");

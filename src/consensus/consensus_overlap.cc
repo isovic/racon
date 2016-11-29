@@ -18,6 +18,7 @@
 #include "graph.hpp"
 #include "libs/edlib.h"
 #include "pileup.h"
+#include "tictoc.h"
 
 int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std::map<int64_t, ContigOverlapLocation> &map_ctg_to_overlaps) {
   map_ctg_to_overlaps.clear();
@@ -119,7 +120,8 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
       LOG_ALL("(thread_id = %d) Aligning overlaps for contig %ld / %ld (%.2f%%): %s\n", thread_id, (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), contig->get_header());
     }
 
-    clock_t begin_clock_aln = clock();
+    TicToc clock_aln;
+    clock_aln.start();
     SequenceFile alns;
     std::vector<OverlapLine> extracted_overlaps(sorted_overlaps.begin()+it->second.start, sorted_overlaps.begin()+it->second.end);
     if (parameters.do_erc == false) {
@@ -134,11 +136,11 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     }
     // This sorts ascending by the pos field.
     alns.Sort();
-    clock_t end_clock_aln = clock();
-    double elapsed_secs_aln = double(end_clock_aln - begin_clock_aln) / CLOCKS_PER_SEC;
-    LOG_ALL("CPU time spent on alignment: %.2lf sec.\n", elapsed_secs_aln);
+    clock_aln.stop();
+    LOG_ALL("CPU time spent on alignment: %.2lf sec.\n", clock_aln.get_secs());
 
-    clock_t begin_clock_consensus = clock();
+    TicToc clock_cons;
+    clock_cons.start();
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
     if (parameters.do_pileup == false) {
@@ -168,11 +170,10 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
       fflush (fp_out_cons);
     }
     fclose(fp_out_cons);
-    clock_t end_clock_consensus = clock();
-    double elapsed_secs_consensus = double(end_clock_consensus - begin_clock_consensus) / CLOCKS_PER_SEC;
-    LOG_ALL("CPU time spent on consensus: %.2lf sec.\n", elapsed_secs_consensus);
+    clock_cons.stop();
 
-    LOG_ALL("Total CPU time spent on this contig: %.2lf sec.\n", (elapsed_secs_aln + elapsed_secs_consensus));
+    LOG_ALL("CPU time spent on consensus: %.2lf sec.\n", clock_cons.get_secs());
+    LOG_ALL("Total CPU time spent on this contig: %.2lf sec.\n", (clock_aln.get_secs() + clock_cons.get_secs()));
 
     ///////////////////////////////////////
 //    LOG_MEDHIGH_NOHEADER("\n");
