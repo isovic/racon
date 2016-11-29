@@ -229,8 +229,8 @@ void PrepareAndSampleOverlaps(const SequenceFile &refs, const SequenceFile &read
     }
 
     // Sample each overlap.
-//    PerformSampling(new_ext_ovl, ref,  window_len);
-    PerformDummySampling(new_ext_ovl, ref, window_len);
+    PerformSampling(new_ext_ovl, ref,  window_len);
+//    PerformDummySampling(new_ext_ovl, ref, window_len);
 
     #pragma omp critical
     {
