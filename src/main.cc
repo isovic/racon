@@ -49,7 +49,8 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.use_contig_qvs), VALUE_TYPE_BOOL, "", "use-contig-qv", "0", "If false, dummy QVs equal to '!' will be assigned to each contig base during window consensus. Otherwise, QVs will be loaded from the contigs file if the file is in FASTQ format.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.do_pileup), VALUE_TYPE_BOOL, "", "pileup", "0", "Simple pileup + majority vote consensus will be performed instead of using Spoa. Much faster, but less accurate.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.do_pileup), VALUE_TYPE_BOOL, "", "pileup", "0", "Simple pileup + majority vote consensus will be performed instead of using Spoa. Much faster, but less accurate. Must be used together with --align (the default mode does not generate full alignments).", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.do_align), VALUE_TYPE_BOOL, "", "align", "0", "If specified, overlaps will be fully aligned before windowing instead of sampled at required positions. Only used if input is specified via overlaps (and not SAM files).", 0, "Algorithm");
   argparser.AddArgument(&(parameters.num_threads), VALUE_TYPE_INT32, "t", "threads", "4", "Number of threads to use.", 0, "Control");
   argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "20000", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Control");
   argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "The number of batches which to process", 0, "Control");
@@ -184,84 +185,14 @@ int main(int argc, char* argv[]) {
 //    printf ("overlaps_final.size() = %ld\n", overlaps_final.size());
 //    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid) || (a.Bid == b.Bid && a.Bstart < b.Bstart); } );
     std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid); } );
-    ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
+    if (parameters.do_align) {
+      LOG_ALL("Overlaps will be fully aligned.\n");
+      ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
+    } else {
+      LOG_ALL("Overlaps will be sampled (sparsely aligned).\n");
+      ConsensusFromOverlapsWSampling(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
+    }
   }
-
-//  } else if (parameters.is_mhap == true) {
-//    std::string mhap = parameters.aln_path;
-//    LOG_ALL("Using MHAP for input alignments. (%s)\n", mhap.c_str());
-//    std::vector<OverlapLine> overlaps, overlaps_filtered, overlaps_final;
-//
-//    LOG_ALL("Loading reads.\n");
-//    SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
-//    // Sanity check to see if the reads have quality values.
-//    if (seqs_reads.HasQV() == false) {
-//      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
-//      exit(1);
-//    }
-//
-//    LOG_ALL("Parsing the MHAP file.\n");
-//    if (mhap == "-") {
-//      LOG_ALL("Stdin will be used to load the MHAP lines.\n");
-//    }
-//    ParseMHAP(mhap, overlaps);
-//    LOG_ALL("Filtering MHAP overlaps.\n");
-////    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-//
-//    if (parameters.do_erc == false) {
-//      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-//    } else {
-//      FilterMHAPErc(overlaps, overlaps_final, parameters.error_rate);
-////      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
-//    }
-//
-//    seqs_sam = new SequenceFile();
-//    LOG_ALL("Aligning overlaps.\n");
-//    AlignOverlaps(seqs_gfa, seqs_reads, overlaps_final, parameters.num_threads, *seqs_sam);
-//
-//  } else {  // Using PAF for input overlaps.
-//    std::string paf = parameters.aln_path;
-//    LOG_ALL("Using PAF for input alignments. (%s)\n", paf.c_str());
-//    std::vector<OverlapLine> overlaps, overlaps_filtered, overlaps_final;
-//
-//    LOG_ALL("Loading reads.\n");
-//    SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
-//    // Sanity check to see if the reads have quality values.
-//    if (seqs_reads.HasQV() == false) {
-//      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
-//      exit(1);
-//    }
-//
-//    // Hash the read sequences by their name.
-//    LOG_ALL("Hashing qnames.\n");
-//    std::map<std::string, int64_t> qname_to_ids;
-//    HashQnames(seqs_reads, qname_to_ids);
-//    HashQnames(seqs_gfa, qname_to_ids);
-//
-//    LOG_ALL("Parsing the PAF file.\n");
-//    // If paf == "-", then ParsePAF will automatically load lines from stdin.
-//    if (paf == "-") { LOG_ALL("Stdin will be used to load the PAF lines.\n"); }
-//    ParsePAF(paf, qname_to_ids, overlaps);
-//    LOG_ALL("Filtering overlaps.\n");
-////    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-//
-//    if (parameters.do_erc == false) {
-//      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-//      overlaps.clear();
-//    } else {
-//      FilterMHAPErc(overlaps, overlaps_final, parameters.error_rate);
-////      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
-//    }
-//
-//    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return a.Bid < b.Bid; } );
-//    ConsensusDirectFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
-//  }
-
-//  ConsensusDirectFromAln(parameters, seqs_gfa, *seqs_sam);
-//  if (seqs_sam) {
-//	  seqs_sam->Clear();
-//	  delete seqs_sam;
-//  }
 
   return 0;
 }

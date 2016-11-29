@@ -10,11 +10,11 @@ mkdir -p results/temp
 mkdir -p temp
 
 ### Lambda:
-layout_gfa=test-data/lambda/layout-miniasm.gfa
-reads=test-data/lambda/reads.fastq
-reference=test-data/lambda/NC_001416.fa
-dataset=lambda_30x_ont
-suffix=paf
+dataset=ecoli_map006_ont
+layout_gfa=../../data/consensus/${dataset}/layout-miniasm.gfa
+reads=../../data/consensus/${dataset}/reads.fastq
+reference=../../data/consensus/${dataset}/ecoli_K12_MG1655_U00096.3.fasta
+suffix=paf-sparse
 
 layout_fasta=${layout_gfa}.fasta
 awk '$1 ~/S/ {print ">"$2"\n"$3}' ${layout_gfa} > ${layout_fasta}
@@ -56,6 +56,8 @@ echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
 
+# exit
+
 ############################################
 ### Run dnadiff to get the Avg. Identity ###
 mkdir -p results/temp/dnadiff-${dataset}
@@ -69,10 +71,12 @@ cat $memtime_racon
 ############################################
 
 # Edit distance calculation - Avg. Identity doesn't take deletions into account ###
-echo ""
-echo "Evaluating the results."
-scripts/edcontigs.py ${reference} ${consensus}
+# echo ""
+# echo "Evaluating the results."
+# scripts/edcontigs.py ${reference} ${consensus}
 ##########################################
+
+# exit
 
 
 
@@ -117,7 +121,7 @@ cat $memtime_racon
 ############################################
 
 ## Edit distance calculation - Avg. Identity doesn't take deletions into account ###
-echo ""
-echo "Evaluating the results."
-scripts/edcontigs.py ${reference} ${consensus}
+# echo ""
+# echo "Evaluating the results."
+# scripts/edcontigs.py ${reference} ${consensus}
 ###########################################

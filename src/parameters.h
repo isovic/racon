@@ -50,6 +50,8 @@ struct ProgramParameters {
   double error_rate = 0.30;
 
   int32_t verbose_level = 1;
+
+  bool do_align = false;
 };
 
 #endif /* SRC_PARAMETERS_H_ */

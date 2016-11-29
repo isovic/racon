@@ -140,14 +140,14 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     std::string consensus;
     if (parameters.do_pileup == false) {
       if (parameters.do_erc == false) {
-        CreateConsensus(parameters, num_window_threads, contig, alns.get_sequences(), aln_lens_on_ref, consensus, fp_out_cons);
+        CreateConsensusAln(parameters, num_window_threads, contig, alns.get_sequences(), aln_lens_on_ref, consensus, fp_out_cons);
 
       } else {
         if (thread_id == 0) {
           LOG_MEDHIGH("\r(thread_id = %d) Processing contig %ld / %ld (%.2f%%), len: %10ld", thread_id, (i + 1), contigs.get_sequences().size(), 100.0f*(((float) (i)) / ((float) contigs.get_sequences().size())), contig->get_sequence_length());
         }
 
-        CreateConsensus(parameters, num_window_threads, contig, alns.get_sequences(), aln_lens_on_ref, consensus, NULL);
+        CreateConsensusAln(parameters, num_window_threads, contig, alns.get_sequences(), aln_lens_on_ref, consensus, NULL);
         #pragma omp critical
         {
           fprintf (fp_out_cons, ">Consensus_%s\n%s\n", contig->get_header(), consensus.c_str());

@@ -10,6 +10,7 @@
 
 #include "sequences/single_sequence.h"
 #include "sequences/sequence_file.h"
+#include <math.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -63,7 +64,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<Singl
                            std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends,
                            std::vector<uint32_t> &starts_on_read, std::vector<uint32_t> &ends_on_read, FILE *fp_window);
 
-void CreateConsensus(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig, const std::vector<SingleSequence *> &ctg_alns, std::map<const SingleSequence *, int64_t> &aln_lens_on_ref, std::string &ret_consensus, FILE *fp_out_cons);
+void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig, const std::vector<SingleSequence *> &ctg_alns, std::map<const SingleSequence *, int64_t> &aln_lens_on_ref, std::string &ret_consensus, FILE *fp_out_cons);
 
 
 void ExtractWindowFromSampledSeqs(const SingleSequence *contig, IntervalTreeSampled &interval_tree,
@@ -76,6 +77,8 @@ void CreateExtractedOverlaps(const SequenceFile &refs, const SequenceFile &reads
                              std::vector<std::shared_ptr<SampledAlignment>> &extracted_overlaps, bool verbose_debug);
 void CreateConsensusSampling(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig,
                              IntervalTreeSampled &interval_tree, std::string &ret_consensus, FILE *fp_out_cons);
-void PerformSampling(std::shared_ptr<SampledAlignment> &sampling_ovl, const SingleSequence* ref);
+void PerformSampling(std::shared_ptr<SampledAlignment> &sampling_ovl, const SingleSequence* ref, int64_t window_len);
+int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
+                                const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &sorted_overlaps);
 
 #endif /* SRC_CONSENSUS_CONSENSUS_H_ */
