@@ -119,6 +119,7 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
       LOG_ALL("(thread_id = %d) Aligning overlaps for contig %ld / %ld (%.2f%%): %s\n", thread_id, (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), contig->get_header());
     }
 
+    clock_t begin_clock_aln = clock();
     SequenceFile alns;
     std::vector<OverlapLine> extracted_overlaps(sorted_overlaps.begin()+it->second.start, sorted_overlaps.begin()+it->second.end);
     if (parameters.do_erc == false) {
@@ -126,16 +127,18 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     } else {
       AlignOverlaps(contigs, reads, extracted_overlaps, 1, alns, thread_id == 0);
     }
-
     // Hash all the alignment lengths (which will be used a lot).
     std::map<const SingleSequence *, int64_t> aln_lens_on_ref;
     for (int64_t i=0; i<alns.get_sequences().size(); i++) {
       aln_lens_on_ref[alns.get_sequences()[i]] = alns.get_sequences()[i]->get_aln().GetReferenceLengthFromCigar();
     }
-
     // This sorts ascending by the pos field.
     alns.Sort();
+    clock_t end_clock_aln = clock();
+    double elapsed_secs_aln = double(end_clock_aln - begin_clock_aln) / CLOCKS_PER_SEC;
+    LOG_ALL("CPU time spent on alignment: %.2lf sec.\n", elapsed_secs_aln);
 
+    clock_t begin_clock_consensus = clock();
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
     if (parameters.do_pileup == false) {
@@ -165,6 +168,11 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
       fflush (fp_out_cons);
     }
     fclose(fp_out_cons);
+    clock_t end_clock_consensus = clock();
+    double elapsed_secs_consensus = double(end_clock_consensus - begin_clock_consensus) / CLOCKS_PER_SEC;
+    LOG_ALL("CPU time spent on consensus: %.2lf sec.\n", elapsed_secs_consensus);
+
+    LOG_ALL("Total CPU time spent on this contig: %.2lf sec.\n", (elapsed_secs_aln + elapsed_secs_consensus));
 
     ///////////////////////////////////////
 //    LOG_MEDHIGH_NOHEADER("\n");
