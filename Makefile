@@ -47,6 +47,7 @@ all: gcc_version_check linux
 
 modules:
 	git submodule update --init --recursive
+	cd codebase/seqlib; git checkout dev
 #	git submodule foreach git pull origin master
 
 tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/edlib/src/aligner tools/minimap/minimap tools/miniasm/miniasm

@@ -224,7 +224,7 @@ char *Reverse(const char *s, int32_t len) {
   return rs;
 }
 
-void PerformSampling(std::shared_ptr<SampledAlignment> &sampling_ovl, const SingleSequence* ref, int64_t window_len) {
+void PerformSampling(std::shared_ptr<SampledAlignment> sampling_ovl, const SingleSequence* ref, int64_t window_len) {
 
   // Forward direction.
   const char *query = (const char *) (sampling_ovl->seq->get_data() + sampling_ovl->mhap.Astart);
@@ -273,7 +273,7 @@ void PerformSampling(std::shared_ptr<SampledAlignment> &sampling_ovl, const Sing
   if (r_query) { delete[] r_query; r_query = NULL; }
   if (r_target) { delete[] r_target; r_target = NULL; }
 
-  // Checking the result.
+//  // Checking the result.
 //  printf ("\nconfig_fwd.subscoresOffset = %d, config_fwd.subscoresDistance = %d\n", config_fwd.subscoresOffset, config_fwd.subscoresDistance);
 //  printf ("sampling_ovl->mhap.Bstart = %d, sampling_ovl->mhap.Bend = %d, query_length = %d, target_length = %d\n", sampling_ovl->mhap.Bstart, sampling_ovl->mhap.Bend, query_length, target_length);
 //  for (int32_t i=0; i<result_fwd.numSubscores; i++) {

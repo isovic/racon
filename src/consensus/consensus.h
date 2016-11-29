@@ -25,7 +25,7 @@ typedef IntervalTree<const SingleSequence *> IntervalTreeSS;
 // Data for a sampled sequence alignment. Sampling is performed in reference coordinates.
 class SampledAlignment {
  public:
-  SampledAlignment(std::shared_ptr<SingleSequence> &_seq, OverlapLine &_mhap) : seq(_seq), mhap(_mhap) { };
+  SampledAlignment(std::shared_ptr<SingleSequence> _seq, OverlapLine &_mhap) : seq(_seq), mhap(_mhap) { };
 //  const SingleSequence *seq;
   std::shared_ptr<SingleSequence> seq;
   std::unordered_map<int32_t, int32_t> qpos;  // key is the ref pos, and value is the query pos for the ref pos.
@@ -77,7 +77,7 @@ void CreateExtractedOverlaps(const SequenceFile &refs, const SequenceFile &reads
                              std::vector<std::shared_ptr<SampledAlignment>> &extracted_overlaps, bool verbose_debug);
 void CreateConsensusSampling(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig,
                              IntervalTreeSampled &interval_tree, std::string &ret_consensus, FILE *fp_out_cons);
-void PerformSampling(std::shared_ptr<SampledAlignment> &sampling_ovl, const SingleSequence* ref, int64_t window_len);
+void PerformSampling(std::shared_ptr<SampledAlignment> sampling_ovl, const SingleSequence* ref, int64_t window_len);
 int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
                                 const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &sorted_overlaps);
 
