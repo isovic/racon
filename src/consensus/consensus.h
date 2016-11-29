@@ -72,12 +72,13 @@ void ExtractWindowFromSampledSeqs(const SingleSequence *contig, IntervalTreeSamp
                                   std::vector<std::string> &window_seqs, std::vector<std::string> &window_qv, std::vector<const SingleSequence *> &window_refs,
                                   std::vector<uint32_t> &window_starts, std::vector<uint32_t> &window_ends,
                                   std::vector<uint32_t> &starts_on_read, std::vector<uint32_t> &ends_on_read, FILE *fp_window);
-void CreateExtractedOverlaps(const SequenceFile &refs, const SequenceFile &reads,
+void PrepareAndSampleOverlaps(const SequenceFile &refs, const SequenceFile &reads,
                              const std::vector<OverlapLine> &sorted_overlaps, int64_t start_overlap, int64_t end_overlap, int32_t num_threads,
-                             std::vector<std::shared_ptr<SampledAlignment>> &extracted_overlaps, bool verbose_debug);
+                             std::vector<std::shared_ptr<SampledAlignment>> &extracted_overlaps, int32_t window_len, bool verbose_debug);
 void CreateConsensusSampling(const ProgramParameters &parameters, int32_t num_window_threads, const SingleSequence *contig,
                              IntervalTreeSampled &interval_tree, std::string &ret_consensus, FILE *fp_out_cons);
 void PerformSampling(std::shared_ptr<SampledAlignment> sampling_ovl, const SingleSequence* ref, int64_t window_len);
+void PerformDummySampling(std::shared_ptr<SampledAlignment> sampling_ovl, const SingleSequence* ref, int64_t window_len);
 int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
                                 const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &sorted_overlaps);
 

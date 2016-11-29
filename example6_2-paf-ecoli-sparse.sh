@@ -51,7 +51,7 @@ echo $mhap
 echo "Running Racon:"
 echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
- 	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
+ 	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -v 6 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} --mhap --reads $reads ${contigs} ${sam} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
@@ -76,7 +76,7 @@ cat $memtime_racon
 # scripts/edcontigs.py ${reference} ${consensus}
 ##########################################
 
-# exit
+exit
 
 
 
@@ -105,7 +105,7 @@ echo $mhap
 echo "Running Racon:"
 echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
-	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -v 6 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
 ############################################

@@ -172,8 +172,8 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     fclose(fp_out_cons);
     clock_cons.stop();
 
-    LOG_ALL("CPU time spent on consensus: %.2lf sec.\n", clock_cons.get_secs());
-    LOG_ALL("Total CPU time spent on this contig: %.2lf sec.\n", (clock_aln.get_secs() + clock_cons.get_secs()));
+    LOG_DEBUG("CPU time spent on consensus: %.2lf sec.\n", clock_cons.get_secs());
+    LOG_DEBUG("Total CPU time spent on this contig: %.2lf sec.\n", (clock_aln.get_secs() + clock_cons.get_secs()));
 
     ///////////////////////////////////////
 //    LOG_MEDHIGH_NOHEADER("\n");

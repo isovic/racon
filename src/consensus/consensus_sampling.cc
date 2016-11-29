@@ -70,6 +70,10 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
   FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "w");
   fclose(fp_out_cons);
 
+  double clk_total_sampling = 0.0;
+  double clk_total_cons = 0.0;
+  double clk_total_interval_tree = 0.0;
+
   // For each contig (draft can contain multiple contigs), process alignments which only map to that particular contig.
   #pragma omp parallel for num_threads(num_read_threads) schedule(dynamic, 1)
   for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
@@ -102,13 +106,18 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
     // Extract all overlaps for the current contig, and initialize the objects.
     std::vector<std::shared_ptr<SampledAlignment>> sampled_overlaps;
     if (parameters.do_erc == false) {
-      CreateExtractedOverlaps(contigs, reads, sorted_overlaps, it->second.start, it->second.end, parameters.num_threads, sampled_overlaps, true);
+      PrepareAndSampleOverlaps(contigs, reads, sorted_overlaps, it->second.start, it->second.end, parameters.num_threads, sampled_overlaps, parameters.window_len, true);
     } else {
-      CreateExtractedOverlaps(contigs, reads, sorted_overlaps, it->second.start, it->second.end, 1, sampled_overlaps, thread_id == 0);
+      PrepareAndSampleOverlaps(contigs, reads, sorted_overlaps, it->second.start, it->second.end, 1, sampled_overlaps, parameters.window_len, thread_id == 0);
     }
     clock_sampling.stop();
-    LOG_ALL("CPU time spent on sampling: %.2lf sec.\n", clock_sampling.get_secs());
+    LOG_DEBUG("CPU time spent on sampling: %.2lf sec.\n", clock_sampling.get_secs());
+    clk_total_sampling += clock_sampling.get_secs();
 
+    continue;
+
+    TicToc clock_interval_tree;
+    clock_interval_tree.start();
     // Create an interval tree.
     std::vector<IntervalSampled> intervals;
     for (int64_t i=0; i<sampled_overlaps.size(); i++) {
@@ -117,6 +126,9 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
       }
     }
     IntervalTreeSampled interval_tree(intervals);
+    clock_interval_tree.stop();
+    LOG_DEBUG("CPU time spent on building interval tree: %.2lf sec.\n", clock_interval_tree.get_secs());
+    clk_total_interval_tree += clock_interval_tree.get_secs();
 
 //    const std::vector<std::shared_ptr<SampledAlignment>> &sampled_overlaps,
 
@@ -159,9 +171,10 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
     }
     fclose(fp_out_cons);
     clock_cons.stop();
+    clk_total_cons += clock_cons.get_secs();
 
-    LOG_ALL("CPU time spent on consensus: %.2lf sec.\n", clock_cons.get_secs());
-    LOG_ALL("Total CPU time spent on this contig: %.2lf sec.\n", (clock_sampling.get_secs() + clock_cons.get_secs()));
+    LOG_DEBUG("CPU time spent on consensus: %.2lf sec.\n", clock_cons.get_secs());
+    LOG_DEBUG("Total CPU time spent on this contig: %.2lf sec.\n", (clock_sampling.get_secs() + clock_cons.get_secs()));
 
     ///////////////////////////////////////
 //    LOG_MEDHIGH_NOHEADER("\n");
@@ -174,9 +187,9 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
   return 0;
 }
 
-void CreateExtractedOverlaps(const SequenceFile &refs, const SequenceFile &reads,
+void PrepareAndSampleOverlaps(const SequenceFile &refs, const SequenceFile &reads,
                              const std::vector<OverlapLine> &sorted_overlaps, int64_t start_overlap, int64_t end_overlap, int32_t num_threads,
-                             std::vector<std::shared_ptr<SampledAlignment>> &extracted_overlaps, bool verbose_debug) {
+                             std::vector<std::shared_ptr<SampledAlignment>> &extracted_overlaps, int32_t window_len, bool verbose_debug) {
 
   extracted_overlaps.clear();
   extracted_overlaps.reserve(end_overlap - start_overlap);
@@ -216,7 +229,8 @@ void CreateExtractedOverlaps(const SequenceFile &refs, const SequenceFile &reads
     }
 
     // Sample each overlap.
-    PerformSampling(new_ext_ovl, ref, 500);
+//    PerformSampling(new_ext_ovl, ref,  window_len);
+    PerformDummySampling(new_ext_ovl, ref, window_len);
 
     #pragma omp critical
     {
@@ -395,7 +409,7 @@ void PerformSampling(std::shared_ptr<SampledAlignment> sampling_ovl, const Singl
 
 }
 
-void PerformDummySampling(std::shared_ptr<SampledAlignment> &sampling_ovl, const SingleSequence* ref, int64_t window_len) {
+void PerformDummySampling(std::shared_ptr<SampledAlignment> sampling_ovl, const SingleSequence* ref, int64_t window_len) {
 //  EdlibAlignConfig config = edlibNewAlignConfig(k, modeCode, alignTask);
 //  config.subscoresOffset = strt;
 //  config.subscoresDistance = ffst;

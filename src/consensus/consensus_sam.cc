@@ -17,6 +17,7 @@
 #include "graph.hpp"
 #include "libs/edlib.h"
 #include "pileup.h"
+#include "tictoc.h"
 
 int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
   ctg_names.clear();
@@ -276,6 +277,8 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
     LOG_DEBUG ("current_contig->get_sequence_length() = %ld, parameters.window_len = %ld, num_windows = %ld\n", contig->get_sequence_length(), parameters.window_len, num_windows);
   }
 
+  TicToc clk1;
+  clk1.start();
   // Build the interval tree for fast overlap calculation.
   std::vector<IntervalSS> aln_intervals;
   for (int64_t i=0; i<ctg_alns.size(); i++) {
@@ -284,6 +287,11 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
     aln_intervals.push_back(IntervalSS(aln_start, aln_end, ctg_alns[i]));
   }
   IntervalTreeSS aln_interval_tree(aln_intervals);
+  clk1.stop();
+  LOG_ALL("CPU time for building the IntervalTree: %f sec.\n", clk1.get_secs());
+
+  double clk_total_spoa = 0.0;
+  double clk_total_extract = 0.0;
 
   // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
   // then the results are collected and output to file. After that, a new batch is loaded.
@@ -293,15 +301,19 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
     int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
 
 //    #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
-    #pragma omp parallel for num_threads(num_window_threads) schedule(dynamic, 1)
+    #pragma omp parallel for num_threads(num_window_threads) reduction(+:clk_total_extract, clk_total_spoa) schedule(dynamic, 1)
     for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
 
+      TicToc clk2;
+      clk2.start();
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
        int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin) - 1;
        int32_t thread_id = omp_get_thread_num();
 
        if (parameters.do_erc == false && thread_id == 0) {
-         LOG_MEDHIGH("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length()));
+         LOG_MEDHIGH("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)",
+                     thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length()));
+         LOG_DEBUG(", clk_total_extract = %f, clk_total_spoa = %f", clk_total_extract, clk_total_spoa);
        }
 
        // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
@@ -312,7 +324,6 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
        std::vector<uint32_t> starts_on_read;
        std::vector<uint32_t> ends_on_read;
        std::vector<const SingleSequence *> refs_for_msa;
-
        // When realigning reads, we cannot use the QV filtering because chunks of reads would not get realigned.
        // Realignment mode has been removed for now, so the upper comment can be ignored. Left here for future reference, so it doesn't get forgotten.
        ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree,
@@ -327,7 +338,13 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
        } else if (quals_for_msa.size() != windows_for_msa.size()) {
          ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Quality values not specified for input reads! Please use FASTQ or another format which provides qualities.");
        }
+       clk2.stop();
+//       LOG_NEWLINE;
+//       LOG_ALL("CPU time for extracting a window: %f sec.\n", clk2.get_secs());
+       clk_total_extract += clk2.get_secs();
 
+       TicToc clk3;
+       clk3.start();
        auto graph = construct_partial_order_graph(windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
                                                   SPOA::AlignmentParams(parameters.match, parameters.mismatch,
                                                   parameters.gap_open, parameters.gap_ext, (SPOA::AlignmentType) parameters.aln_type));
@@ -354,6 +371,10 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
 //           FilterOverhangsFromMsa(msa, consensus_windows[id_in_batch]);
 //           MajorityVoteFromMSA(msa, consensus_windows[id_in_batch]);
        }
+
+       clk3.stop();
+//       LOG_ALL("CPU time for consensus on a window: %f sec.\n", clk3.get_secs());
+       clk_total_spoa += clk3.get_secs();
 
 //       std::vector<std::string> debug_msa;
 //       graph->generate_msa(debug_msa, true);
@@ -464,6 +485,10 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
       LOG_MEDHIGH("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
     }
   }
+
+  LOG_DEBUG("CPU total time for creating an IntervalTree: %f\n", clk1.get_secs());
+  LOG_DEBUG("CPU total time for extracting windows: %f\n", clk_total_extract);
+  LOG_DEBUG("CPU total time for SPOA: %f\n", clk_total_spoa);
 
   ret_consensus = ss_cons.str();
   if (parameters.do_erc == false && fp_out_cons) {
