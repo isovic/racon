@@ -13,6 +13,7 @@
 #include <omp.h>
 #include <vector>
 #include <iostream>
+#include <unordered_map>
 
 int ParseMHAP(const std::string &mhap_path, std::vector<OverlapLine> &ret_overlaps) {
   ret_overlaps.clear();
@@ -142,7 +143,7 @@ int ParseOverlapLine(const std::string &line, OverlapFormat overlap_format, cons
   return 0;
 }
 
-int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::map<int64_t, OverlapLine> &fmap) {
+int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::unordered_map<int64_t, OverlapLine> &fmap) {
   // Parse the line and check if everything went fine.
   OverlapLine overlap_line;
   ParseOverlapLine(line, overlap_format, qname_to_ids, overlap_line);
@@ -162,7 +163,7 @@ int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, cons
 }
 
 int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps) {
-  std::map<int64_t, OverlapLine> fmap;     // Filtering map.
+  std::unordered_map<int64_t, OverlapLine> fmap;     // Filtering map.
 
   if (overlap_path != "-") {
     std::ifstream infile(overlap_path);
