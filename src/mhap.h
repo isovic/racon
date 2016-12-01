@@ -18,13 +18,18 @@
 #include "sequences/sequence_file.h"
 #include "utility/utility_general.h"
 
+typedef enum {
+  kOverlapFormatPAF,
+  kOverlapFormatMHAP
+} OverlapFormat ;
+
 class OverlapLine {
  public:
   OverlapLine() :
     Aid(0), Bid(0), Aname(""), Bname(""), perc_err(0.0), shared_minmers(0), Arev(0), Astart(0), Aend(0), Alen(0), Brev(0), Bstart(0), Bend(0), Blen(0) {
   }
 
-  int ParseMHAP(std::string &line) {
+  int ParseMHAP(const std::string &line) {
     std::istringstream iss(line);
     if (!(iss >> Aid >> Bid >> perc_err >> shared_minmers >> Arev >> Astart >> Aend >> Alen >> Brev >> Bstart >> Bend >> Blen)) {
       ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Overlaps are not formatted in the MHAP format. Exiting.");
@@ -40,7 +45,7 @@ class OverlapLine {
     return ss.str();
   }
 
-  int ParsePAF(std::string &line, const std::map<std::string, int64_t> &qname_to_ids) {
+  int ParsePAF(const std::string &line, const std::map<std::string, int64_t> &qname_to_ids) {
     std::istringstream iss(line);
     std::string tempAstrand, cm;
     int64_t num_residue_matches=0, aln_block_len=0, mapq=0;
@@ -116,6 +121,10 @@ class OverlapLine {
   int64_t Arev, Astart, Aend, Alen;     // start is zero-based, end points to a position right after the last inclusive base.
   int64_t Brev, Bstart, Bend, Blen;
 };
+
+int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::map<int64_t, OverlapLine> &fmap);
+int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps);
+int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps);
 
 int ParseMHAP(const std::string &mhap_path, std::vector<OverlapLine> &ret_overlaps);
 int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<OverlapLine> &ret_overlaps);
