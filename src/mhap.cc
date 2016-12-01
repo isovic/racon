@@ -178,6 +178,25 @@ int DuplicateAndSwitch(const std::vector<OverlapLine> &overlaps_in, std::vector<
   return 0;
 }
 
+int DoReverseComplementing(std::vector<OverlapLine> &overlaps, SequenceFile &reads) {
+  std::vector<bool> is_reversed(reads.get_sequences().size(), false);
+
+  for (int64_t i=0; i<overlaps.size(); i++) {
+    auto id = overlaps[i].Aid;
+    if (is_reversed[id] == false) {
+      // Reverse the sequence.
+      reads.get_sequences()[id]->ReverseComplement();
+      // Reverse the overlap itself.
+      int32_t Astart = overlaps[i].Astart;
+      overlaps[i].Astart = overlaps[i].Alen - overlaps[i].Aend;
+      overlaps[i].Aend = overlaps[i].Alen - Astart - 1;
+    }
+  }
+
+  return 0;
+}
+
+
 int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug) {
   aligned.Clear();
 

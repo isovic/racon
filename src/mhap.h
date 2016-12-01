@@ -128,4 +128,14 @@ int EdlibNWWrapper(const int8_t *read_data, int64_t read_length,
                    int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug);
 
+/**
+ * Loops through all overlaps. If an overlap requires the read to be reverse complemented, this function reverse complements the read
+ * and also reverses the overlap coordinates.
+ * Please make sure there is only one overlap per read, otherwise undefined behaviour may occur.
+ * @param overlaps Overlaps (mappings) which contain only coordinates (MHAP/PAF format).
+ * @param reads Reads sequences.
+ * @return 0 if everything is fine.
+ */
+int DoReverseComplementing(std::vector<OverlapLine> &overlaps, SequenceFile &reads);
+
 #endif /* SRC_MHAP_H_ */
