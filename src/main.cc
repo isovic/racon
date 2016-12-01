@@ -167,19 +167,12 @@ int main(int argc, char* argv[]) {
 
     LOG_ALL("Parsing the overlaps file.\n");
     if (overlaps_file == "-") { LOG_ALL("Stdin will be used to load the overlap lines.\n"); }
-    if (parameters.is_paf == true) {
-      ParsePAF(overlaps_file, qname_to_ids, overlaps);
-    } else {
-      ParseMHAP(overlaps_file, overlaps);
-    }
-
-    LOG_ALL("Filtering overlaps.\n");
-
+    OverlapFormat overlap_format = (parameters.is_paf) ? kOverlapFormatPAF : kOverlapFormatMHAP;
     if (parameters.do_erc == false) {
-      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-      overlaps.clear();
+      LOG_ALL("Unique overlaps will be filtered on the fly.\n");
+      ParseUniqueAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, parameters.error_rate, overlaps_final);
     } else {
-      FilterMHAPErc(overlaps, overlaps_final, parameters.error_rate);
+      ParseAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, parameters.error_rate, overlaps_final);
     }
 
 //    printf ("overlaps_final.size() = %ld\n", overlaps_final.size());
