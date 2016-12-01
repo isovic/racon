@@ -165,101 +165,17 @@ int main(int argc, char* argv[]) {
 
     LOG_ALL("Parsing the overlaps file.\n");
     if (overlaps_file == "-") { LOG_ALL("Stdin will be used to load the overlap lines.\n"); }
-    if (parameters.is_paf == true) {
-      ParsePAF(overlaps_file, qname_to_ids, overlaps);
-    } else {
-      ParseMHAP(overlaps_file, overlaps);
-    }
-
-    LOG_ALL("Filtering overlaps.\n");
-
+    OverlapFormat overlap_format = (parameters.is_paf) ? kOverlapFormatPAF : kOverlapFormatMHAP;
     if (parameters.do_erc == false) {
-      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-      overlaps.clear();
+      LOG_ALL("Unique overlaps will be filtered on the fly.\n");
+      ParseUniqueAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, parameters.error_rate, overlaps_final);
     } else {
-      FilterMHAPErc(overlaps, overlaps_final, parameters.error_rate);
+      ParseAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, parameters.error_rate, overlaps_final);
     }
 
-//    printf ("overlaps_final.size() = %ld\n", overlaps_final.size());
     std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return a.Bid < b.Bid; } );
     ConsensusDirectFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
   }
-
-//  } else if (parameters.is_mhap == true) {
-//    std::string mhap = parameters.aln_path;
-//    LOG_ALL("Using MHAP for input alignments. (%s)\n", mhap.c_str());
-//    std::vector<OverlapLine> overlaps, overlaps_filtered, overlaps_final;
-//
-//    LOG_ALL("Loading reads.\n");
-//    SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
-//    // Sanity check to see if the reads have quality values.
-//    if (seqs_reads.HasQV() == false) {
-//      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
-//      exit(1);
-//    }
-//
-//    LOG_ALL("Parsing the MHAP file.\n");
-//    if (mhap == "-") {
-//      LOG_ALL("Stdin will be used to load the MHAP lines.\n");
-//    }
-//    ParseMHAP(mhap, overlaps);
-//    LOG_ALL("Filtering MHAP overlaps.\n");
-////    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-//
-//    if (parameters.do_erc == false) {
-//      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-//    } else {
-//      FilterMHAPErc(overlaps, overlaps_final, parameters.error_rate);
-////      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
-//    }
-//
-//    seqs_sam = new SequenceFile();
-//    LOG_ALL("Aligning overlaps.\n");
-//    AlignOverlaps(seqs_gfa, seqs_reads, overlaps_final, parameters.num_threads, *seqs_sam);
-//
-//  } else {  // Using PAF for input overlaps.
-//    std::string paf = parameters.aln_path;
-//    LOG_ALL("Using PAF for input alignments. (%s)\n", paf.c_str());
-//    std::vector<OverlapLine> overlaps, overlaps_filtered, overlaps_final;
-//
-//    LOG_ALL("Loading reads.\n");
-//    SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
-//    // Sanity check to see if the reads have quality values.
-//    if (seqs_reads.HasQV() == false) {
-//      fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
-//      exit(1);
-//    }
-//
-//    // Hash the read sequences by their name.
-//    LOG_ALL("Hashing qnames.\n");
-//    std::map<std::string, int64_t> qname_to_ids;
-//    HashQnames(seqs_reads, qname_to_ids);
-//    HashQnames(seqs_gfa, qname_to_ids);
-//
-//    LOG_ALL("Parsing the PAF file.\n");
-//    // If paf == "-", then ParsePAF will automatically load lines from stdin.
-//    if (paf == "-") { LOG_ALL("Stdin will be used to load the PAF lines.\n"); }
-//    ParsePAF(paf, qname_to_ids, overlaps);
-//    LOG_ALL("Filtering overlaps.\n");
-////    FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-//
-//    if (parameters.do_erc == false) {
-//      FilterMHAP(overlaps, overlaps_final, parameters.error_rate);
-//      overlaps.clear();
-//    } else {
-//      FilterMHAPErc(overlaps, overlaps_final, parameters.error_rate);
-////      DuplicateAndSwitch(overlaps_filtered, overlaps_final);
-//    }
-//
-//    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return a.Bid < b.Bid; } );
-//    ConsensusDirectFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
-//  }
-
-//  ConsensusDirectFromAln(parameters, seqs_gfa, *seqs_sam);
-//  if (seqs_sam) {
-//	  seqs_sam->Clear();
-//	  delete seqs_sam;
-//  }
 
   return 0;
 }

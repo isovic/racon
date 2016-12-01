@@ -122,6 +122,120 @@ int ParsePAF(const std::string &paf_path, const std::map<std::string, int64_t> &
   return 0;
 }
 
+int ParseOverlapLine(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, OverlapLine &overlap_line) {
+  int rv = 0;
+  if (overlap_format == kOverlapFormatPAF) {
+    int rv = overlap_line.ParsePAF(line, qname_to_ids);
+    if (rv) { return 1; }
+  } else if (overlap_format == kOverlapFormatMHAP) {
+    int rv = overlap_line.ParseMHAP(line);
+    if (rv) { return 1; }
+  } else {
+    return 1;
+  }
+  return 0;
+}
+
+int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::map<int64_t, OverlapLine> &fmap) {
+  // Parse the line and check if everything went fine.
+  OverlapLine overlap_line;
+  ParseOverlapLine(line, overlap_format, qname_to_ids, overlap_line);
+
+  // Do simple filtering.
+  if (overlap_line.CheckConstraints(error_rate)) {
+    return 1;
+  }
+
+  // Look-up the A sequence in the map. Update if it's better, or add if
+  // nothing yet exists for this A.
+  auto it = fmap.find(overlap_line.Aid);
+  if (it == fmap.end() || overlap_line.shared_minmers > it->second.shared_minmers) {
+    fmap[overlap_line.Aid] = overlap_line;
+  }
+  return 0;
+}
+
+int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps) {
+  std::map<int64_t, OverlapLine> fmap;     // Filtering map.
+
+  if (overlap_path != "-") {
+    std::ifstream infile(overlap_path);
+    std::string line;
+    while (std::getline(infile, line))
+    {
+      if (line.size() == 0) { continue; }
+      std::istringstream iss(line);
+      TryAddingOverlap(line, overlap_format, qname_to_ids, error_rate, fmap);
+    }
+
+    infile.close();
+
+  } else {
+    std::string line;
+    while (std::getline(std::cin, line))
+    {
+      if (line.size() == 0) { break; }
+      std::istringstream iss(line);
+      TryAddingOverlap(line, overlap_format, qname_to_ids, error_rate, fmap);
+    }
+  }
+
+  ret_overlaps.clear();
+  for (auto it = fmap.begin(); it != fmap.end(); it++) {
+    ret_overlaps.push_back(it->second);
+  }
+
+  return 0;
+}
+
+int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps) {
+  ret_overlaps.clear();
+
+  if (overlap_path != "-") {
+    std::ifstream infile(overlap_path);
+    std::string line;
+    while (std::getline(infile, line))
+    {
+      if (line.size() == 0) { continue; }
+      std::istringstream iss(line);
+
+      // Parse the line and check if everything went fine.
+      OverlapLine overlap_line;
+      ParseOverlapLine(line, overlap_format, qname_to_ids, overlap_line);
+
+      // Do simple filtering.
+      if (overlap_line.CheckConstraints(error_rate)) {
+        return 1;
+      }
+
+      ret_overlaps.push_back(overlap_line);
+    }
+
+    infile.close();
+
+  } else {
+    std::string line;
+    while (std::getline(std::cin, line))
+    {
+      if (line.size() == 0) { break; }
+      std::istringstream iss(line);
+
+      // Parse the line and check if everything went fine.
+      OverlapLine overlap_line;
+      ParseOverlapLine(line, overlap_format, qname_to_ids, overlap_line);
+
+      // Do simple filtering.
+      if (overlap_line.CheckConstraints(error_rate)) {
+        return 1;
+      }
+
+      ret_overlaps.push_back(overlap_line);
+    }
+  }
+
+  return 0;
+}
+
 
 
 int FilterMHAP(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out, float error_rate) {
