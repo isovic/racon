@@ -104,11 +104,12 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
     TicToc clock_sampling;
     clock_sampling.start();
     // Extract all overlaps for the current contig, and initialize the objects.
+    std::vector<OverlapLine> extracted_overlaps(sorted_overlaps.begin()+it->second.start, sorted_overlaps.begin()+it->second.end);
     std::vector<std::shared_ptr<SampledAlignment>> sampled_overlaps;
     if (parameters.do_erc == false) {
-      PrepareAndSampleOverlaps(contigs, reads, sorted_overlaps, it->second.start, it->second.end, parameters.num_threads, sampled_overlaps, parameters.window_len, true);
+      PrepareAndSampleOverlaps(contigs, reads, extracted_overlaps, it->second.start, it->second.end, parameters.num_threads, sampled_overlaps, parameters.window_len, true);
     } else {
-      PrepareAndSampleOverlaps(contigs, reads, sorted_overlaps, it->second.start, it->second.end, 1, sampled_overlaps, parameters.window_len, thread_id == 0);
+      PrepareAndSampleOverlaps(contigs, reads, extracted_overlaps, it->second.start, it->second.end, 1, sampled_overlaps, parameters.window_len, thread_id == 0);
     }
     clock_sampling.stop();
     LOG_DEBUG("CPU time spent on sampling: %.2lf sec.\n", clock_sampling.get_secs());
