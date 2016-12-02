@@ -51,7 +51,8 @@ struct ProgramParameters {
 
   int32_t verbose_level = 1;
 
-  bool do_align = false;
+//  bool do_align = false;
+  bool do_sparse = false;
 };
 
 #endif /* SRC_PARAMETERS_H_ */

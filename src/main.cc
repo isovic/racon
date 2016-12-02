@@ -50,7 +50,8 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.use_contig_qvs), VALUE_TYPE_BOOL, "", "use-contig-qv", "0", "If false, dummy QVs equal to '!' will be assigned to each contig base during window consensus. Otherwise, QVs will be loaded from the contigs file if the file is in FASTQ format.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.do_pileup), VALUE_TYPE_BOOL, "", "pileup", "0", "Simple pileup + majority vote consensus will be performed instead of using Spoa. Much faster, but less accurate. Must be used together with --align (the default mode does not generate full alignments).", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.do_align), VALUE_TYPE_BOOL, "", "align", "0", "If specified, overlaps will be fully aligned before windowing instead of sampled at required positions. Only used if input is specified via overlaps (and not SAM files).", 0, "Algorithm");
+//  argparser.AddArgument(&(parameters.do_align), VALUE_TYPE_BOOL, "", "align", "0", "If specified, overlaps will be fully aligned before windowing instead of sampled at required positions. Only used if input is specified via overlaps (and not SAM files).", 0, "Algorithm");
+//  argparser.AddArgument(&(parameters.do_sparse), VALUE_TYPE_BOOL, "", "sparse", "0", "If specified, overlaps will be sparsely aligned (sampled) before windowing instead of applying the full alignment. Should be about 15% faster than default with same output quality, but still experimental. Only used if input is specified via overlaps (and not SAM files).", 0, "Algorithm");
   argparser.AddArgument(&(parameters.num_threads), VALUE_TYPE_INT32, "t", "threads", "4", "Number of threads to use.", 0, "Control");
   argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "20000", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Control");
   argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "The number of batches which to process", 0, "Control");
@@ -67,7 +68,7 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.verbose_level), VALUE_TYPE_INT32, "v", "verbose", "5", "Verbose level. 0 off, 1 low, 2 medium, 3 high, 4 and 5 all levels, 6-9 debug.", 0, "Other");
 
   // TODO: Deprecated feature. Consider removing permanently.
-//  argparser.AddArgument(&(parameters.win_ovl_margin), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.win_ovl_margin), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
 //  argparser.AddArgument(&(parameters.temp_alt_contig_path), VALUE_TYPE_STRING, "", "altctgs", "", "Extracted alternate contigs. Output is in SAM format.", 0, "Debug");
 
   // TODO: These two options are currently in dev.
@@ -178,10 +179,10 @@ int main(int argc, char* argv[]) {
 //    printf ("overlaps_final.size() = %ld\n", overlaps_final.size());
 //    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid) || (a.Bid == b.Bid && a.Bstart < b.Bstart); } );
     std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid); } );
-    if (parameters.do_align || parameters.do_erc) {
+    if (parameters.do_sparse == false || parameters.do_erc) {
       LOG_ALL("Overlaps will be fully aligned.\n");
       ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
-    } else if (parameters.do_align == false) {
+    } else if (parameters.do_sparse == true) {
       LOG_ALL("Reverse complementing reads.\n");
       DoReverseComplementing(overlaps_final, seqs_reads);
       LOG_ALL("Overlaps will be sampled (sparsely aligned).\n");

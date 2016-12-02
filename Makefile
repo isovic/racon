@@ -47,7 +47,8 @@ all: gcc_version_check linux
 
 modules:
 	git submodule update --init --recursive
-	cd codebase/seqlib; git checkout dev
+	cd codebase/seqlib && git checkout dev && git checkout de187ac0258fe8fa5ab0af27a8b65bcd80e78e80
+	cd codebase/spoa && git checkout overlap
 #	git submodule foreach git pull origin master
 
 tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/edlib/src/aligner tools/minimap/minimap tools/miniasm/miniasm
@@ -75,7 +76,7 @@ mm: tools/minimap/minimap tools/miniasm/miniasm tools/edlib/src/aligner
 gcc_version_check:
 ifneq ($(GCC_MAJOR_VERSION_GE_4), 1)
 	$(warning "*** WARNING $(GCC) major version <4 ***")
-endif	
+endif
 ifneq ($(GCC_MINOR_VERSION_GE_7), 1)
 	$(warning "*** WARNING $(GCC) minor version <7 ***")
 endif

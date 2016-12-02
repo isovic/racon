@@ -5,16 +5,17 @@
 make -j
 
 threads=4
+threads=1
 
 mkdir -p results/temp
 mkdir -p temp
 
 ### Lambda:
-dataset=ecoli_map006_ont
-layout_gfa=../../data/consensus/${dataset}/layout-miniasm.gfa
-reads=../../data/consensus/${dataset}/reads.fastq
-reference=../../data/consensus/${dataset}/ecoli_K12_MG1655_U00096.3.fasta
-suffix=paf-sparse
+layout_gfa=test-data/lambda/layout-miniasm.gfa
+reads=test-data/lambda/reads.fastq
+reference=test-data/lambda/NC_001416.fa
+dataset=lambda_30x_ont
+suffix=paf-overlap
 
 layout_fasta=${layout_gfa}.fasta
 awk '$1 ~/S/ {print ">"$2"\n"$3}' ${layout_gfa} > ${layout_fasta}
@@ -51,12 +52,10 @@ echo $mhap
 echo "Running Racon:"
 echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
- 	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -v 6 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
+ 	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --ovl-margin 0.1 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} --mhap --reads $reads ${contigs} ${sam} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
-
-# exit
 
 ############################################
 ### Run dnadiff to get the Avg. Identity ###
@@ -70,13 +69,13 @@ cat $memtime_minimap
 cat $memtime_racon
 ############################################
 
-# Edit distance calculation - Avg. Identity doesn't take deletions into account ###
-# echo ""
-# echo "Evaluating the results."
-# scripts/edcontigs.py ${reference} ${consensus}
-##########################################
+# exit
 
-exit
+# Edit distance calculation - Avg. Identity doesn't take deletions into account ###
+echo ""
+echo "Evaluating the results."
+scripts/edcontigs.py ${reference} ${consensus}
+##########################################
 
 
 
@@ -105,7 +104,7 @@ echo $mhap
 echo "Running Racon:"
 echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}"
 /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
-	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -v 6 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
+	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 --ovl-margin 0.1 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
 ############################################
@@ -121,7 +120,7 @@ cat $memtime_racon
 ############################################
 
 ## Edit distance calculation - Avg. Identity doesn't take deletions into account ###
-# echo ""
-# echo "Evaluating the results."
-# scripts/edcontigs.py ${reference} ${consensus}
+echo ""
+echo "Evaluating the results."
+scripts/edcontigs.py ${reference} ${consensus}
 ###########################################
