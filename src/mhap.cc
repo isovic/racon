@@ -297,20 +297,28 @@ int DoReverseComplementing(std::vector<OverlapLine> &overlaps, SequenceFile &rea
   std::vector<bool> is_reversed(reads.get_sequences().size(), false);
 
   for (int64_t i=0; i<overlaps.size(); i++) {
-    auto id = overlaps[i].Aid;
-    if (is_reversed[id] == false) {
-      // Reverse the sequence.
-      reads.get_sequences()[id]->ReverseComplement();
+    auto id = overlaps[i].Aid - 1;
+    if (overlaps[i].Brev) {
+      if (is_reversed[id] == false) {
+        // Reverse the sequence.
+        reads.get_sequences()[id]->ReverseComplement();
+      }
+
+      // Even though the sequence needs to be reversed only once, if there are more than one overlap,
+      // reverse the strand in the coordinate space anyway.
       // Reverse the overlap itself.
-      int32_t Astart = overlaps[i].Astart;
+      int64_t Astart = overlaps[i].Astart;
       overlaps[i].Astart = overlaps[i].Alen - overlaps[i].Aend;
       overlaps[i].Aend = overlaps[i].Alen - Astart - 1;
+      overlaps[i].Brev = 0;
+
+      // Mark reversed.
+      is_reversed[id] = true;
     }
   }
 
   return 0;
 }
-
 
 int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug) {
   aligned.Clear();

@@ -178,10 +178,12 @@ int main(int argc, char* argv[]) {
 //    printf ("overlaps_final.size() = %ld\n", overlaps_final.size());
 //    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid) || (a.Bid == b.Bid && a.Bstart < b.Bstart); } );
     std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid); } );
-    if (parameters.do_align) {
+    if (parameters.do_align || parameters.do_erc) {
       LOG_ALL("Overlaps will be fully aligned.\n");
       ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
-    } else {
+    } else if (parameters.do_align == false) {
+      LOG_ALL("Reverse complementing reads.\n");
+      DoReverseComplementing(overlaps_final, seqs_reads);
       LOG_ALL("Overlaps will be sampled (sparsely aligned).\n");
       ConsensusFromOverlapsWSampling(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
     }

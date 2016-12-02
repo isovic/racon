@@ -114,15 +114,13 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
     LOG_DEBUG("CPU time spent on sampling: %.2lf sec.\n", clock_sampling.get_secs());
     clk_total_sampling += clock_sampling.get_secs();
 
-    continue;
-
     TicToc clock_interval_tree;
     clock_interval_tree.start();
     // Create an interval tree.
     std::vector<IntervalSampled> intervals;
     for (int64_t i=0; i<sampled_overlaps.size(); i++) {
       if (sampled_overlaps[i]->qpos.size() > 0) {
-        intervals.push_back(IntervalSampled(sampled_overlaps[i]->mhap.Bstart, sampled_overlaps[i]->mhap.Bend, sampled_overlaps[i]));
+        intervals.push_back(IntervalSampled(sampled_overlaps[i]->mhap.Bstart, sampled_overlaps[i]->mhap.Bend-1, sampled_overlaps[i]));
       }
     }
     IntervalTreeSampled interval_tree(intervals);
@@ -187,6 +185,193 @@ int ConsensusFromOverlapsWSampling(const ProgramParameters &parameters, const Se
   return 0;
 }
 
+void PerformSampling2(std::shared_ptr<SampledAlignment> &new_sampled_ovl, const SingleSequence* ref, int64_t window_len) {
+  auto& mhap = new_sampled_ovl->mhap;
+
+  const char* target = (const char *) (ref->get_data() + mhap.Bstart);
+  int32_t target_len = mhap.Bend - mhap.Bstart;
+
+  const char *read = (const char *) new_sampled_ovl->seq->get_data();
+  int32_t read_len = read_len;
+//    // Reverse the read, because we'll need this anyway.
+//    char *r_read = Reverse(read, read_len);
+
+  // Get only parts of the read as the query (only parts covered by the overlap).
+  // Forward direction.
+  const char *query = (const char *) (read + mhap.Astart);
+  int32_t query_len = mhap.Aend - mhap.Astart;
+
+  /////////////////////////
+  /// Forward direction ///
+  /////////////////////////
+  EdlibAlignConfig config_fwd = edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE);
+  // Offset (fwd) is the distance from the start on ref to the first following window position.
+  int32_t fwd_offset = ((int32_t) std::ceil(((double) new_sampled_ovl->mhap.Bstart) / ((double) window_len))) * window_len - new_sampled_ovl->mhap.Bstart - 1;
+  int32_t num_rev_to_skip = 0;
+  if (fwd_offset < 0) {
+    fwd_offset += window_len;
+    num_rev_to_skip = 1;
+  }
+  config_fwd.subscoresOffset = fwd_offset;
+  config_fwd.subscoresDistance = window_len;
+//  LOG_DEBUG("result_fwd\n");
+  EdlibAlignResult result_fwd = edlibAlign((const char *) query, query_len, (const char *) target, target_len, config_fwd);
+
+  /////////////////////////
+  /// Reverse direction ///
+  /////////////////////////
+  EdlibAlignConfig config_rev = edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE);
+  int32_t rev_offset = new_sampled_ovl->mhap.Bend - ((int32_t) std::floor(((double) new_sampled_ovl->mhap.Bend) / ((double) window_len))) * window_len - 2 + 1;
+  int32_t num_fwd_to_skip = 0;
+  if (rev_offset < 0) {
+    // If we got here, that means that the last base of the target (Bend) is actually on the window border.
+    // This means that this is the end of the NW alignment. We can then skip the last fwd score (because it's only one line above this one)
+    // and report the last base.
+    rev_offset += window_len;
+    num_fwd_to_skip = 1;
+  }
+  config_rev.subscoresOffset = rev_offset;
+  config_rev.subscoresDistance = window_len;
+
+  // Reverse direction.
+//    const char *r_query = (const char *) (r_read + (mhap.Alen-mhap.Aend));
+  char *r_query = Reverse((char *) query, query_len);
+  // Reverse the target.
+  char *r_target = Reverse((char *) target, target_len);
+
+//  LOG_DEBUG("result_rev\n");
+  EdlibAlignResult result_rev = edlibAlign((const char *) r_query, query_len, (const char *) r_target, target_len, config_rev);
+
+  if (r_query) {
+    delete[] r_query; r_query = NULL;
+  }
+  if (r_target) {
+    delete[] r_target; r_target = NULL;
+  }
+
+//  if (std::string(new_sampled_ovl->seq->get_header()) == "31802056-9f77-4a08-afbc-83dc4f9feda5_Basecall_2D_000_2d LomanLabz_PC_Ecoli_K12_MG1655_20150924_MAP006_1_5005_1_ch408_file87_strand_twodirections:MAP006-1_downloads/pass/LomanLabz_PC_Ecoli_K12_MG1655_20150924_MAP006_1_5005_1_ch408_file87_strand.fast5") {
+//    printf ("\n");
+//    printf ("%s\n", new_sampled_ovl->seq->get_header());
+//
+//    // Checking the result.
+//    printf ("\nconfig_fwd.subscoresOffset = %d, config_fwd.subscoresDistance = %d\n", config_fwd.subscoresOffset, config_fwd.subscoresDistance);
+//    printf ("sampling_ovl->mhap.Bstart = %d, sampling_ovl->mhap.Bend = %d, query_length = %d, target_length = %d\n", new_sampled_ovl->mhap.Bstart, new_sampled_ovl->mhap.Bend, query_len, target_len);
+//    for (int32_t i=0; i<result_fwd.numSubscores; i++) {
+//      printf ("[col = %d] startIdx = %d, length = %d, columnIdx = %d, abs_columnIdx = %d\n",
+//              i, result_fwd.subscores[i].startIdx, result_fwd.subscores[i].length, result_fwd.subscores[i].columnIdx, result_fwd.subscores[i].columnIdx + new_sampled_ovl->mhap.Bstart);
+//    }
+//    printf ("\nconfig_rev.subscoresOffset = %d, config_rev.subscoresDistance = %d\n", config_rev.subscoresOffset, config_rev.subscoresDistance);
+//    for (int32_t i=0; i<result_rev.numSubscores; i++) {
+//      printf ("[col = %d] startIdx = %d, length = %d, columnIdx = %d, columnIdx_fwd = %d, abs_columnIdx_fwd = %d\n", i, result_rev.subscores[i].startIdx,
+//              result_rev.subscores[i].length, result_rev.subscores[i].columnIdx, target_len - result_rev.subscores[i].columnIdx - 1,
+//              target_len - result_rev.subscores[i].columnIdx - 1 + new_sampled_ovl->mhap.Bstart);
+//    }
+//    printf ("\n");
+//  }
+
+  ////////////////////////
+  /// The funky magic. ///
+  ////////////////////////
+  if ((result_fwd.numSubscores + num_rev_to_skip) != (result_rev.numSubscores + num_fwd_to_skip)) { //TODO: Ovdje jos ide + num_rev_to_skip
+    LOG_NEWLINE;
+    LOG_DEBUG("Something went wrong here!");
+
+    printf ("\n");
+    printf ("%s\n", new_sampled_ovl->seq->get_header());
+
+    // Checking the result.
+    printf ("\nconfig_fwd.subscoresOffset = %d, config_fwd.subscoresDistance = %d\n", config_fwd.subscoresOffset, config_fwd.subscoresDistance);
+    printf ("sampling_ovl->mhap.Bstart = %d, sampling_ovl->mhap.Bend = %d, query_length = %d, target_length = %d\n", new_sampled_ovl->mhap.Bstart, new_sampled_ovl->mhap.Bend, query_len, target_len);
+    for (int32_t i=0; i<result_fwd.numSubscores; i++) {
+      printf ("[col = %d] startIdx = %d, length = %d, columnIdx = %d, abs_columnIdx = %d\n",
+              i, result_fwd.subscores[i].startIdx, result_fwd.subscores[i].length, result_fwd.subscores[i].columnIdx, result_fwd.subscores[i].columnIdx + new_sampled_ovl->mhap.Bstart);
+    }
+    printf ("\nconfig_rev.subscoresOffset = %d, config_rev.subscoresDistance = %d\n", config_rev.subscoresOffset, config_rev.subscoresDistance);
+    for (int32_t i=0; i<result_rev.numSubscores; i++) {
+      printf ("[col = %d] startIdx = %d, length = %d, columnIdx = %d, columnIdx_fwd = %d, abs_columnIdx_fwd = %d\n", i, result_rev.subscores[i].startIdx,
+              result_rev.subscores[i].length, result_rev.subscores[i].columnIdx, target_len - result_rev.subscores[i].columnIdx - 1,
+              target_len - result_rev.subscores[i].columnIdx - 1 + new_sampled_ovl->mhap.Bstart);
+    }
+    printf ("\n");
+    printf ("Query:\n%s\n\n", GetSubstring((char *) query, query_len).c_str());
+    printf ("Target:\n%s\n\n", GetSubstring((char *) target, target_len).c_str());
+    printf ("Query length: %d\n", query_len);
+    printf ("Target length: %d\n", target_len);
+    printf ("Edit distance: %d\n", result_fwd.editDistance);
+    printf ("Alignment length: %d\n", result_fwd.alignmentLength);
+    printf ("Num subscores: %d\n", result_fwd.numSubscores);
+    fflush(stdout);
+//    exit(1);
+
+    // TODO: 100% CPU-a se trosi na prazan window!? I ne ide dalje s njega.
+
+    //  } else if (result_fwd.numSubscores == (result_rev.numSubscores + 1)) {
+    //    assert(result_fwd.numSubscores == (result_rev.numSubscores));
+    //  } else {
+    //    assert(result_fwd.numSubscores == (result_rev.numSubscores));
+        // The special snowflake. This is the leftover boundary coordinate.
+
+  } else {
+
+//  if (result_fwd.numSubscores == (result_rev.numSubscores + num_fwd_to_skip)) {
+    for (int32_t i=0; i<(result_fwd.numSubscores - num_fwd_to_skip); i++) {
+
+      int32_t sub_fwd_id = i;
+      int32_t sub_rev_id = result_rev.numSubscores-i-1 - num_rev_to_skip;
+
+      const int32_t large_int = (std::numeric_limits<int32_t>::max()) / 1000; // Compensate for overflow (allow summation of at least several such values).
+      std::vector<int32_t> u(query_len, large_int);
+      for (int32_t j=0; j<result_fwd.subscores[sub_fwd_id].length; j++) {
+        u[result_fwd.subscores[sub_fwd_id].startIdx + j] = result_fwd.subscores[sub_fwd_id].scores[j];
+      }
+
+      std::vector<int32_t> d(query_len, large_int);
+      for (int32_t j=0; j<result_rev.subscores[sub_rev_id].length; j++) {
+        d[(query_len - result_rev.subscores[sub_rev_id].startIdx) - j - 1] = result_rev.subscores[sub_rev_id].scores[j];
+      }
+
+      int32_t min_u_id = 0, max_d_id = 0, min_sum = u[0] + d[0];
+      for (int32_t j=0; j<(query_len-1); j++) {
+        int32_t sum_vert = (u[j] + d[j]);
+        if (sum_vert < min_sum) { // Edit distance alignment - find the minimum.
+          min_sum = sum_vert; min_u_id = max_d_id = j;
+        }
+
+        int32_t sum_diag = (u[j] + d[j+1]);
+        if (sum_diag < min_sum) { // Edit distance alignment - find the minimum.
+          min_sum = sum_diag; min_u_id = j; max_d_id = j + 1;
+        }
+      }
+      int32_t sum_vert = (u[query_len-1] + d[query_len-1]);
+      if (sum_vert < min_sum) { // Edit distance alignment - find the minimum.
+        min_sum = sum_vert; min_u_id = max_d_id = query_len-1;
+      }
+
+      int32_t u_target_id = result_fwd.subscores[i].columnIdx + new_sampled_ovl->mhap.Bstart;
+      int32_t d_target_id = u_target_id + 1;
+
+      new_sampled_ovl->qpos[u_target_id] = min_u_id + new_sampled_ovl->mhap.Astart;
+      new_sampled_ovl->qpos[d_target_id] = max_d_id + new_sampled_ovl->mhap.Astart;
+
+    }
+
+    if (num_fwd_to_skip == 1) {
+      int32_t u_target_id = result_fwd.subscores[result_fwd.numSubscores-1].columnIdx + new_sampled_ovl->mhap.Bstart;
+      new_sampled_ovl->qpos[u_target_id] = query_len-1 + new_sampled_ovl->mhap.Astart;
+    }
+
+    if (num_rev_to_skip == 1) {
+      int32_t d_target_id = target_len - result_rev.subscores[result_rev.numSubscores-1].columnIdx - 1 + new_sampled_ovl->mhap.Bstart;
+      new_sampled_ovl->qpos[d_target_id] = 0 + new_sampled_ovl->mhap.Astart;
+    }
+  }
+
+
+
+  edlibFreeAlignResult(result_fwd);
+  edlibFreeAlignResult(result_rev);
+}
+
 void PrepareAndSampleOverlaps(const SequenceFile &refs, const SequenceFile &reads,
                              const std::vector<OverlapLine> &sorted_overlaps, int64_t start_overlap, int64_t end_overlap, int32_t num_threads,
                              std::vector<std::shared_ptr<SampledAlignment>> &extracted_overlaps, int32_t window_len, bool verbose_debug) {
@@ -208,33 +393,78 @@ void PrepareAndSampleOverlaps(const SequenceFile &refs, const SequenceFile &read
 
     // Fetch the relevant data.
     auto mhap = sorted_overlaps[i];
-    const SingleSequence* read = reads.get_sequences()[mhap.Aid - 1];
+
+    // Get the ref sequence.
     const SingleSequence* ref = refs.get_sequences()[mhap.Bid - 1];
-    std::string ref_name(ref->get_header(), ref->get_header_length());
+    // Get the read sequence.
+    const SingleSequence* ss_read = reads.get_sequences()[mhap.Aid - 1];
 
-    // Copy the sequence. It might have to be rev-complemented.
-    std::shared_ptr<SingleSequence> seq(new SingleSequence);
-    seq->InitAllFromAscii((char *) read->get_header(), read->get_header_length(),
-                          (int8_t *) read->get_data(), (int8_t *) read->get_quality(), read->get_data_length(),
-                          extracted_overlaps.size(), extracted_overlaps.size());
 
-    // Initialize the sampled alignment object with the new sequence.
-    std::shared_ptr<SampledAlignment> new_ext_ovl(new SampledAlignment(seq, mhap));
+    auto new_sampled_ovl = std::make_shared<SampledAlignment>(ss_read, mhap);
 
-    // Check if reversal is needed and actually perform it.
-    if (new_ext_ovl->mhap.Brev) {
-      seq->ReverseComplement();
-      new_ext_ovl->mhap.Astart = mhap.Alen - mhap.Aend;
-      new_ext_ovl->mhap.Aend = mhap.Alen - mhap.Astart - 1;
-    }
+    PerformSampling2(new_sampled_ovl, ref, window_len);
+//    PerformDummySampling(new_sampled_ovl, ref, window_len);
 
-    // Sample each overlap.
-    PerformSampling(new_ext_ovl, ref,  window_len);
-//    PerformDummySampling(new_ext_ovl, ref, window_len);
+
+
+
+
+
+//    std::shared_ptr<SingleSequence> seq(new SingleSequence);
+//    if (mhap.Brev) {
+//    }
+//
+//    if (!mhap.Brev) {
+//      seq->InitAllFromAscii((char *) ss_read->get_header(), ss_read->get_header_length(),
+//                            (int8_t *) read, (int8_t *) ss_read->get_quality(), read->get_data_length(),
+//                            extracted_overlaps.size(), extracted_overlaps.size());
+//    }
+//
+//
+//    std::string ref_name(ref->get_header(), ref->get_header_length());
+//
+//    char *r_read = Reverse((char *) read->get_data(), read->get_data_length());
+//    char *r_ref = Reverse((char *) (ref->get_data()), ref->get_data_length());
+//
+//    // Forward direction.
+//    const char *query = (const char *) (sampling_ovl->seq->get_data() + sampling_ovl->mhap.Astart);
+//    int32_t query_length = sampling_ovl->mhap.Aend - sampling_ovl->mhap.Astart;
+//    const char *target = (const char *) (ref->get_data() + sampling_ovl->mhap.Bstart);
+//    int32_t target_length = sampling_ovl->mhap.Bend - sampling_ovl->mhap.Bstart;
+//    // Make a config for the alignment.
+//    EdlibAlignConfig config_fwd = edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE);
+//    // Offset (fwd) is the distance from the start on ref to the first following window position.
+//    config_fwd.subscoresOffset = ((int32_t) std::ceil(((double) sampling_ovl->mhap.Bstart) / ((double) window_len))) * window_len - sampling_ovl->mhap.Bstart - 1;
+//    config_fwd.subscoresDistance = window_len;
+//    EdlibAlignResult result_fwd = edlibAlign((const char *) query, query_length,
+//                                         (const char *) target, target_length,
+//                                         config_fwd);
+
+
+
+//    // Copy the sequence. It might have to be rev-complemented.
+//    std::shared_ptr<SingleSequence> seq(new SingleSequence);
+//    seq->InitAllFromAscii((char *) read->get_header(), read->get_header_length(),
+//                          (int8_t *) read->get_data(), (int8_t *) read->get_quality(), read->get_data_length(),
+//                          extracted_overlaps.size(), extracted_overlaps.size());
+//
+//    // Initialize the sampled alignment object with the new sequence.
+//    std::shared_ptr<SampledAlignment> new_ext_ovl(new SampledAlignment(seq, mhap));
+//
+//    // Check if reversal is needed and actually perform it.
+//    if (new_ext_ovl->mhap.Brev) {
+//      seq->ReverseComplement();
+//      new_ext_ovl->mhap.Astart = mhap.Alen - mhap.Aend;
+//      new_ext_ovl->mhap.Aend = mhap.Alen - mhap.Astart - 1;
+//    }
+//
+//    // Sample each overlap.
+//    PerformSampling(new_ext_ovl, ref,  window_len);
+////    PerformDummySampling(new_ext_ovl, ref, window_len);
 
     #pragma omp critical
     {
-      extracted_overlaps.push_back(new_ext_ovl);
+      extracted_overlaps.push_back(new_sampled_ovl);
     }
   }
 
@@ -258,16 +488,15 @@ void PerformSampling(std::shared_ptr<SampledAlignment> sampling_ovl, const Singl
   const char *target = (const char *) (ref->get_data() + sampling_ovl->mhap.Bstart);
   int32_t target_length = sampling_ovl->mhap.Bend - sampling_ovl->mhap.Bstart;
 
+  //  config_fwd.subscoresOffset = sampling_ovl->mhap.Bstart;
+
   EdlibAlignConfig config_fwd = edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE);
-//  config_fwd.subscoresOffset = sampling_ovl->mhap.Bstart;
   // Offset (fwd) is the distance from the start on ref to the first following window position.
   config_fwd.subscoresOffset = ((int32_t) std::ceil(((double) sampling_ovl->mhap.Bstart) / ((double) window_len))) * window_len - sampling_ovl->mhap.Bstart - 1;
   config_fwd.subscoresDistance = window_len;
-
   EdlibAlignResult result_fwd = edlibAlign((const char *) query, query_length,
                                        (const char *) target, target_length,
                                        config_fwd);
-
 
   // Reverse direction.
   char *r_query = Reverse((char *) query, query_length);
@@ -489,7 +718,9 @@ void PerformDummySampling(std::shared_ptr<SampledAlignment> sampling_ovl, const 
     }
     aln.optional().push_back(FormatString("X1:Z:equal=%ld_x=%ld_ins=%ld_del=%ld", eq, x, ins, del));
 
-    sampling_ovl->seq->InitAlignment(aln);
+//    sampling_ovl->seq->InitAlignment(aln);
+    // This should normally *NEVER* be performed, but since this is a dummy function meant for debugging.
+    ((SingleSequence *) sampling_ovl->seq)->InitAlignment(aln);
 
 
     std::vector<int32_t> sampling_rpos;
@@ -539,8 +770,7 @@ void CreateConsensusSampling(const ProgramParameters &parameters, int32_t num_wi
     consensus_windows.resize(parameters.batch_of_windows);
     int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
 
-//    #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
-    #pragma omp parallel for num_threads(num_window_threads) schedule(dynamic, 1)
+//    #pragma omp parallel for num_threads(num_window_threads) schedule(dynamic, 1)
     for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
 
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
@@ -548,7 +778,7 @@ void CreateConsensusSampling(const ProgramParameters &parameters, int32_t num_wi
        int32_t thread_id = omp_get_thread_num();
 
        if (parameters.do_erc == false && thread_id == 0) {
-         LOG_MEDHIGH("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length()));
+         LOG_ALL("\r(thread_id = %d) Processing window: %ld bp to %ld bp (%.2f%%)", thread_id, window_start, window_end, 100.0 * ((float) window_start / (float) contig->get_data_length()));
        }
 
        // Cut a window out of all aligned sequences. This will be fed to an MSA algorithm.
@@ -607,8 +837,8 @@ void CreateConsensusSampling(const ProgramParameters &parameters, int32_t num_wi
 //         fprintf (fp_debug, "\n");
 //       }
 //       fclose(fp_debug);
-
-//       if (id_in_batch >= 1) {
+//
+//       if (id_in_batch >= 30) {
 //         break;
 //       }
     }
@@ -672,7 +902,8 @@ void ExtractWindowFromSampledSeqs(const SingleSequence *contig, IntervalTreeSamp
   // For each seq, extract its segment which falls into the window.
   for (int64_t i=0; i<intervals.size(); i++) {
     std::shared_ptr<SampledAlignment> sal = intervals[i].value;
-    std::shared_ptr<SingleSequence> seq = sal->seq;
+//    std::shared_ptr<SingleSequence> seq = sal->seq;
+    const SingleSequence *seq = sal->seq;
 
     int32_t start_seq = sal->find(window_start);
     int32_t end_seq = sal->find(temp_window_end);
@@ -691,8 +922,26 @@ void ExtractWindowFromSampledSeqs(const SingleSequence *contig, IntervalTreeSamp
 
       LOG_DEBUG("start_seq < 0 and it's not a window start! Skipping the read.\n");
 
+      printf ("Problematic read:\n%s\n", intervals[i].value->seq->get_header());
+      printf ("All reads in the window:\n");
+      for (int32_t j=0; j<intervals.size(); j++) {
+        printf ("%s\n", intervals[j].value->seq->get_header());
+      }
+      fflush(stdout);
+
+      printf ("=============> start_seq = %d, end_seq = %d, Astart = %d, Aend = %d, Alen = %d, Bstart = %d, Bend = %d\n",
+              start_seq, end_seq, intervals[i].value->mhap.Astart, intervals[i].value->mhap.Aend, intervals[i].value->mhap.Alen,
+              intervals[i].value->mhap.Bstart, intervals[i].value->mhap.Bend);
+      for (auto itm = sal->qpos.begin(); itm != sal->qpos.end(); itm++) {
+        printf ("(%d, %d), ", itm->first, itm->second);
+      }
+      printf (";\n");
+      fflush(stdout);
+      fflush(stdout);
+
 //      assert(start_seq >= 0 && "ERROR: start_seq is < 0");
-          continue;
+//      exit(1);
+      continue;
     }
 
     if (end_seq == -1 && intervals[i].stop < window_end) {
@@ -702,24 +951,46 @@ void ExtractWindowFromSampledSeqs(const SingleSequence *contig, IntervalTreeSamp
     } else if (end_seq < 0) {
 //      assert(end_seq >= 0 && ("ERROR: start_seq is < 0"));
       LOG_DEBUG("end_seq < 0 and it's not a window end! Skipping the read.\n");
+
+      printf ("Problematic read:\n%s\n", intervals[i].value->seq->get_header());
+      printf ("All reads in the window:\n");
+      for (int32_t j=0; j<intervals.size(); j++) {
+        printf ("%s\n", intervals[j].value->seq->get_header());
+      }
+      fflush(stdout);
+
+      printf ("=============> start_seq = %d, end_seq = %d, Astart = %d, Aend = %d, Alen = %d, Bstart = %d, Bend = %d\n",
+              start_seq, end_seq, intervals[i].value->mhap.Astart, intervals[i].value->mhap.Aend, intervals[i].value->mhap.Alen,
+              intervals[i].value->mhap.Bstart, intervals[i].value->mhap.Bend);
+      for (auto itm = sal->qpos.begin(); itm != sal->qpos.end(); itm++) {
+        printf ("(%d, %d), ", itm->first, itm->second);
+      }
+      printf (";\n");
+      fflush(stdout);
+      fflush(stdout);
+
       continue;
     }
 
-    ////    printf ("%s\tstart_seq = %d, end_seq = %d, Astart = %d, Aend = %d, Alen = %d\n", seq->get_header(), start_seq, end_seq, intervals[i].value->mhap.Astart, intervals[i].value->mhap.Aend, intervals[i].value->mhap.Alen);
-    //    printf ("=============> start_seq = %d, end_seq = %d, Astart = %d, Aend = %d, Alen = %d, Bstart = %d, Bend = %d\n",
-    //            start_seq, end_seq, intervals[i].value->mhap.Astart, intervals[i].value->mhap.Aend, intervals[i].value->mhap.Alen,
-    //            intervals[i].value->mhap.Bstart, intervals[i].value->mhap.Bend);
-    //    for (auto itm = sal->qpos.begin(); itm != sal->qpos.end(); itm++) {
-    //      printf ("(%d, %d), ", itm->first, itm->second);
-    //    }
-    //    printf (";\n");
-    //    fflush(stdout);
-    //    fflush(stdout);
-    //
-    //    if ((end_seq - start_seq) > 700) {
-    //      printf ("\nNesto cudno!!\n---\n");
-    //      fflush(stdout);
-    //    }
+////    printf ("%s\tstart_seq = %d, end_seq = %d, Astart = %d, Aend = %d, Alen = %d\n", seq->get_header(), start_seq, end_seq, intervals[i].value->mhap.Astart, intervals[i].value->mhap.Aend, intervals[i].value->mhap.Alen);
+//    printf ("=============> start_seq = %d, end_seq = %d, Astart = %d, Aend = %d, Alen = %d, Bstart = %d, Bend = %d\n",
+//            start_seq, end_seq, intervals[i].value->mhap.Astart, intervals[i].value->mhap.Aend, intervals[i].value->mhap.Alen,
+//            intervals[i].value->mhap.Bstart, intervals[i].value->mhap.Bend);
+//    for (auto itm = sal->qpos.begin(); itm != sal->qpos.end(); itm++) {
+//      printf ("(%d, %d), ", itm->first, itm->second);
+//    }
+//    printf (";\n");
+//    fflush(stdout);
+//    fflush(stdout);
+//
+//    if ((end_seq - start_seq) > 700) {
+//      printf ("\nNesto cudno!!\n---\n");
+//      fflush(stdout);
+//    }
+
+//    if ((start_seq < 0 && intervals[i].start <= window_start) || (end_seq < 0 && intervals[i].stop >= window_end)) {
+//      continue;
+//    }
 
     std::string seq_data = GetSubstring((char *) (seq->get_data() + start_seq), end_seq - start_seq + 1);
     std::string seq_qual = (seq->get_quality() != NULL) ? (GetSubstring((char *) (seq->get_quality() + start_seq), end_seq - start_seq + 1)) : (std::string((end_seq - start_seq + 1), '!' + 0));
