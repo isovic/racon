@@ -770,7 +770,7 @@ void CreateConsensusSampling(const ProgramParameters &parameters, int32_t num_wi
     consensus_windows.resize(parameters.batch_of_windows);
     int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
 
-//    #pragma omp parallel for num_threads(num_window_threads) schedule(dynamic, 1)
+    #pragma omp parallel for num_threads(num_window_threads) schedule(dynamic, 1)
     for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
 
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
