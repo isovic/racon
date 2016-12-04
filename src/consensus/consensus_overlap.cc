@@ -110,16 +110,18 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     auto it = map_ctg_to_overlaps.find(contig_id);
 
     if (it == map_ctg_to_overlaps.end()) {
-      if (parameters.do_erc == false || (parameters.do_erc == true && thread_id == 0)) {
-        LOG_MEDHIGH("Contig %ld has 0 overlaps, contig len: %ld, name: '%s'\n", i, contig->get_sequence_length(), FormatStringToLength(contig->get_header(), 40).c_str());
-      }
+      // Could be useful, but not sure if it is at this point, because like this it only reports for the first thread.
+//      if (parameters.do_erc == false || (parameters.do_erc == true && thread_id == 0)) {
+//        LOG_MEDHIGH_NOHEADER("\n");
+//        LOG_MEDHIGH("Contig %ld has 0 overlaps, contig len: %ld, name: '%s'\n", i, contig->get_sequence_length(), FormatStringToLength(contig->get_header(), 40).c_str());
+//      }
       continue;
     }
 
 //    if (parameters.do_erc == false || (parameters.do_erc == true && thread_id == 0)) {
     if (parameters.do_erc == false) {
       LOG_ALL("(thread_id = %d) Aligning overlaps for contig %ld / %ld (%.2f%%): %s\n",
-	thread_id, (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), FormatStringToLength(contig->get_header(), 40).c_str());
+              thread_id, (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), FormatStringToLength(contig->get_header(), 40).c_str());
     }
 
     TicToc clock_aln;

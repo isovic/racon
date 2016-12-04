@@ -429,56 +429,70 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
            }
 
          } else {     // Otherwise, do the overlap alignment.
-//           fprintf (stderr, "Overlapping windows.\n");
-//           fflush(stderr);
-
-//           std::string trimmed_window = consensus_windows[id_in_batch-1].substr((1.0 - parameters.win_ovl_margin * 3) * consensus_windows[id_in_batch-1].size());
+           // Extract last 30% of sequence from the last consensus window.
            std::string trimmed_window = consensus_windows[id_in_batch-1].substr(std::max((1.0 - parameters.win_ovl_margin * 1.3), 0.0) * consensus_windows[id_in_batch-1].size());
 
+           // Create a vector which will be fed to SPOA.
            std::vector<std::string> windows_for_alignment = {trimmed_window, consensus_windows[id_in_batch]};
            std::vector<std::string> msa;
 
-//           SPOA::generate_msa(msa, windows_for_alignment, SPOA::AlignmentParams(1, -1, -1, -1, SPOA::AlignmentType::kOV), false);
+           // Do the alignment.
            SPOA::generate_msa(msa, windows_for_alignment, SPOA::AlignmentParams(parameters.match, parameters.mismatch, parameters.gap_open, parameters.gap_ext, SPOA::AlignmentType::kOV), false);
+           // SPOA MSA will contain 2 lines and look something like this (the first line is the trimmed window, and the last line is the current window):
+           // GCTGGAGTGAGTGGGGAAGAGCGCCACGGACAGTATGTCGCAG-GT---AAA--TGCAGCCACGC--A--TTTGAGCGGTGCAT------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+           // --------------------------CGGACAGTATGTCGCAGTGTCACAAACTTGCAGCCACGCAGACCTTTGA-TGGT--ATTGCACAGAATATGGCGGGCGATGCTGACCGGCAGTGAGCAGAACTGGCGCAGCTTCACCCGTTTCGTGCTGTCATGATGACAGAAATTCTGCTTAAGCAGGCAATGGTGGGGATTGTCGGGAGTATCGGCAGCGCCATTGGCGGGCTGTTGGTGGCGGCATCGCGTCAGGCGGTACAGCCATTCAGGCCGCTGCGGCGAAATTTCCATTTTAAACCGGAGGATTTACGGGAACCGGCGGCAAATATGAGCTACAGCAGGGGATTGTTCACGTGGTGAGTTTGTCTTCCACGAAGGAGGCAACCAGCCGGATTGGCGTGGGAATTGTTACGGCTGATGCGCGGCTGCCACCGGCGGTTATGTCGGTCACACCGGGGCAGCATGGCAGACAGCCGGTTCGCAGGCGTCGGGACGTTTGAGCAGAATAACCATGTGGTGATTAACAACGACGGCACGAACGGCAGATAGTCCGGCTGCTGCTGGAAGGCGGCGTATGACAT
 
+//           printf ("\n");
+//           for (int32_t i2=0; i2<msa.size(); i2++) {
+//             printf ("%s\n", msa[i2].c_str());
+//           }
+//           fflush(stdout);
+
+           // SPOA returned a padded MSA. This part finds the alignment start position.
            std::stringstream ss_clipped_window;
            int32_t clip_pos = 0;
-           int32_t trimmed_id = 0, curr_window_id = 1;
-           for (clip_pos=(msa[trimmed_id].size()-1); clip_pos>=0 && msa[trimmed_id][clip_pos] == '-'; clip_pos--);
-
+           int32_t trimmed_window_id = 0, curr_window_id = 1;
+           // Find the last non '-' base on the first line of MSA.
+           for (clip_pos=(msa[trimmed_window_id].size()-1); clip_pos>=0 && msa[trimmed_window_id][clip_pos] == '-'; clip_pos--);
+           // Extract all non '-' bases from the second line. This part will naturally concatenate the consensus.
+           // Although there should be no more '-' bases, you never know. Maybe the alignment changes at some point.
            for (clip_pos++; clip_pos<msa[curr_window_id].size(); clip_pos++) {
              if (msa[curr_window_id][clip_pos] != '-') { ss_clipped_window << msa[curr_window_id][clip_pos]; }
            }
+           // This is our clipped current window. The part which overlaps the previous window has been removed.
            std::string clipped_window = ss_clipped_window.str();
 
-           if (clipped_window.size() > 0) {
+           // Sanity check if everything is alright. The window should be larger than zero.
+           if (clipped_window.size() > 0) { // All went fine.
              ss_cons << clipped_window;
              if (fp_out_cons) {
                fprintf (fp_out_cons, "%s", clipped_window.c_str());
                fflush(fp_out_cons);
              }
-//               printf ("[good] window_start = %ld, window_end = %ld, clipped_window.size() = %ld\n", window_start, window_end, clipped_window.size());
-//               fflush(stdout);
-           } else {
-             printf ("\n");
-             printf ("[bad] window_start = %ld, window_end = %ld, clipped_window.size() = %ld\n", window_start, window_end, clipped_window.size());
-             printf ("\n");
-             for (int32_t i2=0; i2<windows_for_alignment.size(); i2++) {
-               printf ("%s\n\n", windows_for_alignment[i2].c_str());
+
+           } else { // Something strange happened. Maybe the region is a giant repeat?
+             // Just output the window as if there were no overlapping windows.
+             ss_cons << consensus_windows[id_in_batch];
+             if (fp_out_cons) {
+               fprintf (fp_out_cons, "%s", consensus_windows[id_in_batch].c_str());
+               fflush(fp_out_cons);
              }
-             printf ("\n");
-             printf ("Alignment:\n\n");
+
+             // Report the problem.
+             LOG_DEBUG_NOHEADER("\n");
+             LOG_DEBUG("[bad] window_start = %ld, window_end = %ld, clipped_window.size() = %ld\n", window_start, window_end, clipped_window.size());
+             LOG_DEBUG_NOHEADER("\n");
+             for (int32_t i2=0; i2<windows_for_alignment.size(); i2++) {
+               LOG_DEBUG_NOHEADER("%s\n\n", windows_for_alignment[i2].c_str());
+             }
+             LOG_DEBUG_NOHEADER("\n");
+             LOG_DEBUG("Alignment:\n\n");
              fflush(stdout);
              for (int32_t i2=0; i2<msa.size(); i2++) {
-               printf ("%s\n\n", msa[i2].c_str());
+               LOG_DEBUG_NOHEADER("%s\n\n", msa[i2].c_str());
              }
-             printf ("\n");
-
-             fflush(stdout);
-             exit(1);
+             LOG_DEBUG_NOHEADER("\n");
            }
-
-//             exit(1);
          }
        }
      }
