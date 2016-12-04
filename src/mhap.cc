@@ -211,11 +211,9 @@ int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_
       ParseOverlapLine(line, overlap_format, qname_to_ids, overlap_line);
 
       // Do simple filtering.
-      if (overlap_line.CheckConstraints(error_rate)) {
-        return 1;
+      if (!overlap_line.CheckConstraints(error_rate)) {
+        ret_overlaps.push_back(overlap_line);
       }
-
-      ret_overlaps.push_back(overlap_line);
     }
 
     infile.close();
@@ -232,11 +230,9 @@ int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_
       ParseOverlapLine(line, overlap_format, qname_to_ids, overlap_line);
 
       // Do simple filtering.
-      if (overlap_line.CheckConstraints(error_rate)) {
-        return 1;
+      if (!overlap_line.CheckConstraints(error_rate)) {
+        ret_overlaps.push_back(overlap_line);
       }
-
-      ret_overlaps.push_back(overlap_line);
     }
   }
 

@@ -288,7 +288,7 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
   }
   IntervalTreeSS aln_interval_tree(aln_intervals);
   clk1.stop();
-  LOG_ALL("CPU time for building the IntervalTree: %f sec.\n", clk1.get_secs());
+  LOG_DEBUG("CPU time for building the IntervalTree: %f sec.\n", clk1.get_secs());
 
   double clk_total_spoa = 0.0;
   double clk_total_extract = 0.0;
@@ -391,7 +391,7 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
     }
 
     if (parameters.do_erc == false) {
-      LOG_MEDHIGH_NOHEADER("\n");
+//      LOG_MEDHIGH_NOHEADER("\n");
       LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
     }
 
@@ -407,8 +407,8 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
 //    }
 
     // Deprecated, used for window overlapping.
-     LOG_MEDHIGH_NOHEADER("\n");
-     LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
+//     LOG_MEDHIGH_NOHEADER("\n");
+//     LOG_MEDHIGH("Batch checkpoint: Performed consensus on all windows, joining the windows now.\n");
      for (int64_t id_in_batch = 0; id_in_batch < parameters.batch_of_windows && id_in_batch < num_windows; id_in_batch += 1) {
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
        int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin);
@@ -485,7 +485,7 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
 
 //     LOG_MEDHIGH_NOHEADER("\n");
     if (parameters.do_erc == false) {
-      LOG_MEDHIGH("Batch checkpoint: Processed %ld windows and exported the consensus.\n", parameters.batch_of_windows);
+      LOG_MEDHIGH("Batch checkpoint: Processed %ld windows and exported the consensus.", parameters.batch_of_windows);
     }
   }
 

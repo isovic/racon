@@ -111,13 +111,15 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
 
     if (it == map_ctg_to_overlaps.end()) {
       if (parameters.do_erc == false || (parameters.do_erc == true && thread_id == 0)) {
-        LOG_MEDHIGH("Contig %ld has 0 overlaps, contig len: %ld, name: '%s'\n", i, contig->get_sequence_length(), contig->get_header());
+        LOG_MEDHIGH("Contig %ld has 0 overlaps, contig len: %ld, name: '%s'\n", i, contig->get_sequence_length(), FormatStringToLength(contig->get_header(), 40).c_str());
       }
       continue;
     }
 
-    if (parameters.do_erc == false || (parameters.do_erc == true && thread_id == 0)) {
-      LOG_ALL("(thread_id = %d) Aligning overlaps for contig %ld / %ld (%.2f%%): %s\n", thread_id, (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), contig->get_header());
+//    if (parameters.do_erc == false || (parameters.do_erc == true && thread_id == 0)) {
+    if (parameters.do_erc == false) {
+      LOG_ALL("(thread_id = %d) Aligning overlaps for contig %ld / %ld (%.2f%%): %s\n",
+	thread_id, (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), FormatStringToLength(contig->get_header(), 40).c_str());
     }
 
     TicToc clock_aln;
@@ -127,7 +129,7 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     if (parameters.do_erc == false) {
       AlignOverlaps(contigs, reads, extracted_overlaps, parameters.num_threads, alns, true);
     } else {
-      AlignOverlaps(contigs, reads, extracted_overlaps, 1, alns, thread_id == 0);
+      AlignOverlaps(contigs, reads, extracted_overlaps, 1, alns, false);
     }
     // Hash all the alignment lengths (which will be used a lot).
     std::map<const SingleSequence *, int64_t> aln_lens_on_ref;
@@ -137,7 +139,7 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     // This sorts ascending by the pos field.
     alns.Sort();
     clock_aln.stop();
-    LOG_ALL("CPU time spent on alignment: %.2lf sec.\n", clock_aln.get_secs());
+    LOG_DEBUG("CPU time spent on alignment: %.2lf sec.\n", clock_aln.get_secs());
 
     TicToc clock_cons;
     clock_cons.start();
@@ -149,7 +151,7 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
 
       } else {
         if (thread_id == 0) {
-          LOG_MEDHIGH("\r(thread_id = %d) Processing contig %ld / %ld (%.2f%%), len: %10ld", thread_id, (i + 1), contigs.get_sequences().size(), 100.0f*(((float) (i)) / ((float) contigs.get_sequences().size())), contig->get_sequence_length());
+          LOG_ALL("\r(thread_id = %d) Processing contig %ld / %ld (%.2f%%), len: %10ld", thread_id, (i + 1), contigs.get_sequences().size(), 100.0f*(((float) (i)) / ((float) contigs.get_sequences().size())), contig->get_sequence_length());
         }
 
         CreateConsensusAln(parameters, num_window_threads, contig, alns.get_sequences(), aln_lens_on_ref, consensus, NULL);
@@ -179,8 +181,8 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
 //    LOG_MEDHIGH_NOHEADER("\n");
     if (parameters.do_erc == false) {
       LOG_ALL("Processed %ld bp of %ld bp (100.00%%)\n", contig->get_data_length(), contig->get_data_length());
+      LOG_MEDHIGH_NOHEADER("\n");
     }
-    LOG_MEDHIGH_NOHEADER("\n");
   }
 
   return 0;
