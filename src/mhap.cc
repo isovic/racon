@@ -396,10 +396,8 @@ int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std
 //    }
 
     if (!rcaln) {
-      char *cigar_cstring = NULL;
-      int rccig = edlibAlignmentToCigar(&alignment[0], alignment.size(), EDLIB_CIGAR_EXTENDED, &cigar_cstring);
-
-      std::string cigar_string(cigar_cstring);
+      std::string cigar_string;
+      int rccig = edlibAlignmentToCigar(&alignment[0], alignment.size(), EDLIB_CIGAR_EXTENDED, cigar_string);
 
       SequenceAlignment aln;
       aln.SetCigarFromString(cigar_string);
