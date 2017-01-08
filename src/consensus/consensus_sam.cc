@@ -236,7 +236,7 @@ void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<Singl
     // Safety percaution.
     if (seq_data.size() < 2) { continue; }
 
-    double avg_qual;
+    double avg_qual = 0.0f;
     for (int64_t j=0; j<seq_qual.size(); j++) {
       avg_qual += (double) (seq_qual[j] - '!');
     }
