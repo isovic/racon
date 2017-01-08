@@ -182,11 +182,11 @@ int main(int argc, char* argv[]) {
     if (parameters.do_sparse == false || parameters.do_erc) {
       LOG_ALL("Overlaps will be fully aligned.\n");
       ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
-    } else if (parameters.do_sparse == true) {
-      LOG_ALL("Reverse complementing reads.\n");
-      DoReverseComplementing(overlaps_final, seqs_reads);
-      LOG_ALL("Overlaps will be sampled (sparsely aligned).\n");
-      ConsensusFromOverlapsWSampling(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
+//    } else if (parameters.do_sparse == true) {
+//      LOG_ALL("Reverse complementing reads.\n");
+//      DoReverseComplementing(overlaps_final, seqs_reads);
+//      LOG_ALL("Overlaps will be sampled (sparsely aligned).\n");
+//      ConsensusFromOverlapsWSampling(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
     }
   }
 
