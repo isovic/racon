@@ -47,7 +47,7 @@ all: gcc_version_check linux
 
 modules:
 	git submodule update --init --recursive
-	cd codebase/seqlib && git checkout dev && git checkout de187ac0258fe8fa5ab0af27a8b65bcd80e78e80
+#	cd codebase/seqlib && git checkout dev && git checkout de187ac0258fe8fa5ab0af27a8b65bcd80e78e80
 	cd codebase/spoa && git checkout overlap
 #	git submodule foreach git pull origin master
 
