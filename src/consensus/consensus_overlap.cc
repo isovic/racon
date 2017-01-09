@@ -45,7 +45,7 @@ int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std:
 
 // Used for consensus when overlaps are input to the main program (MHAP, PAF) instead of alignments (SAM).
 int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
-                                const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &sorted_overlaps) {
+                                const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, const std::vector<OverlapLine> &sorted_overlaps) {
   LOG_MEDHIGH("Running consensus.\n");
 
   int32_t num_read_threads = (parameters.do_erc) ? (parameters.num_threads) : 1;
@@ -74,7 +74,7 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     LOG_MEDHIGH("In total, there are %ld contigs for consensus, each containing:\n", contigs.get_sequences().size());
     for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
       std::string contig_name = contigs.get_sequences()[i]->get_header();
-      int64_t contig_id = qname_to_ids.find(contig_name)->second + 1;
+      int64_t contig_id = rname_to_ids.find(contig_name)->second + 1;
       auto it = map_ctg_to_overlaps.find(contig_id);
       if (it == map_ctg_to_overlaps.end()) {
         LOG_MEDHIGH("\t[%ld] %s %ld alignments, contig len: %ld\n", i, contigs.get_sequences()[i]->get_header(), 0, contigs.get_sequences()[i]->get_sequence_length());
@@ -98,7 +98,7 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
   for (int32_t i=0; i<contigs.get_sequences().size(); i++) {
     const SingleSequence *contig = contigs.get_sequences()[i];
     std::string contig_name = contig->get_header();
-    int64_t contig_id = qname_to_ids.find(contig_name)->second + 1;
+    int64_t contig_id = rname_to_ids.find(contig_name)->second + 1;
     int32_t thread_id = omp_get_thread_num();
 
     // If we are doing error correction, parallelization is per-read and not per-window.

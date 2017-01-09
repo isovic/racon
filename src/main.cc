@@ -163,17 +163,18 @@ int main(int argc, char* argv[]) {
     // Hash the read sequences by their name.
     LOG_ALL("Hashing qnames.\n");
     std::map<std::string, int64_t> qname_to_ids;
+    std::map<std::string, int64_t> rname_to_ids;
+    HashQnames(seqs_gfa, rname_to_ids);
     HashQnames(seqs_reads, qname_to_ids);
-    HashQnames(seqs_gfa, qname_to_ids);
 
     LOG_ALL("Parsing the overlaps file.\n");
     if (overlaps_file == "-") { LOG_ALL("Stdin will be used to load the overlap lines.\n"); }
     OverlapFormat overlap_format = (parameters.is_paf) ? kOverlapFormatPAF : kOverlapFormatMHAP;
     if (parameters.do_erc == false) {
       LOG_ALL("Unique overlaps will be filtered on the fly.\n");
-      ParseUniqueAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, parameters.error_rate, overlaps_final);
+      ParseUniqueAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, rname_to_ids, parameters.error_rate, overlaps_final);
     } else {
-      ParseAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, parameters.error_rate, overlaps_final);
+      ParseAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, rname_to_ids, parameters.error_rate, overlaps_final);
     }
 
 //    printf ("overlaps_final.size() = %ld\n", overlaps_final.size());
@@ -181,7 +182,7 @@ int main(int argc, char* argv[]) {
     std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid); } );
     if (parameters.do_sparse == false || parameters.do_erc) {
       LOG_ALL("Overlaps will be fully aligned.\n");
-      ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
+      ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, rname_to_ids, overlaps_final);
 //    } else if (parameters.do_sparse == true) {
 //      LOG_ALL("Reverse complementing reads.\n");
 //      DoReverseComplementing(overlaps_final, seqs_reads);

@@ -57,7 +57,7 @@ int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std:
 int ConsensusFromAln(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &alns);
 
 int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std::map<int64_t, ContigOverlapLocation> &map_ctg_to_overlaps);
-int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads, const std::map<std::string, int64_t> &qname_to_ids, const std::vector<OverlapLine> &overlaps);
+int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, const std::vector<OverlapLine> &overlaps);
 
 void ExtractWindowFromAlns(const SingleSequence *contig, const std::vector<SingleSequence *> &alns, const std::map<const SingleSequence *, int64_t> &aln_ref_lens,
                            IntervalTreeSS &aln_interval_tree, int64_t window_start, int64_t window_end, double qv_threshold, bool use_contig_qvs,

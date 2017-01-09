@@ -45,7 +45,7 @@ class OverlapLine {
     return ss.str();
   }
 
-  int ParsePAF(const std::string &line, const std::map<std::string, int64_t> &qname_to_ids) {
+  int ParsePAF(const std::string &line, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids) {
     std::istringstream iss(line);
     std::string tempAstrand, cm;
     int64_t num_residue_matches=0, aln_block_len=0, mapq=0;
@@ -72,9 +72,9 @@ class OverlapLine {
     Aid = it_a->second + 1;
 
     // Find the ID of B.
-    auto it_b = qname_to_ids.find(Bname);
-    if (it_b == qname_to_ids.end()) {
-      ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Could not find qname '%s' in the input reads file! Exiting.", Bname.c_str());
+    auto it_b = rname_to_ids.find(Bname);
+    if (it_b == rname_to_ids.end()) {
+      ERROR_REPORT(ERR_UNEXPECTED_VALUE, "Could not find qname '%s' in the input contigs file! Exiting.", Bname.c_str());
     }
     Bid = it_b->second + 1;
 
@@ -122,9 +122,9 @@ class OverlapLine {
   int64_t Brev, Bstart, Bend, Blen;
 };
 
-int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::map<int64_t, OverlapLine> &fmap);
-int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps);
-int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps);
+int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::map<int64_t, OverlapLine> &fmap);
+int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps);
+int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps);
 
 int ParseMHAP(const std::string &mhap_path, std::vector<OverlapLine> &ret_overlaps);
 int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<OverlapLine> &ret_overlaps);
