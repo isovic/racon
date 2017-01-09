@@ -35,3 +35,4 @@ scripts/test-leftalign/data/
 *.tee
 *.memtime
 comparison*.sh
+test-data/ecoli_map006_ont
