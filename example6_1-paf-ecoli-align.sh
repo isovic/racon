@@ -11,9 +11,9 @@ mkdir -p temp
 
 ### Lambda:
 dataset=ecoli_map006_ont
-layout_gfa=../../data/consensus/${dataset}/layout-miniasm.gfa
-reads=../../data/consensus/${dataset}/reads.fastq
-reference=../../data/consensus/${dataset}/ecoli_K12_MG1655_U00096.3.fasta
+layout_gfa=test-data/${dataset}/layout.gfa
+reads=test-data/${dataset}/reads.fastq
+reference=test-data/${dataset}/ecoli_K12_MG1655_U00096.3.fasta
 suffix=paf-align
 
 layout_fasta=${layout_gfa}.fasta
@@ -50,8 +50,8 @@ echo $mhap
 
 echo "Running Racon:"
 echo "    bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}"
-/usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
- 	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -v 5 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
+# /usr/bin/time --format "Command line: %C\nReal time: %e s\nCPU time: -1.0 s\nUser time: %U s\nSystem time: %S s\nMaximum RSS: %M kB\nExit status: %x" --quiet -o ${memtime_racon} \
+# 	bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -v 5 -t ${threads} ${reads} ${paf} ${contigs} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t ${threads} --mhap --reads $reads ${contigs} ${sam} ${consensus}
 	# bin/racon -M 5 -X -4 -G -8 -E -6 --bq 10 -t 1 --num-batches 1 --start-window 0 --winbatch 1 ${contigs} ${sam} ${consensus}
 echo "Racon exited."
@@ -70,7 +70,7 @@ cat $memtime_minimap
 cat $memtime_racon
 ############################################
 
-exit
+# exit
 
 # Edit distance calculation - Avg. Identity doesn't take deletions into account ###
 # echo ""
