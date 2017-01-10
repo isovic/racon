@@ -43,15 +43,12 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.consensus_path), VALUE_TYPE_STRING, "", "out", "", "Output consensus sequence.", -1, "Input/Output options");
 
   argparser.AddArgument(&(parameters.is_sam), VALUE_TYPE_BOOL, "", "sam", "0", "SAM is provided instead of MHAP. The reads file will be ignored, and seq and qual fields from the SAM file will be used.", 0, "Input/Output options");
-//  argparser.AddArgument(&(parameters.is_paf), VALUE_TYPE_BOOL, "", "paf", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
   argparser.AddArgument(&(parameters.is_mhap), VALUE_TYPE_BOOL, "", "mhap", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
 
   argparser.AddArgument(&(parameters.qv_threshold), VALUE_TYPE_DOUBLE, "", "bq", "10.0", "Threshold for the average base quality of the input reads. If a read has average BQ < specified, the read will be skipped. If value is < 0.0, filtering is disabled.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.use_contig_qvs), VALUE_TYPE_BOOL, "", "use-contig-qv", "0", "If false, dummy QVs equal to '!' will be assigned to each contig base during window consensus. Otherwise, QVs will be loaded from the contigs file if the file is in FASTQ format.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.window_len), VALUE_TYPE_INT64, "w", "winlen", "500", "Length of the window to perform POA on.", 0, "Algorithm");
-  argparser.AddArgument(&(parameters.do_pileup), VALUE_TYPE_BOOL, "", "pileup", "0", "Simple pileup + majority vote consensus will be performed instead of using Spoa. Much faster, but less accurate. Must be used together with --align (the default mode does not generate full alignments).", 0, "Algorithm");
-//  argparser.AddArgument(&(parameters.do_align), VALUE_TYPE_BOOL, "", "align", "0", "If specified, overlaps will be fully aligned before windowing instead of sampled at required positions. Only used if input is specified via overlaps (and not SAM files).", 0, "Algorithm");
-//  argparser.AddArgument(&(parameters.do_sparse), VALUE_TYPE_BOOL, "", "sparse", "0", "If specified, overlaps will be sparsely aligned (sampled) before windowing instead of applying the full alignment. Should be about 15% faster than default with same output quality, but still experimental. Only used if input is specified via overlaps (and not SAM files).", 0, "Algorithm");
+  argparser.AddArgument(&(parameters.do_pileup), VALUE_TYPE_BOOL, "", "pileup", "0", "Simple pileup + majority vote consensus will be performed instead of using Spoa. Much faster, but less accurate.", 0, "Algorithm");
   argparser.AddArgument(&(parameters.num_threads), VALUE_TYPE_INT32, "t", "threads", "4", "Number of threads to use.", 0, "Control");
   argparser.AddArgument(&(parameters.batch_of_windows), VALUE_TYPE_INT64, "b", "winbatch", "20000", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Control");
   argparser.AddArgument(&(parameters.num_batches), VALUE_TYPE_INT64, "", "num-batches", "-1", "The number of batches which to process", 0, "Control");
@@ -63,17 +60,10 @@ int main(int argc, char* argv[]) {
   argparser.AddArgument(&(parameters.mismatch), VALUE_TYPE_INT32, "X", "mismatch", "-4", "Mismatch penalty (negative value expected).", 0, "Alignment");
   argparser.AddArgument(&(parameters.gap_open), VALUE_TYPE_INT32, "G", "gapopen", "-8", "Gap open penalty (negative value expected).", 0, "Alignment");
   argparser.AddArgument(&(parameters.gap_ext), VALUE_TYPE_INT32, "E", "gapext", "-6", "Gap extend penalty (negative value expected).", 0, "Alignment");
-//  argparser.AddArgument(&(parameters.aln_type), VALUE_TYPE_INT32, "a", "align", "1", "Alignment algorithm: 0 for local, 1 for global and 2 for overlap.", 0, "Alignment");
-//  parameters.aln_type = 0;
   argparser.AddArgument(&(parameters.verbose_level), VALUE_TYPE_INT32, "v", "verbose", "5", "Verbose level. 0 off, 1 low, 2 medium, 3 high, 4 and 5 all levels, 6-9 debug.", 0, "Other");
 
   // TODO: Deprecated feature. Consider removing permanently.
   argparser.AddArgument(&(parameters.win_ovl_margin), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
-//  argparser.AddArgument(&(parameters.temp_alt_contig_path), VALUE_TYPE_STRING, "", "altctgs", "", "Extracted alternate contigs. Output is in SAM format.", 0, "Debug");
-
-  // TODO: These two options are currently in dev.
-//  argparser.AddArgument(&(parameters.do_realign), VALUE_TYPE_BOOL, "", "realign", "0", "If enabled, input SAM file will be realigned. In this mode, BQ filtering cannot be used. Realigned SAM will be output to stdout unless --rsam is specified.", 0, "Control");
-//  argparser.AddArgument(&(parameters.realigned_aln_path), VALUE_TYPE_STRING, "", "rsam", "", "If specified, the input SAM file will be realigned and output to the specified path.", 0, "Control");
 
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
 
@@ -154,6 +144,7 @@ int main(int argc, char* argv[]) {
 
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
+
     // Sanity check to see if the reads have quality values.
     if (seqs_reads.HasQV() == false) {
       fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
@@ -177,17 +168,10 @@ int main(int argc, char* argv[]) {
       ParseAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, rname_to_ids, parameters.error_rate, overlaps_final);
     }
 
-//    printf ("overlaps_final.size() = %ld\n", overlaps_final.size());
-//    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid) || (a.Bid == b.Bid && a.Bstart < b.Bstart); } );
     std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid); } );
     if (parameters.do_sparse == false || parameters.do_erc) {
       LOG_ALL("Overlaps will be fully aligned.\n");
       ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, rname_to_ids, overlaps_final);
-//    } else if (parameters.do_sparse == true) {
-//      LOG_ALL("Reverse complementing reads.\n");
-//      DoReverseComplementing(overlaps_final, seqs_reads);
-//      LOG_ALL("Overlaps will be sampled (sparsely aligned).\n");
-//      ConsensusFromOverlapsWSampling(parameters, seqs_gfa, seqs_reads, qname_to_ids, overlaps_final);
     }
   }
 
