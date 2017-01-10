@@ -8,9 +8,9 @@ Racon takes as input only three files: the raw contig FASTA, the original raw re
 Overlaps can be generated quickly using [Minimap](https://github.com/lh3/minimap) and piped through to Racon (see example usage below).  
 Racon then reads the overlaps, filters them, and aligns the region defined by each overlap.  
 
-Alternatively, instead of overlaps, alignments (SAM format) of raw reads mapped to the contigs can be provided. We recommend [GraphMap](https://github.com/isovic/graphmap) for generating the alignments.  
+Alternatively, instead of overlaps, alignments (SAM format) of raw reads mapped to the contigs can be provided. We recommend [GraphMap](https://github.com/isovic/graphmap) for generating the alignments. In this case, the ```--sam``` parameter needs to be specified in the command line.  
 
-Please note: Racon depends on *quality values* - the SAM file needs to have them included.  
+Please note: Racon depends on *quality values* - the input reads need to be in the FASTQ format, or alternatively, the SAM file needs to have them included.  
 There is also a default QV threshold set to 10 (Phred score). If your data is of poorer quality, you can modify this parameter using ```--qv FLOAT```. If ```FLOAT``` is ```-1```, the QV filtering will be turned off.  
 
 ## Quick start
@@ -31,7 +31,7 @@ Tip: Running Racon iteratively will produce better consensus sequences. (But don
 1. gcc >= 4.8  
 2. Zlib - sudo apt-get install zlib1g-dev  
 
-Optional:  
+**Optional:**  
 MUMmer needs to be installed to successfully execute the example scripts (for evaluation purposes).  
 On Ubuntu-based systems:  
 ```  
