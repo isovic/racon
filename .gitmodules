@@ -7,3 +7,6 @@
 [submodule "codebase/samscripts"]
 	path = codebase/samscripts
 	url = https://github.com/isovic/samscripts.git
+[submodule "codebase/spoa"]
+	path = codebase/spoa
+	url = https://github.com/rvaser/spoa
