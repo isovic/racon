@@ -11,7 +11,9 @@ Racon then reads the overlaps, filters them, and aligns the region defined by ea
 Alternatively, instead of overlaps, alignments (SAM format) of raw reads mapped to the contigs can be provided. We recommend [GraphMap](https://github.com/isovic/graphmap) for generating the alignments. In this case, the ```--sam``` parameter needs to be specified in the command line.  
 
 Please note: Racon depends on *quality values* - the input reads need to be in the FASTQ format, or alternatively, the SAM file needs to have them included.  
-There is also a default QV threshold set to 10 (Phred score). If your data is of poorer quality, you can modify this parameter using ```--qv FLOAT```. If ```FLOAT``` is ```-1```, the QV filtering will be turned off.  
+
+There is also a default QV threshold set to 10 (Phred score). If your data is of poorer quality or QVs are differently calibrated, you can modify this parameter using ```--bq FLOAT```. If ```FLOAT``` is ```-1```, the QV filtering will be turned off.  
+The QV filtering is applied on each window separately. For a particular window (500bp in length on the backbone by default) parts of all reads which overlap with this window are extracted together with their quality values. If the overlapping part of a read is of quality lower than the given threshold, the read will be excluded from consensus on that window. This is performed separately for each window, meaning that if parts of a read are of worse quality than others, only those parts will not be taken into account (instead of e.g. filtering the entire read from the dataset).  
 
 ## Quick start
 Clone and make Racon:
