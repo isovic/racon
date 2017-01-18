@@ -5,6 +5,8 @@
  *      Author: isovic
  */
 
+#ifndef RUN_ALL_TESTS_
+
 #include <sequences/sequence_test.h>
 #include <stdio.h>
 #include "log_system/log_system.h"
@@ -177,3 +179,5 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+
+#endif

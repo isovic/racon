@@ -1,10 +1,9 @@
 test-out/
-obj_linux/
 obj/
+obj_*/
 bin/
 tools/
 temp*/
-obj_debug/
 .cproject
 .project
 .settings/
@@ -36,3 +35,6 @@ scripts/test-leftalign/data/
 *.memtime
 comparison*.sh
 test-data/ecoli_map006_ont
+lib/googletest/build
+lib/googletest/obj
+
