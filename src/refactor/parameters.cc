@@ -5,9 +5,8 @@
 
 namespace is{
 
-Parameters::Parameters(int argc, char* argv[]) :	overlap_format_(OverlapFormat::Paf()),
-							window_len_(500)
-							  {
+Parameters::Parameters(int argc, char* argv[]) :
+    overlap_format_(OverlapFormat::Paf()), window_len_(500) {
 
   bool help = false;
 
