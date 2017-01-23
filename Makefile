@@ -31,6 +31,11 @@ all: release
 clean: cleanbuild cleantest
 
 
+
+#######################
+### Compiling Racon ###
+#######################
+
 debug: $(OBJ_FILES_DEBUG) 
 	@echo [LD DEBUG] $<
 	@mkdir -p $(dir $(BIN))
@@ -118,3 +123,32 @@ cleantest:
 	rm -rf $(OBJ_TEST_DIR) $(OBJ_TEST_DEBUG_DIR) $(BIN_TEST)
 
 #######################
+
+
+
+#########################
+### Compiling modules ###
+#########################
+
+modules:
+	git submodule update --init --recursive
+
+tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/edlib/src/aligner tools/minimap/minimap tools/miniasm/miniasm
+	echo "All tools installed."
+
+tools/graphmap/bin/Linux-x64/graphmap:
+	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make -j
+
+tools/graphmap/bin/graphmap-not_release:
+	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make -j testing
+
+tools/edlib/src/aligner:
+	mkdir -p tools; cd tools; git clone https://github.com/isovic/edlib.git; cd edlib; cd src && make -j
+
+tools/minimap/minimap:
+	mkdir -p tools; cd tools; git clone https://github.com/lh3/minimap.git; cd minimap; make -j
+
+tools/miniasm/miniasm:
+	mkdir -p tools; cd tools; git clone https://github.com/lh3/miniasm.git; cd miniasm; make -j
+
+mm: tools/minimap/minimap tools/miniasm/miniasm tools/edlib/src/aligner
