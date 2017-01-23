@@ -1,3 +1,10 @@
+/*
+ * parameters.cc
+ *
+ *  Created on: January 18, 2017
+ *      Author: Ivan Sovic
+ */
+
 #include "parameters.h"
 #include <iostream>
 #include "log_system/log_system.h"

@@ -1,3 +1,10 @@
+/*
+ * racon.h
+ *
+ *  Created on: January 18, 2017
+ *      Author: Ivan Sovic
+ */
+
 #ifndef RACON_H_
 #define RACON_H_
 
@@ -5,10 +12,17 @@
 #include <map>
 #include <memory>
 #include <string>
+#include "parameters.h"
+#include "sequences/sequence_file.h"
 
 namespace is {
 
+class Racon;
+
+std::shared_ptr<Racon> createRacon(const Parameters& param);
+
 class Racon {
+ public:
   ~Racon();
 
   friend std::shared_ptr<Racon> createRacon(const Parameters& param);

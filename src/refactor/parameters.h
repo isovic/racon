@@ -1,8 +1,8 @@
 /*
  * parameters.h
  *
- *  Created on: Feb 23, 2016
- *      Author: isovic
+ *  Created on: January 18, 2017
+ *      Author: Ivan Sovic
  */
 
 #ifndef SRC_RACON_PARAMETERR_H_
