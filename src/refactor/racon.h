@@ -39,8 +39,8 @@ class Racon {
   Racon(const Parameters& param);
   Racon(const SequenceFile& reads, const SequenceFile& targets);
 
-  void RunFromOverlaps_();
-  void RunFromAlignments_();
+  void RunFromOverlaps_(const Parameters& param);
+  void RunFromAlignments_(const Parameters& param);
 
   /** A helper function to fill a map in which the key is a sequence
   	* name, and the value is the ordinal number of the sequence in

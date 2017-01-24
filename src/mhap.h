@@ -23,9 +23,9 @@ typedef enum {
   kOverlapFormatMHAP
 } OverlapFormat ;
 
-class OverlapLine {
+class OldOverlapLine {
  public:
-  OverlapLine() :
+  OldOverlapLine() :
     Aid(0), Bid(0), Aname(""), Bname(""), perc_err(0.0), shared_minmers(0), Arev(0), Astart(0), Aend(0), Alen(0), Brev(0), Bstart(0), Bend(0), Blen(0) {
   }
 
@@ -81,15 +81,15 @@ class OverlapLine {
     return 0;
   }
 
-  void Switch() {
-    OverlapLine T = *this;
-    Aid = T.Bid; Bid = T.Aid;
-    Arev = T.Brev; Astart = T.Bstart; Aend = T.Bend; Alen = T.Blen;
-    Brev = T.Arev; Bstart = T.Astart; Bend = T.Aend; Blen = T.Alen;
-  }
+//  void Switch() {
+//    OldOverlapLine T = *this;
+//    Aid = T.Bid; Bid = T.Aid;
+//    Arev = T.Brev; Astart = T.Bstart; Aend = T.Bend; Alen = T.Blen;
+//    Brev = T.Arev; Bstart = T.Astart; Bend = T.Aend; Blen = T.Alen;
+//  }
 
   void ReverseComplement() {
-    OverlapLine T = *this;
+    OldOverlapLine T = *this;
 
     Arev= 1 - T.Arev;
     Astart = T.Alen - T.Aend - 1;
@@ -122,20 +122,20 @@ class OverlapLine {
   int64_t Brev, Bstart, Bend, Blen;
 };
 
-int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::map<int64_t, OverlapLine> &fmap);
-int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps);
-int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps);
+int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::map<int64_t, OldOverlapLine> &fmap);
+int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps);
+int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps);
 
-int ParseMHAP(const std::string &mhap_path, std::vector<OverlapLine> &ret_overlaps);
-int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<OverlapLine> &ret_overlaps);
-int FilterMHAP(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out, float error_rate);
-int FilterMHAPErc(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out, float error_rate);
-int DuplicateAndSwitch(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out);
+int ParseMHAP(const std::string &mhap_path, std::vector<OldOverlapLine> &ret_overlaps);
+int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<OldOverlapLine> &ret_overlaps);
+int FilterMHAP(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate);
+int FilterMHAPErc(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate);
+int DuplicateAndSwitch(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out);
 int EdlibNWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                    int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
-int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug);
+int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OldOverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug);
 
 /**
  * Loops through all overlaps. If an overlap requires the read to be reverse complemented, this function reverse complements the read
@@ -145,6 +145,6 @@ int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std
  * @param reads Reads sequences.
  * @return 0 if everything is fine.
  */
-int DoReverseComplementing(std::vector<OverlapLine> &overlaps, SequenceFile &reads);
+int DoReverseComplementing(std::vector<OldOverlapLine> &overlaps, SequenceFile &reads);
 
 #endif /* SRC_MHAP_H_ */

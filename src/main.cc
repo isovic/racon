@@ -142,7 +142,7 @@ int main(int argc, char* argv[]) {
     if (parameters.is_paf == true) { LOG_ALL("Using PAF for input alignments. (%s)\n", overlaps_file.c_str());}
     else { LOG_ALL("Using MHAP for input alignments. (%s)\n", overlaps_file.c_str()); }
 
-    std::vector<OverlapLine> overlaps, overlaps_filtered, overlaps_final;
+    std::vector<OldOverlapLine> overlaps, overlaps_filtered, overlaps_final;
 
     LOG_ALL("Loading reads.\n");
     SequenceFile seqs_reads(SEQ_FORMAT_AUTO, parameters.reads_path);
@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
       ParseAndFilterErrors(overlaps_file, overlap_format, qname_to_ids, rname_to_ids, parameters.error_rate, overlaps_final);
     }
 
-    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OverlapLine &a, const OverlapLine &b){ return (a.Bid < b.Bid); } );
+    std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OldOverlapLine &a, const OldOverlapLine &b){ return (a.Bid < b.Bid); } );
     if (parameters.do_sparse == false || parameters.do_erc) {
       LOG_ALL("Overlaps will be fully aligned.\n");
       ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, rname_to_ids, overlaps_final);

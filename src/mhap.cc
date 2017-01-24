@@ -15,121 +15,7 @@
 #include <iostream>
 #include <unordered_map>
 
-//int ParseMHAP(const std::string &mhap_path, std::vector<OverlapLine> &ret_overlaps) {
-//  ret_overlaps.clear();
-//
-//  if (mhap_path != "-") {
-//    std::ifstream infile(mhap_path);
-//    std::string line;
-//    while (std::getline(infile, line))
-//    {
-//      std::istringstream iss(line);
-//      OverlapLine mhap_line;
-//      if (!mhap_line.ParseMHAP(line)) {
-//        ret_overlaps.push_back(mhap_line);
-//      }
-//    }
-//    infile.close();
-//
-//  } else {
-//    std::string line;
-//    while (std::getline(std::cin, line))
-//    {
-//      if (line.size() == 0) { break; }
-//
-//      std::istringstream iss(line);
-//      OverlapLine mhap_line;
-//      if (!mhap_line.ParseMHAP(line)) {
-//        ret_overlaps.push_back(mhap_line);
-//      }
-//    }
-//
-//  }
-//  return 0;
-//}
-
-/**
- * PAF is a bit of a strange format. Both query and target coordinates are given in the fwd strand of both sequences, even though the strand flag
- * might be equal to '-'. Minimap also tends to generate strange overlaps as well. Here is an example (fake) input dataset and the corresponding overlaps:
->read3
-TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
->read4
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
->read4_rev
-GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-  * read3 has exactly 100 T bases and 200 A bases
-  * read4 has exactly 200 A bases and 100 C bases
-  * read4_rev is the reverse complement of read4
-  *
-  * Output from Minimap 1cd6ae3bc7c7a6f9e7c03c0b7a93a12647bba244 run as minimap/minimap -Sw5 -L100 -m0 -t8 reads.fasta reads34.fasta > reads34.paf
-read3 300 1 300 + read3 300 0 299 298 299 255 cm:i:269
-read3 300 100 300 - read4_rev 300 100 300 200 200 255 cm:i:186
-read3 300 0 199 - read3 300 0 300 199 300 255 cm:i:176
-read4 300 0 299 - read4_rev 300 0 300 299 300 255 cm:i:275
-read4 300 1 300 + read4 300 0 299 298 299 255 cm:i:269
-read4_rev 300 1 300 + read4_rev 300 0 299 298 299 255 cm:i:269
-  *
-  * Output from MHAP 2.1.1:
-2 1 0.000000 72.000000 0 0 72 300 1 10 83 300
-2 1 0.000000 152.000000 0 0 152 300 0 136 289 300
-3 1 0.000272 152.000000 0 99 252 300 1 110 263 300
-3 1 0.000782 52.000000 0 99 152 300 0 36 89 300
-3 2 0.012697 164.000000 0 0 232 300 1 10 243 300
-  *
-  *
-  * Test on another sample dataset, more realistic sequences copied from the beginning of the Lambda genome.
->read5 the first 1500 chars of the Lambda genome reference
-GGGCGGCGACCTCGCGGGTTTTCGCTATTTATGAAAATTTTCCGGTTTAAGGCGTTTCCGTTCTTCTTCGTCATAACTTAATGTTTTTATTTAAAATACCCTCTGAAAAGAAAGGAAACGACAGGTGCTGAAAGCGAGGCTTTTTGGCCTCTGTCGTTTCCTTTCTCTGTTTTTGTCCGTGGAATGAACAATGGAAGTCAACAAAAAGCAGCTGGCTGACATTTTCGGTGCGAGTATCCGTACCATTCAGAACTGGCAGGAACAGGGAATGCCCGTTCTGCGAGGCGGTGGCAAGGGTAATGAGGTGCTTTATGACTCTGCCGCCGTCATAAAATGGTATGCCGAAAGGGATGCTGAAATTGAGAACGAAAAGCTGCGCCGGGAGGTTGAAGAACTGCGGCAGGCCAGCGAGGCAGATCTCCAGCCAGGAACTATTGAGTACGAACGCCATCGACTTACGCGTGCGCAGGCCGACGCACAGGAACTGAAGAATGCCAGAGACTCCGCTGAAGTGGTGGAAACCGCATTCTGTACTTTCGTGCTGTCGCGGATCGCAGGTGAAATTGCCAGTATTCTCGACGGGCTCCCCCTGTCGGTGCAGCGGCGTTTTCCGGAACTGGAAAACCGACATGTTGATTTCCTGAAACGGGATATCATCAAAGCCATGAACAAAGCAGCCGCGCTGGATGAACTGATACCGGGGTTGCTGAGTGAATATATCGAACAGTCAGGTTAACAGGCTGCGGCATTTTGTCCGCGCCGGGCTTCGCTCACTGTTCAGGCCGGAGCCACAGACCGCCGTTGAATGGGCGGATGCTAATTACTATCTCCCGAAAGAATCCGCATACCAGGAAGGGCGCTGGGAAACACTGCCCTTTCAGCGGGCCATCATGAATGCGATGGGCAGCGACTACATCCGTGAGGTGAATGTGGTGAAGTCTGCCCGTGTCGGTTATTCCAAAATGCTGCTGGGTGTTTATGCCTACTTTATAGAGCATAAGCAGCGCAACACCCTTATCTGGTTGCCGACGGATGGTGATGCCGAGAACTTTATGAAAACCCACGTTGAGCCGACTATTCGTGATATTCCGTCGCTGCTGGCGCTGGCCCCGTGGTATGGCAAAAAGCACCGGGATAACACGCTCACCATGAAGCGTTTCACTAATGGGCGTGGCTTCTGGTGCCTGGGCGGTAAAGCGGCAAAAAACTACCGTGAAAAGTCGGTGGATGTGGCGGGTTATGATGAACTTGCTGCTTTTGATGATGATATTGAACAGGAAGGCTCTCCGACGTTCCTGGGTGACAAGCGTATTGAAGGCTCGGTCTGGCCAAAGTCCATCCGTGGCTCCACGCCAAAAGTGAGAGGCACCTGTCAGATTGAGCGTGCAGCCAGTGAATCCCCGCATTTTATGCGTTTTCATGTTGCCTGCCCGCATTGCGGGGAGGAGCAGTATCTTAAATTTGGCGACAAAGAGACGCCGTTTGGCCTCAAATGGACGC
->read6 last 1000 chars of read5 are the same as the first 1000 chars of read6, and the last 500 chars of read6 are new
-ACTCCGCTGAAGTGGTGGAAACCGCATTCTGTACTTTCGTGCTGTCGCGGATCGCAGGTGAAATTGCCAGTATTCTCGACGGGCTCCCCCTGTCGGTGCAGCGGCGTTTTCCGGAACTGGAAAACCGACATGTTGATTTCCTGAAACGGGATATCATCAAAGCCATGAACAAAGCAGCCGCGCTGGATGAACTGATACCGGGGTTGCTGAGTGAATATATCGAACAGTCAGGTTAACAGGCTGCGGCATTTTGTCCGCGCCGGGCTTCGCTCACTGTTCAGGCCGGAGCCACAGACCGCCGTTGAATGGGCGGATGCTAATTACTATCTCCCGAAAGAATCCGCATACCAGGAAGGGCGCTGGGAAACACTGCCCTTTCAGCGGGCCATCATGAATGCGATGGGCAGCGACTACATCCGTGAGGTGAATGTGGTGAAGTCTGCCCGTGTCGGTTATTCCAAAATGCTGCTGGGTGTTTATGCCTACTTTATAGAGCATAAGCAGCGCAACACCCTTATCTGGTTGCCGACGGATGGTGATGCCGAGAACTTTATGAAAACCCACGTTGAGCCGACTATTCGTGATATTCCGTCGCTGCTGGCGCTGGCCCCGTGGTATGGCAAAAAGCACCGGGATAACACGCTCACCATGAAGCGTTTCACTAATGGGCGTGGCTTCTGGTGCCTGGGCGGTAAAGCGGCAAAAAACTACCGTGAAAAGTCGGTGGATGTGGCGGGTTATGATGAACTTGCTGCTTTTGATGATGATATTGAACAGGAAGGCTCTCCGACGTTCCTGGGTGACAAGCGTATTGAAGGCTCGGTCTGGCCAAAGTCCATCCGTGGCTCCACGCCAAAAGTGAGAGGCACCTGTCAGATTGAGCGTGCAGCCAGTGAATCCCCGCATTTTATGCGTTTTCATGTTGCCTGCCCGCATTGCGGGGAGGAGCAGTATCTTAAATTTGGCGACAAAGAGACGCCGTTTGGCCTCAAATGGACGCCGGATGACCCCTCCAGCGTGTTTTATCTCTGCGAGCATAATGCCTGCGTCATCCGCCAGCAGGAGCTGGACTTTACTGATGCCCGTTATATCTGCGAAAAGACCGGGATCTGGACCCGTGATGGCATTCTCTGGTTTTCGTCATCCGGTGAAGAGATTGAGCCACCTGACAGTGTGACCTTTCACATCTGGACAGCGTACAGCCCGTTCACCACCTGGGTGCAGATTGTCAAAGACTGGATGAAAACGAAAGGGGATACGGGAAAACGTAAAACCTTCGTAAACACCACGCTCGGTGAGACGTGGGAGGCGAAAATTGGCGAACGTCCGGATGCTGAAGTGATGGCAGAGCGGAAAGAGCATTATTCAGCGCCCGTTCCTGACCGTGTGGCTTACCTGACCGCCGGTATCGACTCCCAGCTGGACCGCTACGAAATGCGCGTATGGGGATGGGGGCCGGGTGAGGAAAGCTGGCTGATTGACCGGCAGATTATTATGGGC
->read6_rev
-GCCCATAATAATCTGCCGGTCAATCAGCCAGCTTTCCTCACCCGGCCCCCATCCCCATACGCGCATTTCGTAGCGGTCCAGCTGGGAGTCGATACCGGCGGTCAGGTAAGCCACACGGTCAGGAACGGGCGCTGAATAATGCTCTTTCCGCTCTGCCATCACTTCAGCATCCGGACGTTCGCCAATTTTCGCCTCCCACGTCTCACCGAGCGTGGTGTTTACGAAGGTTTTACGTTTTCCCGTATCCCCTTTCGTTTTCATCCAGTCTTTGACAATCTGCACCCAGGTGGTGAACGGGCTGTACGCTGTCCAGATGTGAAAGGTCACACTGTCAGGTGGCTCAATCTCTTCACCGGATGACGAAAACCAGAGAATGCCATCACGGGTCCAGATCCCGGTCTTTTCGCAGATATAACGGGCATCAGTAAAGTCCAGCTCCTGCTGGCGGATGACGCAGGCATTATGCTCGCAGAGATAAAACACGCTGGAGGGGTCATCCGGCGTCCATTTGAGGCCAAACGGCGTCTCTTTGTCGCCAAATTTAAGATACTGCTCCTCCCCGCAATGCGGGCAGGCAACATGAAAACGCATAAAATGCGGGGATTCACTGGCTGCACGCTCAATCTGACAGGTGCCTCTCACTTTTGGCGTGGAGCCACGGATGGACTTTGGCCAGACCGAGCCTTCAATACGCTTGTCACCCAGGAACGTCGGAGAGCCTTCCTGTTCAATATCATCATCAAAAGCAGCAAGTTCATCATAACCCGCCACATCCACCGACTTTTCACGGTAGTTTTTTGCCGCTTTACCGCCCAGGCACCAGAAGCCACGCCCATTAGTGAAACGCTTCATGGTGAGCGTGTTATCCCGGTGCTTTTTGCCATACCACGGGGCCAGCGCCAGCAGCGACGGAATATCACGAATAGTCGGCTCAACGTGGGTTTTCATAAAGTTCTCGGCATCACCATCCGTCGGCAACCAGATAAGGGTGTTGCGCTGCTTATGCTCTATAAAGTAGGCATAAACACCCAGCAGCATTTTGGAATAACCGACACGGGCAGACTTCACCACATTCACCTCACGGATGTAGTCGCTGCCCATCGCATTCATGATGGCCCGCTGAAAGGGCAGTGTTTCCCAGCGCCCTTCCTGGTATGCGGATTCTTTCGGGAGATAGTAATTAGCATCCGCCCATTCAACGGCGGTCTGTGGCTCCGGCCTGAACAGTGAGCGAAGCCCGGCGCGGACAAAATGCCGCAGCCTGTTAACCTGACTGTTCGATATATTCACTCAGCAACCCCGGTATCAGTTCATCCAGCGCGGCTGCTTTGTTCATGGCTTTGATGATATCCCGTTTCAGGAAATCAACATGTCGGTTTTCCAGTTCCGGAAAACGCCGCTGCACCGACAGGGGGAGCCCGTCGAGAATACTGGCAATTTCACCTGCGATCCGCGACAGCACGAAAGTACAGAATGCGGTTTCCACCACTTCAGCGGAGT
-  *
-  * MHAP output:
-2 1 0.000084 989.000000 0 0 989 1500 0 499 1489 1500
-3 1 0.000084 989.000000 0 499 1489 1500 1 510 1499 1500
-3 2 0.000000 1489.000000 0 0 1489 1500 1 10 1499 1500
-  *
-  * GraphMap owler output:
-2 3 0.929953 110 0 0 1499 1500 1 0 1499 1500
-1 2 0.930931 78 0 500 1499 1500 0 0 999 1500
-1 3 0.930931 78 0 500 1499 1500 1 500 1499 1500
- */
-//int ParsePAF(const std::string &paf_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<OverlapLine> &ret_overlaps) {
-//  ret_overlaps.clear();
-//
-//  if (paf_path != "-") {
-//    std::ifstream infile(paf_path);
-//    std::string line;
-//    while (std::getline(infile, line))
-//    {
-//      std::istringstream iss(line);
-//      OverlapLine paf_line;
-//      if (!paf_line.ParsePAF(line, qname_to_ids)) {
-//        ret_overlaps.push_back(paf_line);
-//      }
-//    }
-//    infile.close();
-//
-//  } else {
-//    std::string line;
-//    while (std::getline(std::cin, line))
-//    {
-//      if (line.size() == 0) { break; }
-//
-//      std::istringstream iss(line);
-//      OverlapLine paf_line;
-//      if (!paf_line.ParsePAF(line, qname_to_ids)) {
-//        ret_overlaps.push_back(paf_line);
-//      }
-//    }
-//
-//  }
-//
-//  return 0;
-//}
-
-int ParseOverlapLine(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, OverlapLine &overlap_line) {
+int ParseOverlapLine(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, OldOverlapLine &overlap_line) {
   int rv = 0;
   if (overlap_format == kOverlapFormatPAF) {
     int rv = overlap_line.ParsePAF(line, qname_to_ids, rname_to_ids);
@@ -143,9 +29,9 @@ int ParseOverlapLine(const std::string &line, OverlapFormat overlap_format, cons
   return 0;
 }
 
-int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::unordered_map<int64_t, OverlapLine> &fmap) {
+int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::unordered_map<int64_t, OldOverlapLine> &fmap) {
   // Parse the line and check if everything went fine.
-  OverlapLine overlap_line;
+  OldOverlapLine overlap_line;
   ParseOverlapLine(line, overlap_format, qname_to_ids, rname_to_ids, overlap_line);
 
   // Do simple filtering.
@@ -162,8 +48,8 @@ int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, cons
   return 0;
 }
 
-int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps) {
-  std::unordered_map<int64_t, OverlapLine> fmap;     // Filtering map.
+int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps) {
+  std::unordered_map<int64_t, OldOverlapLine> fmap;     // Filtering map.
 
   if (overlap_path != "-") {
     std::ifstream infile(overlap_path);
@@ -195,7 +81,7 @@ int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat ov
   return 0;
 }
 
-int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OverlapLine> &ret_overlaps) {
+int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps) {
   ret_overlaps.clear();
 
   if (overlap_path != "-") {
@@ -207,7 +93,7 @@ int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_
       std::istringstream iss(line);
 
       // Parse the line and check if everything went fine.
-      OverlapLine overlap_line;
+      OldOverlapLine overlap_line;
       ParseOverlapLine(line, overlap_format, qname_to_ids, rname_to_ids, overlap_line);
 
       // Do simple filtering.
@@ -226,7 +112,7 @@ int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_
       std::istringstream iss(line);
 
       // Parse the line and check if everything went fine.
-      OverlapLine overlap_line;
+      OldOverlapLine overlap_line;
       ParseOverlapLine(line, overlap_format, qname_to_ids, rname_to_ids, overlap_line);
 
       // Do simple filtering.
@@ -241,8 +127,8 @@ int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_
 
 
 
-int FilterMHAP(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out, float error_rate) {
-  std::map<int64_t, OverlapLine> fmap;     // Filtering map.
+int FilterMHAP(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate) {
+  std::map<int64_t, OldOverlapLine> fmap;     // Filtering map.
 
   for (int64_t i=0; i<overlaps_in.size(); i++) {
     if (!overlaps_in[i].CheckConstraints(error_rate)) {
@@ -265,7 +151,7 @@ int FilterMHAP(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapL
   return 0;
 }
 
-int FilterMHAPErc(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out, float error_rate) {
+int FilterMHAPErc(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate) {
   overlaps_out.clear();
   overlaps_out.reserve(overlaps_in.size());
   for (int64_t i=0; i<overlaps_in.size(); i++) {
@@ -276,20 +162,20 @@ int FilterMHAPErc(const std::vector<OverlapLine> &overlaps_in, std::vector<Overl
   return 0;
 }
 
-int DuplicateAndSwitch(const std::vector<OverlapLine> &overlaps_in, std::vector<OverlapLine> &overlaps_out) {
-  overlaps_out.clear();
-  overlaps_out.reserve(overlaps_in.size());
-  for (int64_t i=0; i<overlaps_in.size(); i++) {
-    overlaps_out.push_back(overlaps_in[i]);
-    OverlapLine o = overlaps_in[i];
-    o.Switch();
-    if (o.Arev) { o.ReverseComplement(); }
-    overlaps_out.push_back(o);
-  }
-  return 0;
-}
+//int DuplicateAndSwitch(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out) {
+//  overlaps_out.clear();
+//  overlaps_out.reserve(overlaps_in.size());
+//  for (int64_t i=0; i<overlaps_in.size(); i++) {
+//    overlaps_out.push_back(overlaps_in[i]);
+//    OldOverlapLine o = overlaps_in[i];
+//    o.Switch();
+//    if (o.Arev) { o.ReverseComplement(); }
+//    overlaps_out.push_back(o);
+//  }
+//  return 0;
+//}
 
-int DoReverseComplementing(std::vector<OverlapLine> &overlaps, SequenceFile &reads) {
+int DoReverseComplementing(std::vector<OldOverlapLine> &overlaps, SequenceFile &reads) {
   std::vector<bool> is_reversed(reads.get_sequences().size(), false);
 
   for (int64_t i=0; i<overlaps.size(); i++) {
@@ -316,7 +202,7 @@ int DoReverseComplementing(std::vector<OverlapLine> &overlaps, SequenceFile &rea
   return 0;
 }
 
-int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug) {
+int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OldOverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug) {
   aligned.Clear();
 
   // Generate the SAM file header, for debugging.
@@ -355,7 +241,7 @@ int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std
     }
 
     auto &mhap = overlaps[i];
-    OverlapLine omhap = mhap;
+    OldOverlapLine omhap = mhap;
 
     // Get the read.
     const SingleSequence* read = reads.get_sequences()[omhap.Aid - 1];

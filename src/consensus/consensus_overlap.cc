@@ -20,7 +20,7 @@
 #include "pileup.h"
 #include "tictoc.h"
 
-int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std::map<int64_t, ContigOverlapLocation> &map_ctg_to_overlaps) {
+int GroupOverlapsToContigs(const std::vector<OldOverlapLine> &sorted_overlaps, std::map<int64_t, ContigOverlapLocation> &map_ctg_to_overlaps) {
   map_ctg_to_overlaps.clear();
 
   if (sorted_overlaps.size() == 0) { return 1; }
@@ -45,7 +45,7 @@ int GroupOverlapsToContigs(const std::vector<OverlapLine> &sorted_overlaps, std:
 
 // Used for consensus when overlaps are input to the main program (MHAP, PAF) instead of alignments (SAM).
 int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFile &contigs, const SequenceFile &reads,
-                                const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, const std::vector<OverlapLine> &sorted_overlaps) {
+                                const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, const std::vector<OldOverlapLine> &sorted_overlaps) {
   LOG_MEDHIGH("Running consensus.\n");
 
   int32_t num_read_threads = (parameters.do_erc) ? (parameters.num_threads) : 1;
@@ -127,7 +127,7 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     TicToc clock_aln;
     clock_aln.start();
     SequenceFile alns;
-    std::vector<OverlapLine> extracted_overlaps(sorted_overlaps.begin()+it->second.start, sorted_overlaps.begin()+it->second.end);
+    std::vector<OldOverlapLine> extracted_overlaps(sorted_overlaps.begin()+it->second.start, sorted_overlaps.begin()+it->second.end);
     if (parameters.do_erc == false) {
       AlignOverlaps(contigs, reads, extracted_overlaps, parameters.num_threads, alns, true);
     } else {
