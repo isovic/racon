@@ -22,7 +22,7 @@ Parameters::Parameters(int argc, char* argv[]) :
   // Input/output options.
   argparser.AddArgument(&(reads_path_), VALUE_TYPE_STRING, "", "reads", "", "Reads in FASTQ format.", -4, "Input/Output options");
   argparser.AddArgument(&(aln_path_), VALUE_TYPE_STRING, "", "alnpath", "", "Path to a MHAP file with read-to-target overlaps.", -3, "Input/Output options");
-  argparser.AddArgument(&(raw_contigs_path_), VALUE_TYPE_STRING, "", "raw", "", "Path to the raw contig/read sequences (output from the layout step). GFA, FASTA/FASTQ or SAM formats allowed.", -2, "Input/Output options");
+  argparser.AddArgument(&(contigs_path_), VALUE_TYPE_STRING, "", "raw", "", "Path to the raw contig/read sequences (output from the layout step). GFA, FASTA/FASTQ or SAM formats allowed.", -2, "Input/Output options");
   argparser.AddArgument(&(consensus_path_), VALUE_TYPE_STRING, "", "out", "", "Output consensus sequence.", -1, "Input/Output options");
   argparser.AddArgument(&(is_sam_), VALUE_TYPE_BOOL, "", "sam", "0", "SAM is provided instead of MHAP. The reads file will be ignored, and seq and qual fields from the SAM file will be used.", 0, "Input/Output options");
   argparser.AddArgument(&(is_mhap_), VALUE_TYPE_BOOL, "", "mhap", "0", "Overlaps are in PAF format instead of MHAP.", 0, "Input/Output options");
@@ -77,16 +77,20 @@ Parameters::Parameters(int argc, char* argv[]) :
   program_folder_ = cmd_arguments_[0].substr(0, cmd_arguments_[0].find_last_of("\\/"));
   program_bin_ = cmd_arguments_[0].substr(cmd_arguments_[0].find_last_of("\\/") + 1);
 
+  // Specify the input format.
   if (is_mhap_ == false && is_sam_ == false) {
-    is_paf_ = true;
-  }
-
-  // Sanity check for input format specification.
-  if (is_sam_ == true && is_paf_ == true) {
-  	std::cerr << "ERROR: More than one input overlap/alignment format specified. Exiting." << std::endl;
+    overlap_format_ = OverlapFormat::Paf();
+  } else if (is_mhap_ == true && is_sam_ == false) {
+    overlap_format_ = OverlapFormat::Mhap();
+  } else if (is_mhap_ == false && is_sam_ == true) {
+    overlap_format_ = OverlapFormat::Sam();
+  } else {  // Something went wrong.
+    std::cerr << "ERROR: More than one input overlap/alignment format specified. Exiting." << std::endl;
     exit(1);
   }
-  if (is_sam_ == false && reads_path_ == "") {
+
+  // Sanity check for input file path.
+  if (reads_path_ == "") {
   	std::cerr << "ERROR: Reads file not specified! Exiting." << std::endl;
     exit(1);
   }

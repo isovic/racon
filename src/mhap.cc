@@ -15,7 +15,7 @@
 #include <iostream>
 #include <unordered_map>
 
-int ParseOverlapLine(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, OldOverlapLine &overlap_line) {
+int ParseOverlapLine(const std::string &line, OldOverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, OldOverlapLine &overlap_line) {
   int rv = 0;
   if (overlap_format == kOverlapFormatPAF) {
     int rv = overlap_line.ParsePAF(line, qname_to_ids, rname_to_ids);
@@ -29,7 +29,7 @@ int ParseOverlapLine(const std::string &line, OverlapFormat overlap_format, cons
   return 0;
 }
 
-int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::unordered_map<int64_t, OldOverlapLine> &fmap) {
+int TryAddingOverlap(const std::string &line, OldOverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::unordered_map<int64_t, OldOverlapLine> &fmap) {
   // Parse the line and check if everything went fine.
   OldOverlapLine overlap_line;
   ParseOverlapLine(line, overlap_format, qname_to_ids, rname_to_ids, overlap_line);
@@ -48,7 +48,7 @@ int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, cons
   return 0;
 }
 
-int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps) {
+int ParseUniqueAndFilterErrors(const std::string &overlap_path, OldOverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps) {
   std::unordered_map<int64_t, OldOverlapLine> fmap;     // Filtering map.
 
   if (overlap_path != "-") {
@@ -81,7 +81,7 @@ int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat ov
   return 0;
 }
 
-int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps) {
+int ParseAndFilterErrors(const std::string &overlap_path, OldOverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps) {
   ret_overlaps.clear();
 
   if (overlap_path != "-") {
@@ -175,32 +175,32 @@ int FilterMHAPErc(const std::vector<OldOverlapLine> &overlaps_in, std::vector<Ol
 //  return 0;
 //}
 
-int DoReverseComplementing(std::vector<OldOverlapLine> &overlaps, SequenceFile &reads) {
-  std::vector<bool> is_reversed(reads.get_sequences().size(), false);
-
-  for (int64_t i=0; i<overlaps.size(); i++) {
-    auto id = overlaps[i].Aid - 1;
-    if (overlaps[i].Brev) {
-      if (is_reversed[id] == false) {
-        // Reverse the sequence.
-        reads.get_sequences()[id]->ReverseComplement();
-      }
-
-      // Even though the sequence needs to be reversed only once, if there are more than one overlap,
-      // reverse the strand in the coordinate space anyway.
-      // Reverse the overlap itself.
-      int64_t Astart = overlaps[i].Astart;
-      overlaps[i].Astart = overlaps[i].Alen - overlaps[i].Aend;
-      overlaps[i].Aend = overlaps[i].Alen - Astart - 1;
-      overlaps[i].Brev = 0;
-
-      // Mark reversed.
-      is_reversed[id] = true;
-    }
-  }
-
-  return 0;
-}
+//int DoReverseComplementing(std::vector<OldOverlapLine> &overlaps, SequenceFile &reads) {
+//  std::vector<bool> is_reversed(reads.get_sequences().size(), false);
+//
+//  for (int64_t i=0; i<overlaps.size(); i++) {
+//    auto id = overlaps[i].Aid - 1;
+//    if (overlaps[i].Brev) {
+//      if (is_reversed[id] == false) {
+//        // Reverse the sequence.
+//        reads.get_sequences()[id]->ReverseComplement();
+//      }
+//
+//      // Even though the sequence needs to be reversed only once, if there are more than one overlap,
+//      // reverse the strand in the coordinate space anyway.
+//      // Reverse the overlap itself.
+//      int64_t Astart = overlaps[i].Astart;
+//      overlaps[i].Astart = overlaps[i].Alen - overlaps[i].Aend;
+//      overlaps[i].Aend = overlaps[i].Alen - Astart - 1;
+//      overlaps[i].Brev = 0;
+//
+//      // Mark reversed.
+//      is_reversed[id] = true;
+//    }
+//  }
+//
+//  return 0;
+//}
 
 int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std::vector<OldOverlapLine> &overlaps, int32_t num_threads, SequenceFile &aligned, bool verbose_debug) {
   aligned.Clear();

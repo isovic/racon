@@ -14,7 +14,8 @@
 #include <string>
 #include <deque>
 
-#include "job.h"
+#include "types.h"
+// #include "job.h"
 #include "parameters.h"
 #include "sequences/sequence_file.h"
 
@@ -31,8 +32,7 @@ class Racon {
   friend std::shared_ptr<Racon> createRacon(const Parameters& param);
 
  private:
-  typedef std::map<std::string, int64_t> MapId;
-  typedef std::deque<std::shared_ptr<Job>> JobQueue;
+//  typedef std::deque<std::shared_ptr<Job>> JobQueue;
 
   Racon(const Racon&) = delete;
   const Racon& operator=(const Racon&) = delete;
@@ -55,7 +55,7 @@ class Racon {
   	* @window_len Length of the window for processing. Must be >= 0.
   	* @jobs The deque to which to append the jobs.
   */
-  void PopulateJobsConsensus_(const SequenceFile &refs, int64_t win_len, JobQueue &jobs) const;
+//  void PopulateJobsConsensus_(const SequenceFile &refs, int64_t win_len, JobQueue &jobs) const;
 
   /** Populates the job queue for error-correction type parallelization.
    * This means that each sequence will be a single threadpool job.
@@ -63,15 +63,15 @@ class Racon {
    * @window_len Length of the window for processing. Must be >= 0.
    * @jobs The deque to which to append the jobs.
    */
-  void PopulateJobsErc_(const SequenceFile &refs, int64_t win_len, JobQueue &jobs) const;
+//  void PopulateJobsErc_(const SequenceFile &refs, int64_t win_len, JobQueue &jobs) const;
 
   /** Helper debugging function.
    */
-  void VerboseJobs_();
+//  void VerboseJobs_();
 
-  MapId read_id_;
-  MapId target_id_;
-  JobQueue jobs_;
+//  MapId query_id_;
+//  MapId target_id_;
+//  JobQueue jobs_;
 };
 
 }

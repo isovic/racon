@@ -11,36 +11,105 @@
 #include <stdint.h>
 #include <string>
 #include "argparser.h"
+#include "types.h"
 
 namespace is {
-
-class OverlapFormat {
- public:
-  static OverlapFormat Paf() { return OverlapFormat(kPaf); }
-  static OverlapFormat Mhap() { return OverlapFormat(kMhap); }
-  static OverlapFormat Sam() { return OverlapFormat(kSam); }
-
-  bool isPaf() { return x_ == kPaf; }
-  bool isMhap() { return x_ == kMhap; }
-  bool isSam() { return x_ == kSam; }
-
- private:
-  explicit OverlapFormat(int32_t x): x_(x) { }
-  int32_t x_;
-  enum OvlFormatTypes {
-    kPaf = 0,
-    kMhap = 1,
-    kSam = 2
-  };
-};
 
 class Parameters {
  public:
   Parameters(int argc, char* argv[]);
 
+  const std::string& aln_path() const {
+    return aln_path_;
+  }
+
+  int32_t aln_type() const {
+    return aln_type_;
+  }
+
+  int64_t batch_of_windows() const {
+    return batch_of_windows_;
+  }
+
+  const std::string& consensus_path() const {
+    return consensus_path_;
+  }
+
+  const std::string& contigs_path() const {
+    return contigs_path_;
+  }
+
+  bool do_erc() const {
+    return do_erc_;
+  }
+
+  double error_rate() const {
+    return error_rate_;
+  }
+
+  int32_t gap_ext() const {
+    return gap_ext_;
+  }
+
+  int32_t gap_open() const {
+    return gap_open_;
+  }
+
+  int32_t match() const {
+    return match_;
+  }
+
+  int32_t mismatch() const {
+    return mismatch_;
+  }
+
+  int64_t num_batches() const {
+    return num_batches_;
+  }
+
+  int32_t num_threads() const {
+    return num_threads_;
+  }
+
+  const std::string& out_fmt() const {
+    return out_fmt_;
+  }
+
+  const OverlapFormat& overlap_format() const {
+    return overlap_format_;
+  }
+
+  double qv_threshold() const {
+    return qv_threshold_;
+  }
+
+  const std::string& reads_path() const {
+    return reads_path_;
+  }
+
+  int64_t start_window() const {
+    return start_window_;
+  }
+
+  bool use_contig_qvs() const {
+    return use_contig_qvs_;
+  }
+
+  int32_t verbose_level() const {
+    return verbose_level_;
+  }
+
+  double win_ovl_margin() const {
+    return win_ovl_margin_;
+  }
+
+  int64_t window_len() const {
+    return window_len_;
+  }
+
  private:
   // Input output options.
-  std::string raw_contigs_path_ = "";
+  std::string contigs_path_ = "";
   std::string aln_path_ = "";
   std::string consensus_path_ = "";
   std::string out_fmt_ = "fasta";
@@ -49,7 +118,6 @@ class Parameters {
   // Input format type. Default is PAF.
   OverlapFormat overlap_format_;
   // This should be deprecated.
-  bool is_paf_ = true;
   bool is_mhap_ = false;
   bool is_sam_ = false;
 

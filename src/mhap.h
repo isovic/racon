@@ -21,7 +21,7 @@
 typedef enum {
   kOverlapFormatPAF,
   kOverlapFormatMHAP
-} OverlapFormat ;
+} OldOverlapFormat ;
 
 class OldOverlapLine {
  public:
@@ -122,9 +122,9 @@ class OldOverlapLine {
   int64_t Brev, Bstart, Bend, Blen;
 };
 
-int TryAddingOverlap(const std::string &line, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::map<int64_t, OldOverlapLine> &fmap);
-int ParseUniqueAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps);
-int ParseAndFilterErrors(const std::string &overlap_path, OverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps);
+int TryAddingOverlap(const std::string &line, OldOverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::map<int64_t, OldOverlapLine> &fmap);
+int ParseUniqueAndFilterErrors(const std::string &overlap_path, OldOverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps);
+int ParseAndFilterErrors(const std::string &overlap_path, OldOverlapFormat overlap_format, const std::map<std::string, int64_t> &qname_to_ids, const std::map<std::string, int64_t> &rname_to_ids, float error_rate, std::vector<OldOverlapLine> &ret_overlaps);
 
 int ParseMHAP(const std::string &mhap_path, std::vector<OldOverlapLine> &ret_overlaps);
 int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<OldOverlapLine> &ret_overlaps);
