@@ -127,40 +127,40 @@ int ParseAndFilterErrors(const std::string &overlap_path, OldOverlapFormat overl
 
 
 
-int FilterMHAP(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate) {
-  std::map<int64_t, OldOverlapLine> fmap;     // Filtering map.
+//int FilterMHAP(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate) {
+//  std::map<int64_t, OldOverlapLine> fmap;     // Filtering map.
+//
+//  for (int64_t i=0; i<overlaps_in.size(); i++) {
+//    if (!overlaps_in[i].CheckConstraints(error_rate)) {
+//      auto it = fmap.find(overlaps_in[i].Aid);
+//      if (it == fmap.end() || overlaps_in[i].shared_minmers > it->second.shared_minmers) {
+//        fmap[overlaps_in[i].Aid] = overlaps_in[i];
+////      } else {
+////        if (overlaps_in[i].shared_minmers > it->second.shared_minmers) {
+////        }
+//      }
+//    }
+//  }
+//  overlaps_out.clear();
+//  for (auto it = fmap.begin(); it != fmap.end(); it++) {
+//    overlaps_out.push_back(it->second);
+//  }
+//
+////  std::sort(overlaps_out.begin(), overlaps_out.end(), [](const MHAPLine &a, const MHAPLine &b) { return a.Bstart < b.Bstart; });
+//
+//  return 0;
+//}
 
-  for (int64_t i=0; i<overlaps_in.size(); i++) {
-    if (!overlaps_in[i].CheckConstraints(error_rate)) {
-      auto it = fmap.find(overlaps_in[i].Aid);
-      if (it == fmap.end() || overlaps_in[i].shared_minmers > it->second.shared_minmers) {
-        fmap[overlaps_in[i].Aid] = overlaps_in[i];
-//      } else {
-//        if (overlaps_in[i].shared_minmers > it->second.shared_minmers) {
-//        }
-      }
-    }
-  }
-  overlaps_out.clear();
-  for (auto it = fmap.begin(); it != fmap.end(); it++) {
-    overlaps_out.push_back(it->second);
-  }
-
-//  std::sort(overlaps_out.begin(), overlaps_out.end(), [](const MHAPLine &a, const MHAPLine &b) { return a.Bstart < b.Bstart; });
-
-  return 0;
-}
-
-int FilterMHAPErc(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate) {
-  overlaps_out.clear();
-  overlaps_out.reserve(overlaps_in.size());
-  for (int64_t i=0; i<overlaps_in.size(); i++) {
-    if (!overlaps_in[i].CheckConstraints(error_rate)) {
-      overlaps_out.push_back(overlaps_in[i]);
-    }
-  }
-  return 0;
-}
+//int FilterMHAPErc(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate) {
+//  overlaps_out.clear();
+//  overlaps_out.reserve(overlaps_in.size());
+//  for (int64_t i=0; i<overlaps_in.size(); i++) {
+//    if (!overlaps_in[i].CheckConstraints(error_rate)) {
+//      overlaps_out.push_back(overlaps_in[i]);
+//    }
+//  }
+//  return 0;
+//}
 
 //int DuplicateAndSwitch(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out) {
 //  overlaps_out.clear();

@@ -84,10 +84,10 @@ void Racon::RunFromOverlaps_(const Parameters& param) {
   LOG_ALL("Using %s for input alignments. (%s)\n",
           (param.overlap_format().isPaf()) ? "PAF" : "MHAP", param.aln_path().c_str())
   LOG_ALL("Started parsing the overlaps file.\n");
+
   Overlaps overlaps(param.aln_path(), param.overlap_format(), query_id, target_id, param.error_rate(), param.do_erc());
   overlaps.SortByTargetId();
 
-//  std::sort(overlaps_final.begin(), overlaps_final.end(), [](const OldOverlapLine &a, const OldOverlapLine &b){ return (a.Bid < b.Bid); } );
 //  if (parameters.do_sparse == false || parameters.do_erc) {
 //    LOG_ALL("Overlaps will be fully aligned.\n");
 //    ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, rname_to_ids, overlaps_final);

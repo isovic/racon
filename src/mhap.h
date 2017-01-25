@@ -128,9 +128,9 @@ int ParseAndFilterErrors(const std::string &overlap_path, OldOverlapFormat overl
 
 int ParseMHAP(const std::string &mhap_path, std::vector<OldOverlapLine> &ret_overlaps);
 int ParsePAF(const std::string &mhap_path, const std::map<std::string, int64_t> &qname_to_ids, std::vector<OldOverlapLine> &ret_overlaps);
-int FilterMHAP(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate);
-int FilterMHAPErc(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate);
-int DuplicateAndSwitch(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out);
+//int FilterMHAP(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate);
+//int FilterMHAPErc(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out, float error_rate);
+//int DuplicateAndSwitch(const std::vector<OldOverlapLine> &overlaps_in, std::vector<OldOverlapLine> &overlaps_out);
 int EdlibNWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
