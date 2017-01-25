@@ -103,9 +103,10 @@ class Overlaps {
   }
 
  private:
-  void Parse_(const std::string& path, const OverlapFormat &of,
-              const MapId &q_ids, const MapId &t_ids, float error_rate,
-              bool filter_unique);
+  void ParseUnique_(const std::string& path, const OverlapFormat &of,
+              const MapId &q_ids, const MapId &t_ids, float error_rate);
+  void ParseAll_(const std::string& path, const OverlapFormat &of,
+              const MapId &q_ids, const MapId &t_ids, float error_rate);
 
   std::vector<Overlap> overlaps_;
 

@@ -14,7 +14,16 @@
 
 namespace is {
 
+class OverlapFormat;
+
+// A generic range structure. Beats unnamed pairs/tuples.
+typedef struct {
+  int64_t start = 0, end = 0;
+} Range;
+
 typedef std::map<std::string, int64_t> MapId;
+typedef std::map<int64_t, Range> MapOverlapRange;
+// typedef std::map<std::string, const SingleSequence*> MapSeqs;
 
 class OverlapFormat {
  public:

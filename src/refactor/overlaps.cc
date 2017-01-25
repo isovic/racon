@@ -156,7 +156,11 @@ int Overlap::ParsePaf_(const std::string &line, const MapId &q_ids, const MapId 
 
 Overlaps::Overlaps(const std::string& path, const OverlapFormat &of,
                    const MapId &q_ids, const MapId &t_ids, float error_rate, bool filter_unique) {
-  Parse_(path, of, q_ids, t_ids, error_rate, filter_unique);
+  if (filter_unique) {
+    ParseUnique_(path, of, q_ids, t_ids, error_rate);
+  } else {
+    ParseAll_(path, of, q_ids, t_ids, error_rate);
+  }
 }
 
 Overlaps::~Overlaps() {
@@ -168,9 +172,9 @@ void Overlaps::SortByTargetId() {
             [](const Overlap &a, const Overlap &b){ return (a.Bid() < b.Bid()); } );
 }
 
-void Overlaps::Parse_(const std::string& path, const OverlapFormat& of,
+void Overlaps::ParseUnique_(const std::string& path, const OverlapFormat& of,
                       const MapId& q_ids, const MapId& t_ids,
-                      float error_rate, bool filter_unique) {
+                      float error_rate) {
   assert(of.isPaf() || of.isMhap());
 
   std::unordered_map<int64_t, Overlap> fmap;     // Filtering map.
@@ -213,6 +217,43 @@ void Overlaps::Parse_(const std::string& path, const OverlapFormat& of,
   overlaps_.reserve(fmap.size());
   for (auto it = fmap.begin(); it != fmap.end(); it++) {
     overlaps_.push_back(it->second);
+  }
+}
+
+void Overlaps::ParseAll_(const std::string& path, const OverlapFormat& of,
+                      const MapId& q_ids, const MapId& t_ids,
+                      float error_rate) {
+  assert(of.isPaf() || of.isMhap());
+
+  std::ifstream infile;
+  if (path != "-") {                    // Read from disk.
+    infile.open(path.c_str());
+    if (!infile) {
+      std::cerr << "ERROR: Could not open file '" << path << "' for reading! Exiting." << std::endl;
+      exit(1);
+    }
+  }
+  std::istream& input =(path != "-") ? infile : std::cin;       // Choose the input stream.
+
+  overlaps_.clear();
+
+  std::string line;
+  while (std::getline(input, line))
+  {
+    if (line.size() == 0) { continue; }
+    std::istringstream iss(line);
+
+    Overlap overlap(line, of, q_ids, t_ids);      // Parse the line and check if everything went fine.
+
+    if (!overlap.CheckConstraints(error_rate)) {  // Do simple filtering of erroneous overlaps.
+      continue;
+    }
+
+    overlaps_.push_back(overlap);
+  }
+
+  if (infile.is_open()) {
+    infile.close();
   }
 }
 
