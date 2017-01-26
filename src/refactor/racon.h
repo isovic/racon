@@ -24,24 +24,26 @@ namespace is {
 
 class Racon;
 
-std::shared_ptr<Racon> createRacon(const Parameters& param);
+std::shared_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param);
 
 class Racon {
  public:
   ~Racon();
 
-  friend std::shared_ptr<Racon> createRacon(const Parameters& param);
+  friend std::shared_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param);
+  void CreateConsensus();
 
  private:
+  const std::shared_ptr<Parameters> param_;
 //  typedef std::deque<std::shared_ptr<Job>> JobQueue;
 
   Racon(const Racon&) = delete;
   const Racon& operator=(const Racon&) = delete;
-  Racon(const Parameters& param);
+  Racon(std::shared_ptr<Parameters> param);
   Racon(const SequenceFile& reads, const SequenceFile& targets);
 
-  void RunFromOverlaps_(const Parameters& param);
-  void RunFromAlignments_(const Parameters& param);
+  void RunFromOverlaps_();
+  void RunFromAlignments_();
 
   /** A helper function to fill a map in which the key is a sequence
   	* name, and the value is the ordinal number of the sequence in

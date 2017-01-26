@@ -14,20 +14,23 @@
 
 namespace is {
 
-std::shared_ptr<Racon> createRacon(const Parameters& param) {
+std::shared_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param) {
   return std::shared_ptr<Racon>(new Racon(param));
 }
 
 Racon::~Racon() {
 }
 
-Racon::Racon(const Parameters& param) {
-  if (param.overlap_format().isPaf() || param.overlap_format().isMhap()) {
-    RunFromOverlaps_(param);
-  }
+Racon::Racon(const std::shared_ptr<Parameters> param) : param_(param) {
 }
 
 Racon::Racon(const SequenceFile& reads, const SequenceFile& targets) {
+}
+
+void Racon::CreateConsensus() {
+  if (param_->overlap_format().isPaf() || param_->overlap_format().isMhap()) {
+    RunFromOverlaps_();
+  }
 }
 
 //void Racon::PopulateJobsConsensus_(const SequenceFile &refs, int64_t win_len, JobQueue &jobs) const {
@@ -52,12 +55,12 @@ Racon::Racon(const SequenceFile& reads, const SequenceFile& targets) {
 //  }
 //}
 
-void Racon::RunFromOverlaps_(const Parameters& param) {
+void Racon::RunFromOverlaps_() {
   // Parse the backbone.
-  SequenceFile targets(SEQ_FORMAT_AUTO, param.contigs_path());
+  SequenceFile targets(SEQ_FORMAT_AUTO, param_->contigs_path());
 
   // Parse the reads.
-  SequenceFile queries(SEQ_FORMAT_AUTO, param.reads_path());
+  SequenceFile queries(SEQ_FORMAT_AUTO, param_->reads_path());
   // Sanity check to see if the reads have quality values.
   if (queries.HasQV() == false) {
     fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
@@ -71,34 +74,34 @@ void Racon::RunFromOverlaps_(const Parameters& param) {
 
   // Load the overlaps.
   LOG_ALL("Using %s for input alignments. (%s)\n",
-          (param.overlap_format().isPaf()) ? "PAF" : "MHAP", param.aln_path().c_str())
+          (param_->overlap_format().isPaf()) ? "PAF" : "MHAP", param_->aln_path().c_str())
   LOG_ALL("Started parsing the overlaps file.\n");
 
-  Overlaps overlaps(param.aln_path(), param.overlap_format(), query_id, target_id, param.error_rate(), param.do_erc());
+  Overlaps overlaps(param_->aln_path(), param_->overlap_format(), query_id, target_id, param_->error_rate(), param_->do_erc());
   overlaps.SortByTargetId();
 
   MapOverlapRange contig_overlaps;
   FindContigOverlaps_(overlaps, contig_overlaps);
 
+  // Process each contig individually.
   auto& tseqs = targets.get_sequences();
   for (int64_t i=0; i<tseqs.size(); i++) {
     auto t = tseqs[i];
     std::string tname = TrimToFirstSpace(std::string(t->get_header()));
 
     // Retrieve all overlaps for the current target.
-    auto it = contig_overlaps.find(tname);
+    auto it = contig_overlaps.find(i);
 
     if (it == contig_overlaps.end()) {  // This target has no overlaps. Put it in a special place.
       fprintf (stderr, "TODO: targets without overlaps not handled yet!\n");
       fflush(stderr);
       exit(1);
-
-    } else {      // Everything is fine, continue processing.
-      AlignOverlaps_();
-      CreateIntervalTree_();
-      PopulateJobs_();
-      wait for threads to finish
     }
+
+//    AlignOverlaps_();
+//    CreateIntervalTree_();
+//    PopulateJobs_();
+//    wait for threads to finish
   }
 
 //  if (parameters.do_sparse == false || parameters.do_erc) {
@@ -107,9 +110,8 @@ void Racon::RunFromOverlaps_(const Parameters& param) {
 //  }
 }
 
-void Racon::RunFromAlignments_(const Parameters& param) {
+void Racon::RunFromAlignments_() {
 }
-
 
 void Racon::HashNames_(const SequenceFile &seqs, MapId &id) const {
   for (size_t i=0; i<seqs.get_sequences().size(); i++) {

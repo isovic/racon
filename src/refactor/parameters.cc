@@ -12,10 +12,17 @@
 
 namespace is{
 
+std::shared_ptr<Parameters> createParameters(int argc, char* argv[]) {
+  return std::shared_ptr<Parameters>(new Parameters(argc, argv));
+}
+
 Parameters::Parameters(int argc, char* argv[]) :
     overlap_format_(OverlapFormat::Paf()), window_len_(500) {
 
   bool help = false;
+
+  std::string usage_cmd = std::string(argv[0]) +
+                std::string(" [options] <reads.fastq> <overlaps.paf> <raw_contigs.fasta> <out_consensus.fasta>");
 
   ArgumentParser argparser;
 
@@ -49,26 +56,22 @@ Parameters::Parameters(int argc, char* argv[]) :
   argparser.AddArgument(&(verbose_level_), VALUE_TYPE_INT32, "v", "verbose", "5", "Verbose level. 0 off, 1 low, 2 medium, 3 high, 4 and 5 all levels, 6-9 debug.", 0, "Other");
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other");
 
-  // Process the command line arguments.
-  argparser.ProcessArguments(argc, argv);
-
-
-  std::string usage_cmd = std::string(argv[0]) +
-                std::string(" [options] <reads.fastq> <overlaps.paf> <raw_contigs.fasta> <out_consensus.fasta>");
-
-  // Program was run with no parameters. Verbose usage and exit.
+  // Check if program was run with no parameters. Verbose usage and exit.
   if (argc == 1) {
     std::cerr << "  " << usage_cmd << std::endl << std::endl;
     std::cerr << argparser.VerboseUsage() << std::endl;
     exit(1);
   }
 
+  // Process the command line arguments.
+  argparser.ProcessArguments(argc, argv);
+
   /// Check if help was triggered.
   if (argparser.GetArgumentByLongName("help")->is_set == true) {
   	std::cerr << "  " << usage_cmd << std::endl << std::endl;
   	std::cerr << argparser.VerboseUsage() << std::endl;
     exit(1);
-  }  
+  }
 
   // Store the command line arguments for later use.
   for (int32_t i=0; i<argc; i++) {
