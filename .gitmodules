@@ -10,3 +10,6 @@
 [submodule "codebase/samscripts"]
 	path = codebase/samscripts
 	url = https://github.com/isovic/samscripts
+[submodule "codebase/thread_pool"]
+	path = codebase/thread_pool
+	url = https://github.com/rvaser/thread_pool.git

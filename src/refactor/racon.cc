@@ -8,6 +8,8 @@
 #include "racon.h"
 #include <assert.h>
 #include <iostream>
+#include <vector>
+#include <future>
 #include "utility/utility_general.h"
 #include "log_system/log_system.h"
 #include "overlaps.h"
@@ -19,12 +21,11 @@ std::shared_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param) {
 }
 
 Racon::~Racon() {
+
 }
 
-Racon::Racon(const std::shared_ptr<Parameters> param) : param_(param) {
-}
+Racon::Racon(const std::shared_ptr<Parameters> param) : param_(param), thread_pool_(thread_pool::createThreadPool(param->num_threads())) {
 
-Racon::Racon(const SequenceFile& reads, const SequenceFile& targets) {
 }
 
 void Racon::CreateConsensus() {
@@ -32,28 +33,6 @@ void Racon::CreateConsensus() {
     RunFromOverlaps_();
   }
 }
-
-//void Racon::PopulateJobsConsensus_(const SequenceFile &refs, int64_t win_len, JobQueue &jobs) const {
-//  assert(win_len > 0);
-//  for (int64_t i=0; i<((int64_t) refs.get_sequences().size()); i++) {
-//  	auto s = refs.get_sequences()[i];
-//  	int64_t s_len = (int64_t) s->get_sequence_length();
-//    for (int64_t j=0; j<s_len; j+=win_len) {
-//      int64_t start = j;
-//      int64_t end = std::min(start + win_len, s_len);
-//   	  jobs.push_back(createJob(i, start, end, win_len));
-//    }
-//  }
-//}
-
-//void Racon::PopulateJobsErc_(const SequenceFile &refs, int64_t win_len, JobQueue &jobs) const {
-//  assert(win_len > 0);
-//  for (int64_t i=0; i<((int64_t) refs.get_sequences().size()); i++) {
-//    auto s = refs.get_sequences()[i];
-//    int64_t s_len = (int64_t) s->get_sequence_length();
-//    jobs.push_back(createJob(i, 0, s_len, win_len));
-//  }
-//}
 
 void Racon::RunFromOverlaps_() {
   // Parse the backbone.
@@ -63,7 +42,7 @@ void Racon::RunFromOverlaps_() {
   SequenceFile queries(SEQ_FORMAT_AUTO, param_->reads_path());
   // Sanity check to see if the reads have quality values.
   if (queries.HasQV() == false) {
-    fprintf (stderr, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
+    FATAL_REPORT(ERR_WRONG_FILE_TYPE, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
     exit(1);
   }
 
@@ -80,37 +59,50 @@ void Racon::RunFromOverlaps_() {
   Overlaps overlaps(param_->aln_path(), param_->overlap_format(), query_id, target_id, param_->error_rate(), param_->do_erc());
   overlaps.SortByTargetId();
 
-  MapOverlapRange contig_overlaps;
-  FindContigOverlaps_(overlaps, contig_overlaps);
+  AlignAndGenerateWindows_(queries, targets, overlaps);
 
-  // Process each contig individually.
-  auto& tseqs = targets.get_sequences();
-  for (int64_t i=0; i<tseqs.size(); i++) {
-    auto t = tseqs[i];
-    std::string tname = TrimToFirstSpace(std::string(t->get_header()));
+//  MapOverlapRange contig_overlaps;
+//  FindContigOverlaps_(overlaps, contig_overlaps);
 
-    // Retrieve all overlaps for the current target.
-    auto it = contig_overlaps.find(i);
-
-    if (it == contig_overlaps.end()) {  // This target has no overlaps. Put it in a special place.
-      fprintf (stderr, "TODO: targets without overlaps not handled yet!\n");
-      fflush(stderr);
-      exit(1);
-    }
-
-//    AlignOverlaps_();
-//    CreateIntervalTree_();
-//    PopulateJobs_();
-//    wait for threads to finish
-  }
-
-//  if (parameters.do_sparse == false || parameters.do_erc) {
-//    LOG_ALL("Overlaps will be fully aligned.\n");
-//    ConsensusFromOverlaps(parameters, seqs_gfa, seqs_reads, qname_to_ids, rname_to_ids, overlaps_final);
+//  // Process each contig individually.
+//  auto& tseqs = targets.get_sequences();
+//  for (int64_t i=0; i<tseqs.size(); i++) {
+//    auto t = tseqs[i];
+//    std::string tname = TrimToFirstSpace(std::string(t->get_header()));
+//
+//    // Retrieve all overlaps for the current target.
+//    auto it = contig_overlaps.find(i);
+//
+//    if (it == contig_overlaps.end()) {  // This target has no overlaps. Put it in a special place.
+//      fprintf (stderr, "TODO: targets without overlaps not handled yet!\n");
+//      fflush(stderr);
+//      exit(1);
+//    }
+//
+////    AlignOverlaps_();
+////    CreateIntervalTree_();
+////    PopulateJobs_();
+////    wait for threads to finish
 //  }
 }
 
 void Racon::RunFromAlignments_() {
+}
+
+int Racon::AlignAndGenerateWindows_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps) {
+  // Create storage for return values.
+  std::vector<std::future<int>> futures;
+
+  for (int64_t i=0; i<queries.get_sequences().size(); i++) {
+//    thread_futures.emplace_back(thread_pool->submit_task(function1, std::ref(data), index, ...)); // be sure to use std::ref() when passing references!
+  }
+
+  // Wait for threads to finish
+  for (auto& it: futures) {
+      it.wait();
+  }
+
+  return 0;
 }
 
 void Racon::HashNames_(const SequenceFile &seqs, MapId &id) const {
@@ -137,7 +129,7 @@ int Racon::FindContigOverlaps_(const Overlaps &sorted_overlaps, MapOverlapRange 
   Range ctg_loc;
   auto ctg_id = overlaps.front().Bid();
   for (int64_t i=1; i<overlaps.size(); i++) {
-    if (overlaps[i].Bid() == ctg_id) {   // Target is the same, just move the end.
+    if (overlaps[i].Bid() == ctg_id) {        // Target is the same, just move the end.
       ctg_loc.end = i;
     } else {                                  // Different target, add to map and restart.
       contig_overlaps[ctg_id] = ctg_loc;

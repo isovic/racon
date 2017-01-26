@@ -19,6 +19,7 @@
 #include "parameters.h"
 #include "sequences/sequence_file.h"
 #include "overlaps.h"
+#include "thread_pool.hpp"
 
 namespace is {
 
@@ -35,15 +36,16 @@ class Racon {
 
  private:
   const std::shared_ptr<Parameters> param_;
-//  typedef std::deque<std::shared_ptr<Job>> JobQueue;
+  std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
 
   Racon(const Racon&) = delete;
   const Racon& operator=(const Racon&) = delete;
   Racon(std::shared_ptr<Parameters> param);
-  Racon(const SequenceFile& reads, const SequenceFile& targets);
 
   void RunFromOverlaps_();
   void RunFromAlignments_();
+
+  int AlignAndGenerateWindows_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps);
 
   /** A helper function to fill a map in which the key is a sequence
   	* name, and the value is the ordinal number of the sequence in
@@ -59,26 +61,6 @@ class Racon {
    */
   int FindContigOverlaps_(const Overlaps &sorted_overlaps, MapOverlapRange &contig_overlaps) const;
 
-  /** Populates the job queue for consensus-type parallelization.
-  	* This means that each window of the contig is presented as a
-  	* single job.
-  	* @refs Reference sequences from which to create jobs.
-  	* @window_len Length of the window for processing. Must be >= 0.
-  	* @jobs The deque to which to append the jobs.
-  */
-//  void PopulateJobsConsensus_(const SequenceFile &refs, int64_t win_len, JobQueue &jobs) const;
-
-  /** Populates the job queue for error-correction type parallelization.
-   * This means that each sequence will be a single threadpool job.
-   * @refs Reference sequences from which to create jobs.
-   * @window_len Length of the window for processing. Must be >= 0.
-   * @jobs The deque to which to append the jobs.
-   */
-//  void PopulateJobsErc_(const SequenceFile &refs, int64_t win_len, JobQueue &jobs) const;
-
-//  MapId query_id_;
-//  MapId target_id_;
-//  JobQueue jobs_;
 };
 
 } /* namespace is */
