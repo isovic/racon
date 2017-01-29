@@ -13,6 +13,7 @@
 #include "utility/utility_general.h"
 #include "log_system/log_system.h"
 #include "overlaps.h"
+#include "alignment.h"
 
 namespace is {
 
@@ -56,10 +57,19 @@ void Racon::RunFromOverlaps_() {
           (param_->overlap_format().isPaf()) ? "PAF" : "MHAP", param_->aln_path().c_str())
   LOG_ALL("Started parsing the overlaps file.\n");
 
-  Overlaps overlaps(param_->aln_path(), param_->overlap_format(), query_id, target_id, param_->error_rate(), param_->do_erc());
+  Overlaps overlaps(param_->aln_path(), param_->overlap_format(), query_id, target_id, param_->error_rate(), param_->do_erc() == false);
   overlaps.SortByTargetId();
 
-  AlignAndGenerateWindows_(queries, targets, overlaps);
+
+  // Storage for sampled overlaps. This is actually all we need from the alignments.
+  // Every position on the reference which is a multiple of param_->window_len() will
+  // be stored, as well as 1 base before and 1 base after. If window_ext > 0, then
+  // positions around k*window_len +- window_ext will also be stored.
+  std::vector<std::shared_ptr<SampledOverlap>> sampled;
+
+  AlignAndSampleOverlaps_(queries, targets, overlaps, sampled);
+
+  ConstructWindows_(overlaps, sampled, windows_);
 
 //  MapOverlapRange contig_overlaps;
 //  FindContigOverlaps_(overlaps, contig_overlaps);
@@ -89,20 +99,84 @@ void Racon::RunFromOverlaps_() {
 void Racon::RunFromAlignments_() {
 }
 
-int Racon::AlignAndGenerateWindows_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps) {
+int Racon::AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, std::vector<std::shared_ptr<SampledOverlap>> &sampled) {
+  LOG_ALL("Aligning overlaps.\n");
+
+  int64_t n_overlaps = overlaps.overlaps().size();                        // Number of overlaps to process.
+  int64_t window_ext = param_->window_len() * param_->win_ovl_margin();   // Overlapping windows - extension (in bp) on both ends.
+
+  LOG_ALL("n_overlaps = %ld\n", n_overlaps);
+
   // Create storage for return values.
   std::vector<std::future<int>> futures;
+  futures.reserve(n_overlaps);
 
-  for (int64_t i=0; i<queries.get_sequences().size(); i++) {
-//    thread_futures.emplace_back(thread_pool->submit_task(function1, std::ref(data), index, ...)); // be sure to use std::ref() when passing references!
+  sampled.clear();
+  sampled.resize(n_overlaps, nullptr);
+
+//  n_overlaps = 1;
+  for (int64_t oid=0; oid<n_overlaps; oid++) {
+    auto& overlap = overlaps.overlaps()[oid];
+
+    // Get at the correct query. Aid is 1-based.
+    int64_t qid = overlap.Aid() - 1;
+    auto& query = *(queries.get_sequences()[qid]);
+
+    // Get at the correct target. Bid is 1-based.
+    int64_t tid = overlap.Bid() - 1;
+    auto& target = *(targets.get_sequences()[tid]);
+
+    // Initialize the structure for the sampled overlap.
+    sampled[oid] = createSampledOverlap();
+
+    // Enqueue a parallel job.
+    futures.emplace_back(thread_pool_->submit_task(Alignment::AlignOverlap, std::cref(query), std::cref(target), std::cref(overlap), oid, param_->window_len(), window_ext, (sampled[oid])));
+    LOG_ALL("Emplaced task ID: %ld\n", oid);
   }
 
-  // Wait for threads to finish
+  // Wait for threads to finish.
   for (auto& it: futures) {
       it.wait();
   }
 
+//  for (int64_t oid=0; oid<n_overlaps; oid++) {
+//    if (sampled[oid] != nullptr) {
+//      printf ("[%ld] Tu sam 1! %ld\n", oid, sampled[oid]->pos().size());
+//      fflush(stdout);
+//      for (auto it=sampled[oid]->pos().begin(); it!=sampled[oid]->pos().end(); it++) {
+//        printf ("[%ld] %ld -> %ld\n", oid, it->first, it->second);
+//        fflush(stdout);
+//      }
+//
+//      exit(1);
+//
+//    } else {
+//      printf ("[%ld] Nullptr!\n", oid);
+//      fflush(stdout);
+//    }
+//  }
+
   return 0;
+}
+
+void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::shared_ptr<SampledOverlap>> &sampled, std::vector<std::vector<Window>> &windows) const {
+  LOG_ALL("Constructing windows.\n");
+
+  int64_t num_targets = targets.get_sequences().size();
+  int64_t window_ext = param_->window_len() * param_->win_ovl_margin();
+
+  // Allocate space for random access.
+  windows.clear();
+  windows.resize(num_targets);
+  for (int64_t i=0; i<num_targets; i++) {
+    auto target = targets.get_sequences()[i];
+    int64_t num_windows = (target->get_sequence_length() + param_->window_len() + window_ext - 1) / (param_->window_len() + window_ext);
+    windows[i].resize(num_windows);
+  }
+
+  for (int64_t i=0; i<sampled.size(); i++) {
+  }
+
 }
 
 void Racon::HashNames_(const SequenceFile &seqs, MapId &id) const {

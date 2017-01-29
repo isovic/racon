@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <deque>
+#include <unordered_map>
 
 #include "types.h"
 // #include "job.h"
@@ -20,6 +21,8 @@
 #include "sequences/sequence_file.h"
 #include "overlaps.h"
 #include "thread_pool.hpp"
+#include "sampled_overlap.h"
+#include "window.h"
 
 namespace is {
 
@@ -37,6 +40,7 @@ class Racon {
  private:
   const std::shared_ptr<Parameters> param_;
   std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
+  std::vector<std::vector<Window>> windows_;
 
   Racon(const Racon&) = delete;
   const Racon& operator=(const Racon&) = delete;
@@ -45,7 +49,9 @@ class Racon {
   void RunFromOverlaps_();
   void RunFromAlignments_();
 
-  int AlignAndGenerateWindows_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps);
+  int AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, std::vector<std::shared_ptr<SampledOverlap>> &sampled);
+
+  void ConstructWindows_(const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::shared_ptr<SampledOverlap>> &sampled, std::vector<std::vector<Window>> &windows) const;
 
   /** A helper function to fill a map in which the key is a sequence
   	* name, and the value is the ordinal number of the sequence in

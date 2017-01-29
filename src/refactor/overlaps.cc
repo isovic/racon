@@ -157,8 +157,10 @@ int Overlap::ParsePaf_(const std::string &line, const MapId &q_ids, const MapId 
 Overlaps::Overlaps(const std::string& path, const OverlapFormat &of,
                    const MapId &q_ids, const MapId &t_ids, float error_rate, bool filter_unique) {
   if (filter_unique) {
+    LOG_ALL("Filtering unique overlaps for each read.\n");
     ParseUnique_(path, of, q_ids, t_ids, error_rate);
   } else {
+    LOG_ALL("Loading the entire file, even if a read has multiple overlaps.\n");
     ParseAll_(path, of, q_ids, t_ids, error_rate);
   }
 }
@@ -197,7 +199,7 @@ void Overlaps::ParseUnique_(const std::string& path, const OverlapFormat& of,
 
     Overlap overlap(line, of, q_ids, t_ids);      // Parse the line and check if everything went fine.
 
-    if (!overlap.CheckConstraints(error_rate)) {  // Do simple filtering of erroneous overlaps.
+    if (overlap.CheckConstraints(error_rate)) {  // Do simple filtering of erroneous overlaps.
       continue;
     }
 
@@ -245,7 +247,7 @@ void Overlaps::ParseAll_(const std::string& path, const OverlapFormat& of,
 
     Overlap overlap(line, of, q_ids, t_ids);      // Parse the line and check if everything went fine.
 
-    if (!overlap.CheckConstraints(error_rate)) {  // Do simple filtering of erroneous overlaps.
+    if (overlap.CheckConstraints(error_rate)) {  // Do simple filtering of erroneous overlaps.
       continue;
     }
 

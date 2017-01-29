@@ -9,9 +9,12 @@
 #define SRC_REFACTOR_ALIGNMENT_H_
 
 #include <stdint.h>
+#include <memory>
 #include "libs/edlib.h"
 #include "libs/edlibcigar.h"
 #include "sequences/sequence_file.h"
+#include "overlaps.h"
+#include "sampled_overlap.h"
 
 namespace is {
 
@@ -21,6 +24,7 @@ class Alignment {
 //                    const std::vector<OldOverlapLine> &overlaps,
 //                    int32_t num_threads, SequenceFile &aligned,
 //                    bool verbose_debug);
+  static int AlignOverlap(const SingleSequence& query, const SingleSequence& target, const Overlap& overlap, int64_t overlap_id, int64_t win_size, int64_t win_ext, std::shared_ptr<SampledOverlap> sampled);
 
   static int AlignNW(const int8_t *q, int64_t qlen, const int8_t *t,
                      int64_t tlen, int64_t* start, int64_t *end,
