@@ -139,23 +139,6 @@ int Racon::AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFi
       it.wait();
   }
 
-//  for (int64_t oid=0; oid<n_overlaps; oid++) {
-//    if (sampled[oid] != nullptr) {
-//      printf ("[%ld] Tu sam 1! %ld\n", oid, sampled[oid]->pos().size());
-//      fflush(stdout);
-//      for (auto it=sampled[oid]->pos().begin(); it!=sampled[oid]->pos().end(); it++) {
-//        printf ("[%ld] %ld -> %ld\n", oid, it->first, it->second);
-//        fflush(stdout);
-//      }
-//
-//      exit(1);
-//
-//    } else {
-//      printf ("[%ld] Nullptr!\n", oid);
-//      fflush(stdout);
-//    }
-//  }
-
   return 0;
 }
 
@@ -163,6 +146,7 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
   LOG_ALL("Constructing windows.\n");
 
   int64_t num_targets = targets.get_sequences().size();
+  int64_t window_len = param_->window_len();
   int64_t window_ext = param_->window_len() * param_->win_ovl_margin();
 
   // Allocate space for random access.
@@ -170,13 +154,20 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
   windows.resize(num_targets);
   for (int64_t i=0; i<num_targets; i++) {
     auto target = targets.get_sequences()[i];
-    int64_t num_windows = (target->get_sequence_length() + param_->window_len() + window_ext - 1) / (param_->window_len() + window_ext);
+    int64_t tlen = target->get_sequence_length();
+
+    int64_t num_windows = (tlen + window_len + window_ext - 1) / (window_len + window_ext);
     windows[i].resize(num_windows);
   }
 
   for (int64_t i=0; i<sampled.size(); i++) {
+    AddOverlapsToWindows_(targets, overlaps, sampled[i], windows);
   }
 
+}
+
+void Racon::AddOVerlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled, std::vector<std::vector<Window>> &windows) const {
+  
 }
 
 void Racon::HashNames_(const SequenceFile &seqs, MapId &id) const {
