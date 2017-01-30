@@ -8,6 +8,9 @@
 #ifndef SRC_REFACTOR_WINDOW_H_
 #define SRC_REFACTOR_WINDOW_H_
 
+#include <stdint.h>
+#include <vector>
+
 #include "types.h"
 
 namespace is {
@@ -19,17 +22,20 @@ class WindowEntry {
  public:
   WindowEntry() : overlap_id_(-1) { }
   WindowEntry(int64_t overlap_id, int64_t qstart, int64_t qend, int64_t tstart, int64_t tend) :
-   			overlap_id_(overlap_id), query_.start(qstart), query_.end(qend), target_.start(tstart), target_.end(tend) { }
+   			overlap_id_(overlap_id) {
+    query_.start = qstart;  query_.end = qend;
+    target_.start = tstart; target_.end = tend;
+  }
   ~WindowEntry() { }
 
   int64_t overlap_id() const {
   	return overlap_id_;
   }
   Range query() const {
-  	return query;
+  	return query_;
   }
   Range target() const {
-  	return target;
+  	return target_;
   }
 
  private:

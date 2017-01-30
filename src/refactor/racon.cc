@@ -69,7 +69,7 @@ void Racon::RunFromOverlaps_() {
 
   AlignAndSampleOverlaps_(queries, targets, overlaps, sampled);
 
-  ConstructWindows_(overlaps, sampled, windows_);
+  ConstructWindows_(targets, overlaps, sampled, windows_);
 
 //  MapOverlapRange contig_overlaps;
 //  FindContigOverlaps_(overlaps, contig_overlaps);
@@ -142,7 +142,7 @@ int Racon::AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFi
   return 0;
 }
 
-void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::shared_ptr<SampledOverlap>> &sampled, std::vector<std::vector<Window>> &windows) const {
+void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::shared_ptr<SampledOverlap>> &sampled_overlaps, std::vector<std::vector<Window>> &windows) const {
   LOG_ALL("Constructing windows.\n");
 
   int64_t num_targets = targets.get_sequences().size();
@@ -160,14 +160,15 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
     windows[i].resize(num_windows);
   }
 
-  for (int64_t i=0; i<sampled.size(); i++) {
-    AddOverlapsToWindows_(targets, overlaps, sampled[i], windows);
+  for (int64_t i=0; i<sampled_overlaps.size(); i++) {
+    AddOverlapsToWindows_(targets, overlaps, sampled_overlaps[i], windows);
   }
 
 }
 
-void Racon::AddOVerlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled, std::vector<std::vector<Window>> &windows) const {
+void Racon::AddOVerlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap, std::vector<std::vector<Window>> &windows) const {
   
+
 }
 
 void Racon::HashNames_(const SequenceFile &seqs, MapId &id) const {
