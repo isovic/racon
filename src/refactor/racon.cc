@@ -156,18 +156,43 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
     auto target = targets.get_sequences()[i];
     int64_t tlen = target->get_sequence_length();
 
-    int64_t num_windows = (tlen + window_len + window_ext - 1) / (window_len + window_ext);
+    // int64_t num_windows = (tlen + window_len + window_ext - 1) / (window_len + window_ext);
+    int64_t num_windows = (tlen + window_leN- 1) / (window_len);
     windows[i].resize(num_windows);
   }
 
   for (int64_t i=0; i<sampled_overlaps.size(); i++) {
-    AddOverlapsToWindows_(targets, overlaps, sampled_overlaps[i], windows);
+    AddOverlapToWindows_(targets, overlaps, sampled_overlaps[i], window_len, window_ext, windows);
   }
 
 }
 
-void Racon::AddOVerlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap, std::vector<std::vector<Window>> &windows) const {
-  
+void Racon::AddOVerlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap, int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const {
+  int64_t overlap_id = sampled_overlap->overlap_id();
+  auto& overlap = overlaps.overlaps[overlap_id];
+
+  int64_t Brev = overlap.Brev();
+  int64_t tid = overlap.Bid() - 1;
+
+  auto& tw = windows[tid];		// Target windows (tw) (vector).
+  auto target = targets.get_sequences()[tid];
+  int64_t tlen = target->get_sequence_length();
+
+Ne mogu procesirati od 0 do tlen, jer nema smisla toliko processinga napraviti ako read zauzima samo prvih 1000 baza.
+Treba naci prvu koordinatu <= od rstart, i prvu vecu ili jednaku rend, i onda izmedju toga petlju provrtiti.
+  for (int64_t i=0; i<tlen; i+=window_len) {
+  	int64_t window_start = std::max(i * window_len - window_ext, 0);
+  	int64_t window_end = std::min((i + 1) * window_len + window_ext, tlen);
+
+  	int64_t fstart = sampled_overlap->find(window_start);	// Found query start, or -1 if invalid.
+  	int64_t fend = sampled_overlap->find(window_end);		// Found query end, or -1 if invalid.
+
+  	if (fstart >=0 && fend >= 0) {	// Clean case, query fully overlaps the window.
+  	} else if (fstart < 0 && fend >= 0) {	// The beginning of a query usually falls in the middle of a window.
+  	} else if (fstart >=0 && fend < 0) {	// The end of a query may also fall in the middle of a window.
+  	} else {	// A weird case, this should not happen.
+  	}
+  }
 
 }
 
