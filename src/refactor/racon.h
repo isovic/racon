@@ -53,6 +53,7 @@ class Racon {
 
   void ConstructWindows_(const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::shared_ptr<SampledOverlap>> &sampled_overlaps, std::vector<std::vector<Window>> &windows) const;
   void AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap, int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const;
+  void RunAllJobs_();
 
   /** A helper function to fill a map in which the key is a sequence
   	* name, and the value is the ordinal number of the sequence in

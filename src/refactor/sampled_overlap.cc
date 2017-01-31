@@ -55,7 +55,7 @@ void SampledOverlap::PopulatePos_(const Overlap& overlap, int64_t overlap_id,
 
   overlap_id_ = overlap_id;
 
-  int64_t qpos = overlap.Astart();
+  int64_t qpos = (overlap.Brev() == 0) ? (overlap.Astart()) : (overlap.Alen() - overlap.Aend());
   int64_t rpos = overlap.Bstart();
   int64_t rpos_end = overlap.Bend();
   // Find the first position of a window at >= rpos.

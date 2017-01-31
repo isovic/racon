@@ -71,6 +71,8 @@ void Racon::RunFromOverlaps_() {
 
   ConstructWindows_(targets, overlaps, sampled, windows_);
 
+  RunAllJobs_();
+
   LOG_ALL("Done!\n");
 
 //  MapOverlapRange contig_overlaps;
@@ -180,18 +182,20 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
   int64_t tlen = target->get_sequence_length();
 
   // Process only a part of the target sequence right around overlap positions.
-  int64_t tstart = overlap.Bstart() / window_len;
-  int64_t tend = std::min((overlap.Bend() + window_len - 1) / window_len, tlen);
-  printf ("Processing overlap: %ld, Astart = %ld, Aend = %ld, Alen = %ld, Bstart = %ld, Bend = %ld, Bend = %ld, Brev = %ld\n", overlap_id, overlap.Astart(), overlap.Aend(), overlap.Alen(), overlap.Bstart(), overlap.Bend(), overlap.Blen(), overlap.Brev());
+  int64_t tstart = (overlap.Bstart() / window_len) * window_len;
+  int64_t tend = std::min(((overlap.Bend() + window_len - 1) / window_len) * window_len, tlen);
+//  printf ("Processing overlap: %ld, Astart = %ld, Aend = %ld, Alen = %ld, Bstart = %ld, Bend = %ld, Bend = %ld, Brev = %ld\n", overlap_id, overlap.Astart(), overlap.Aend(), overlap.Alen(), overlap.Bstart(), overlap.Bend(), overlap.Blen(), overlap.Brev());
   for (int64_t i=tstart; i<tend; i+=window_len) {
+    // TODO: Play with the window_end coordinate - maybe it would be better to remove the -1
+    // and instead just trim the sequence to 1 base less?
   	int64_t window_start = std::max(i - window_ext, (int64_t) 0);
-  	int64_t window_end = std::min(i + window_len + window_ext, tlen);
+  	int64_t window_end = std::min(i + window_len + window_ext, tlen) - 1;
   	int64_t window_id = i / window_len;
 
   	int64_t qstart = sampled_overlap->find(window_start);	// Found query start, or -1 if invalid.
   	int64_t qend = sampled_overlap->find(window_end);		// Found query end, or -1 if invalid.
 
-    printf ("  Lookup: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", qstart, qend, window_start, window_end);
+//    printf ("  Lookup: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", qstart, qend, window_start, window_end);
 
   	if (qstart < 0 && i == tstart) { // The beginning of a query may fall in the middle of a window.
 //  	  printf ("  qstart < 0 (qstart = %ld\n", qstart);
@@ -207,9 +211,39 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
 
   	assert (qstart >= 0 && qend >= 0);
 
-  	printf ("  Adding to window %ld: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", window_id, qstart, qend, window_start, window_end);
-  	fflush(stdout);
+//  	printf ("  Adding to window %ld: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", window_id, qstart, qend, window_start, window_end);
+//  	fflush(stdout);
     tw[window_id].add(overlap_id, qstart, qend, window_start, window_end);
+  }
+//  printf ("\n");
+//  fflush(stdout);
+}
+
+void Racon::RunAllJobs_() {
+  LOG_ALL("Running consensus on all windows.\n");
+
+  // Create storage for return values.
+  std::vector<std::vector<std::future<int>>> futures;
+  futures.resize(windows_.size());
+  for (int64_t i=0; i<windows_.size(); i++) {
+    futures.reserve(windows_[i].size());
+  }
+
+  for (int64_t i=0; i<windows_.size(); i++) {
+    for (int64_t j=0; j<windows_[i].size(); j++) {
+      Ovo treba zamijeniti s necim pravim
+      futures.emplace_back(thread_pool_->submit_task(Alignment::AlignOverlap, std::cref(query), std::cref(target), std::cref(overlap), oid, param_->window_len(), window_ext, (sampled[oid])));
+    }
+  }
+
+  for (int64_t i=0; i<windows_.size(); i++) {
+    for (int64_t j=0; j<windows_[i].size(); j++) {
+      futures[i][j].wait();
+    }
+
+    for (int64_t j=0; j<windows_[i].size(); j++) {
+      Ispis u fajl
+    }
   }
 }
 
