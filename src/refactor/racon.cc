@@ -71,6 +71,8 @@ void Racon::RunFromOverlaps_() {
 
   ConstructWindows_(targets, overlaps, sampled, windows_);
 
+  LOG_ALL("Done!\n");
+
 //  MapOverlapRange contig_overlaps;
 //  FindContigOverlaps_(overlaps, contig_overlaps);
 
@@ -131,7 +133,6 @@ int Racon::AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFi
 
     // Enqueue a parallel job.
     futures.emplace_back(thread_pool_->submit_task(Alignment::AlignOverlap, std::cref(query), std::cref(target), std::cref(overlap), oid, param_->window_len(), window_ext, (sampled[oid])));
-    LOG_ALL("Emplaced task ID: %ld\n", oid);
   }
 
   // Wait for threads to finish.
@@ -157,7 +158,7 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
     int64_t tlen = target->get_sequence_length();
 
     // int64_t num_windows = (tlen + window_len + window_ext - 1) / (window_len + window_ext);
-    int64_t num_windows = (tlen + window_leN- 1) / (window_len);
+    int64_t num_windows = (tlen + window_len- 1) / (window_len);
     windows[i].resize(num_windows);
   }
 
@@ -167,9 +168,9 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
 
 }
 
-void Racon::AddOVerlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap, int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const {
+void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap, int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const {
   int64_t overlap_id = sampled_overlap->overlap_id();
-  auto& overlap = overlaps.overlaps[overlap_id];
+  auto& overlap = overlaps.overlaps()[overlap_id];
 
   int64_t Brev = overlap.Brev();
   int64_t tid = overlap.Bid() - 1;
@@ -178,22 +179,38 @@ void Racon::AddOVerlapToWindows_(const SequenceFile &targets, const Overlaps &ov
   auto target = targets.get_sequences()[tid];
   int64_t tlen = target->get_sequence_length();
 
-Ne mogu procesirati od 0 do tlen, jer nema smisla toliko processinga napraviti ako read zauzima samo prvih 1000 baza.
-Treba naci prvu koordinatu <= od rstart, i prvu vecu ili jednaku rend, i onda izmedju toga petlju provrtiti.
-  for (int64_t i=0; i<tlen; i+=window_len) {
-  	int64_t window_start = std::max(i * window_len - window_ext, 0);
-  	int64_t window_end = std::min((i + 1) * window_len + window_ext, tlen);
+  // Process only a part of the target sequence right around overlap positions.
+  int64_t tstart = overlap.Bstart() / window_len;
+  int64_t tend = std::min((overlap.Bend() + window_len - 1) / window_len, tlen);
+  printf ("Processing overlap: %ld, Astart = %ld, Aend = %ld, Alen = %ld, Bstart = %ld, Bend = %ld, Bend = %ld, Brev = %ld\n", overlap_id, overlap.Astart(), overlap.Aend(), overlap.Alen(), overlap.Bstart(), overlap.Bend(), overlap.Blen(), overlap.Brev());
+  for (int64_t i=tstart; i<tend; i+=window_len) {
+  	int64_t window_start = std::max(i - window_ext, (int64_t) 0);
+  	int64_t window_end = std::min(i + window_len + window_ext, tlen);
+  	int64_t window_id = i / window_len;
 
-  	int64_t fstart = sampled_overlap->find(window_start);	// Found query start, or -1 if invalid.
-  	int64_t fend = sampled_overlap->find(window_end);		// Found query end, or -1 if invalid.
+  	int64_t qstart = sampled_overlap->find(window_start);	// Found query start, or -1 if invalid.
+  	int64_t qend = sampled_overlap->find(window_end);		// Found query end, or -1 if invalid.
 
-  	if (fstart >=0 && fend >= 0) {	// Clean case, query fully overlaps the window.
-  	} else if (fstart < 0 && fend >= 0) {	// The beginning of a query usually falls in the middle of a window.
-  	} else if (fstart >=0 && fend < 0) {	// The end of a query may also fall in the middle of a window.
-  	} else {	// A weird case, this should not happen.
+    printf ("  Lookup: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", qstart, qend, window_start, window_end);
+
+  	if (qstart < 0 && i == tstart) { // The beginning of a query may fall in the middle of a window.
+//  	  printf ("  qstart < 0 (qstart = %ld\n", qstart);
+      qstart = (overlap.Brev() == 0) ? (overlap.Astart()) : (overlap.Alen() - overlap.Aend());
+      window_start = overlap.Bstart();
   	}
-  }
 
+  	if (qend < 0 && ((i + window_len) >= tend)) {   // The end of a query may also fall in the middle of a window.
+//      printf ("  qend < 0 (qend = %ld\n", qend);
+      qend = (overlap.Brev() == 0) ? (overlap.Aend()) : (overlap.Alen() - overlap.Astart() - 1);
+      window_end = overlap.Bend();
+  	}
+
+  	assert (qstart >= 0 && qend >= 0);
+
+  	printf ("  Adding to window %ld: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", window_id, qstart, qend, window_start, window_end);
+  	fflush(stdout);
+    tw[window_id].add(overlap_id, qstart, qend, window_start, window_end);
+  }
 }
 
 void Racon::HashNames_(const SequenceFile &seqs, MapId &id) const {
