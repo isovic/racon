@@ -14,6 +14,8 @@
 #include "log_system/log_system.h"
 #include "overlaps.h"
 #include "alignment.h"
+#include "spoa.hpp"
+#include "graph.hpp"
 
 namespace is {
 
@@ -71,7 +73,7 @@ void Racon::RunFromOverlaps_() {
 
   ConstructWindows_(targets, overlaps, sampled, windows_);
 
-  RunAllJobs_();
+  RunAllJobs_(queries, targets, overlaps, windows_);
 
   LOG_ALL("Done!\n");
 
@@ -134,7 +136,7 @@ int Racon::AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFi
     sampled[oid] = createSampledOverlap();
 
     // Enqueue a parallel job.
-    futures.emplace_back(thread_pool_->submit_task(Alignment::AlignOverlap, std::cref(query), std::cref(target), std::cref(overlap), oid, param_->window_len(), window_ext, (sampled[oid])));
+    futures.emplace_back(thread_pool_->submit_task(Alignment::AlignOverlap, std::cref(query), std::cref(target), std::cref(overlap), oid, param_->window_len(), window_ext, sampled[oid]));
   }
 
   // Wait for threads to finish.
@@ -161,7 +163,7 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
 
     // int64_t num_windows = (tlen + window_len + window_ext - 1) / (window_len + window_ext);
     int64_t num_windows = (tlen + window_len- 1) / (window_len);
-    windows[i].resize(num_windows);
+    windows[i].resize(num_windows, Window(i));
   }
 
   for (int64_t i=0; i<sampled_overlaps.size(); i++) {
@@ -219,32 +221,102 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
 //  fflush(stdout);
 }
 
-void Racon::RunAllJobs_() {
+void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::vector<Window>> &windows) const {
   LOG_ALL("Running consensus on all windows.\n");
 
   // Create storage for return values.
-  std::vector<std::vector<std::future<int>>> futures;
-  futures.resize(windows_.size());
-  for (int64_t i=0; i<windows_.size(); i++) {
-    futures.reserve(windows_[i].size());
+  std::vector<std::vector<std::future<int>>> futures;     // For threading.
+  std::vector<std::vector<std::string>> cons_seq;         // Consensus sequences, for each window.
+  std::vector<std::vector<std::string>> cons_qual;        // Quality values, for each window.
+  futures.resize(windows.size());       // Reserve space for all targets
+  cons_seq.resize(windows.size());      // Ditto.
+  cons_qual.resize(windows.size());     // Ditto.
+  for (int64_t i=0; i<windows.size(); i++) {
+    futures.reserve(windows[i].size());        // Will be emplaced back.
+    cons_seq[i].resize(windows[i].size());     // Needs to be known during emplacement.
+    cons_qual[i].resize(windows[i].size());     // Needs to be known during emplacement.
   }
 
-  for (int64_t i=0; i<windows_.size(); i++) {
-    for (int64_t j=0; j<windows_[i].size(); j++) {
-      Ovo treba zamijeniti s necim pravim
-      futures.emplace_back(thread_pool_->submit_task(Alignment::AlignOverlap, std::cref(query), std::cref(target), std::cref(overlap), oid, param_->window_len(), window_ext, (sampled[oid])));
+  // Emplace all jobs.
+  for (int64_t i=0; i<windows.size(); i++) {
+    for (int64_t j=0; j<windows[i].size(); j++) {
+      futures[i].emplace_back(thread_pool_->submit_task(Racon::WindowConsensus_, std::cref(queries), std::cref(targets), std::cref(overlaps), param_, std::cref(windows[i][j]), std::ref(cons_seq[i][j]), std::ref(cons_qual[i][j])));
     }
   }
 
-  for (int64_t i=0; i<windows_.size(); i++) {
-    for (int64_t j=0; j<windows_[i].size(); j++) {
+  FILE *fp_out = fopen(param_->consensus_path().c_str(), "w");
+  assert(fp_out);
+
+  for (int64_t i=0; i<futures.size(); i++) {
+    for (int64_t j=0; j<futures[i].size(); j++) {
       futures[i][j].wait();
     }
 
-    for (int64_t j=0; j<windows_[i].size(); j++) {
-      Ispis u fajl
+    auto target = targets.get_sequences()[i];
+    fprintf (fp_out, ">Consensus_%s\n", target->get_header());
+    for (int64_t j=0; j<futures[i].size(); j++) {
+      fprintf (fp_out, "%s", cons_seq[i][j].c_str());
+    }
+    fflush(fp_out);
+  }
+
+  fclose(fp_out);
+}
+
+int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::shared_ptr<Parameters> param, const Window& window, std::string& cons_seq, std::string& cons_qual) {
+  std::vector<std::string> seqs, quals;
+  std::vector<uint32_t> starts, ends;
+
+  // Get the actual sequences which will be fed to SPOA.
+  Racon::ExtractSequencesForSPOA_(queries, targets, overlaps, param, window, seqs, quals, starts, ends);
+
+  // In case the coverage is too low, just pick the first sequence in the window.
+  if (seqs.size() <= 2) {
+    cons_seq = seqs[0];
+    return 1;
+  }
+
+  auto graph = SPOA::construct_partial_order_graph(seqs, quals, starts, ends,
+                                             SPOA::AlignmentParams(param->match(), param->mismatch(),
+                                             param->gap_open(), param->gap_ext(), (SPOA::AlignmentType) param->aln_type()));
+
+  std::vector<uint32_t> coverages;
+  cons_seq = graph->generate_consensus(coverages);
+
+  // Unfortunately, POA is bad when there are errors, such as long insertions, at
+  // the end of a sequence. The consensus walk will also have those overhang
+  // nodes, which then need to be trimmed heuristically.
+  int32_t start_offset = 0, end_offset = cons_seq.size() - 1;
+  for (;start_offset<cons_seq.size(); start_offset++) {
+    if (coverages[start_offset] >= ((seqs.size() - 1) / 2)) { break; }
+  }
+  for (; end_offset >= 0; end_offset--) {
+    if (coverages[start_offset] >= ((seqs.size() - 1) / 2)) { break; }
+  }
+
+  cons_seq = cons_seq.substr(start_offset, (end_offset - start_offset + 1));
+
+  return 0;
+}
+
+void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::shared_ptr<Parameters> param, const Window& window, std::vector<std::string>& seqs, std::vector<std::string>& quals, std::vector<uint32_t> &starts, std::vector<uint32_t> &ends) {
+  seqs.clear();
+  quals.clear();
+  starts.clear();
+  ends.clear();
+
+  auto entries = window.entries();
+  for (int64_t i=0; i<entries.size(); i++) {
+    auto& entry = entries[i];
+    auto& overlap = overlaps.overlaps()[entry.overlap_id()];
+    auto query = queries.get_sequences()[overlap.Aid() - 1];
+    auto target = targets.get_sequences()[overlap.Bid() - 1];
+
+    if (overlap.Brev() == 0) {  // The query is forward.
+      seqs.emplace_back(query->GetSequenceAsString(entry.query().start, entry.query().end));
     }
   }
+
 }
 
 void Racon::HashNames_(const SequenceFile &seqs, MapId &id) const {

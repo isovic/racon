@@ -45,7 +45,7 @@ class WindowEntry {
 
 class Window {
  public:
-  Window();
+  Window(int64_t target_id);
   ~Window();
 
   /** Adds info for a part of a sequence overlapping this particular window.
@@ -60,9 +60,14 @@ class Window {
   	return entries_;
   }
 
+  int64_t target_id() const {
+    return target_id_;
+  }
+
  private:
 //  std::vector<
   std::vector<WindowEntry> entries_;
+  int64_t target_id_;
 };
 
 } /* namespace is */

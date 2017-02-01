@@ -9,13 +9,12 @@
 
 namespace is {
 
-Window::Window() {
-  // TODO Auto-generated constructor stub
+Window::Window(int64_t target_id) : target_id_(target_id) {
 
 }
 
 Window::~Window() {
-  // TODO Auto-generated destructor stub
+
 }
 
 } /* namespace is */
