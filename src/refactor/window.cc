@@ -9,7 +9,7 @@
 
 namespace is {
 
-Window::Window(int64_t target_id) : target_id_(target_id) {
+Window::Window(int64_t target_id) : target_id_(target_id), start_(0), end_(0) {
 
 }
 

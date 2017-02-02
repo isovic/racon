@@ -166,6 +166,9 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
     windows[i].resize(num_windows, Window(i));
 
     for (int64_t j=0; j<windows[i].size(); j++) {
+      int64_t temp_pos = i * window_len;
+      int64_t window_start = std::max(temp_pos - window_ext, (int64_t) 0);
+      int64_t window_end = std::min(temp_pos + window_len + window_ext, tlen) - 1;
       windows[i][j].start(window_start);
       windows[i][j].end(window_end);
     }
@@ -195,9 +198,9 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
   for (int64_t i=tstart; i<tend; i+=window_len) {
     // TODO: Play with the window_end coordinate - maybe it would be better to remove the -1
     // and instead just trim the sequence to 1 base less?
-  	int64_t window_start = std::max(i - window_ext, (int64_t) 0);
-  	int64_t window_end = std::min(i + window_len + window_ext, tlen) - 1;
   	int64_t window_id = i / window_len;
+  	int64_t window_start = tw[window_id].start(); // std::max(i - window_ext, (int64_t) 0);
+  	int64_t window_end = tw[window_id].end(); // std::min(i + window_len + window_ext, tlen) - 1;
 
   	int64_t qstart = sampled_overlap->find(window_start);	// Found query start, or -1 if invalid.
   	int64_t qend = sampled_overlap->find(window_end);		// Found query end, or -1 if invalid.
@@ -326,14 +329,16 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
   starts.clear();
   ends.clear();
 
-  int64_t window_start = 0;
-  int64_t window_end = 0;
-  window.start
+  int64_t window_start = window.start();
+  int64_t window_end = window.end();
   int64_t tid = window.target_id();
   seqs.emplace_back(targets.get_sequences()[tid]->GetSequenceAsString(window_start, window_end));
 //  quals.push_back(targets.get_sequences()[tid]->GetQualityAsString(window_start, window_end));
   std::string dummy_quals((window_end - window_start + 1), '!');
   quals.emplace_back(dummy_quals);
+
+  starts.emplace_back(0),
+  ends.emplace_back(window_end - window_start);
 
   auto entries = window.entries();
   for (int64_t i=0; i<entries.size(); i++) {
@@ -345,6 +350,9 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
     if (overlap.Brev() == 0) {  // The query is forward.
       seqs.emplace_back(query->GetSequenceAsString(entry.query().start, entry.query().end));
 
+      starts.emplace_back(entry.target().start - window_start);
+      ends.emplace_back(entry.target().end - window_start);
+
     } else {                    // The query is reverse-complemented.
       int64_t start = overlap.Alen() - entry.query().end;
       int64_t end = overlap.Alen() - entry.query().start - 1;
@@ -355,6 +363,9 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
       std::string qual = query->GetQualityAsString(start, end);
       ReverseInPlace_(qual);
       quals.emplace_back(qual);
+
+      starts.emplace_back(entry.target().start - window_start);
+      ends.emplace_back(entry.target().end - window_start);
     }
   }
 }

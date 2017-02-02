@@ -64,10 +64,28 @@ class Window {
     return target_id_;
   }
 
+  int64_t start() const {
+  	return start_;
+  }
+
+  void start(int64_t new_start) {
+  	start_ = new_start;
+  }
+
+  int64_t end() const {
+  	return end_;
+  }
+
+  void end(int64_t new_end) {
+  	end_ = new_end;
+  }
+
  private:
 //  std::vector<
   std::vector<WindowEntry> entries_;
   int64_t target_id_;
+  int64_t start_;
+  int64_t end_;
 };
 
 } /* namespace is */
