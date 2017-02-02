@@ -71,6 +71,8 @@ class Racon {
    */
   int FindContigOverlaps_(const Overlaps &sorted_overlaps, MapOverlapRange &contig_overlaps) const;
 
+  static void ReverseInPlace_(std::string &seq);
+  static void ReverseComplementInPlace_(std::string &seq);
 };
 
 } /* namespace is */

@@ -164,6 +164,11 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
     // int64_t num_windows = (tlen + window_len + window_ext - 1) / (window_len + window_ext);
     int64_t num_windows = (tlen + window_len- 1) / (window_len);
     windows[i].resize(num_windows, Window(i));
+
+    for (int64_t j=0; j<windows[i].size(); j++) {
+      windows[i][j].start(window_start);
+      windows[i][j].end(window_end);
+    }
   }
 
   for (int64_t i=0; i<sampled_overlaps.size(); i++) {
@@ -299,11 +304,36 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
   return 0;
 }
 
+void Racon::ReverseInPlace_(std::string &seq) {
+  int64_t len = seq.size();
+  for (int64_t i=0; i<len/2; i++) {
+    std::swap(seq[i], seq[len-i-1]);
+  }
+}
+
+void Racon::ReverseComplementInPlace_(std::string &seq) {
+  ReverseInPlace_(seq);
+
+  int64_t len = seq.size();
+  for (int64_t i=0; i<len; i++) {
+    seq[i] = kBaseComplement[seq[i]];
+  }
+}
+
 void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::shared_ptr<Parameters> param, const Window& window, std::vector<std::string>& seqs, std::vector<std::string>& quals, std::vector<uint32_t> &starts, std::vector<uint32_t> &ends) {
   seqs.clear();
   quals.clear();
   starts.clear();
   ends.clear();
+
+  int64_t window_start = 0;
+  int64_t window_end = 0;
+  window.start
+  int64_t tid = window.target_id();
+  seqs.emplace_back(targets.get_sequences()[tid]->GetSequenceAsString(window_start, window_end));
+//  quals.push_back(targets.get_sequences()[tid]->GetQualityAsString(window_start, window_end));
+  std::string dummy_quals((window_end - window_start + 1), '!');
+  quals.emplace_back(dummy_quals);
 
   auto entries = window.entries();
   for (int64_t i=0; i<entries.size(); i++) {
@@ -314,9 +344,19 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
 
     if (overlap.Brev() == 0) {  // The query is forward.
       seqs.emplace_back(query->GetSequenceAsString(entry.query().start, entry.query().end));
+
+    } else {                    // The query is reverse-complemented.
+      int64_t start = overlap.Alen() - entry.query().end;
+      int64_t end = overlap.Alen() - entry.query().start - 1;
+      std::string seq = query->GetSequenceAsString(start, end);
+      ReverseComplementInPlace_(seq);
+      seqs.emplace_back(seq);
+
+      std::string qual = query->GetQualityAsString(start, end);
+      ReverseInPlace_(qual);
+      quals.emplace_back(qual);
     }
   }
-
 }
 
 void Racon::HashNames_(const SequenceFile &seqs, MapId &id) const {
