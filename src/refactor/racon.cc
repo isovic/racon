@@ -166,7 +166,7 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
     windows[i].resize(num_windows, Window(i));
 
     for (int64_t j=0; j<windows[i].size(); j++) {
-      int64_t temp_pos = i * window_len;
+      int64_t temp_pos = j * window_len;
       int64_t window_start = std::max(temp_pos - window_ext, (int64_t) 0);
       int64_t window_end = std::min(temp_pos + window_len + window_ext, tlen) - 1;
       windows[i][j].start(window_start);
@@ -201,6 +201,8 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
   	int64_t window_id = i / window_len;
   	int64_t window_start = tw[window_id].start(); // std::max(i - window_ext, (int64_t) 0);
   	int64_t window_end = tw[window_id].end(); // std::min(i + window_len + window_ext, tlen) - 1;
+//    int64_t window_start = std::max(i - window_ext, (int64_t) 0);
+//    int64_t window_end = std::min(i + window_len + window_ext, tlen) - 1;
 
   	int64_t qstart = sampled_overlap->find(window_start);	// Found query start, or -1 if invalid.
   	int64_t qend = sampled_overlap->find(window_end);		// Found query end, or -1 if invalid.
@@ -208,16 +210,18 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
 //    printf ("  Lookup: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", qstart, qend, window_start, window_end);
 
   	if (qstart < 0 && i == tstart) { // The beginning of a query may fall in the middle of a window.
-//  	  printf ("  qstart < 0 (qstart = %ld\n", qstart);
+//  	  printf ("  qstart < 0 (qstart = %ld)\n", qstart);
       qstart = (overlap.Brev() == 0) ? (overlap.Astart()) : (overlap.Alen() - overlap.Aend());
       window_start = overlap.Bstart();
   	}
 
   	if (qend < 0 && ((i + window_len) >= tend)) {   // The end of a query may also fall in the middle of a window.
-//      printf ("  qend < 0 (qend = %ld\n", qend);
+//      printf ("  qend < 0 (qend = %ld)\n", qend);
       qend = (overlap.Brev() == 0) ? (overlap.Aend()) : (overlap.Alen() - overlap.Astart() - 1);
       window_end = overlap.Bend();
   	}
+
+//    printf ("  Before assert, window %ld: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", window_id, qstart, qend, window_start, window_end);
 
   	assert (qstart >= 0 && qend >= 0);
 
@@ -284,6 +288,16 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
     return 1;
   }
 
+//  fprintf (stderr, "seqs.size() = %ld\n", seqs.size());
+//  fprintf (stderr, "quals.size() = %ld\n", quals.size());
+//  fprintf (stderr, "starts.size() = %ld\n", starts.size());
+//  fprintf (stderr, "ends.size() = %ld\n", ends.size());
+//
+//  for (int64_t i=0; i<seqs.size(); i++) {
+//    printf ("@%ld start = %ld, end = %ld, seq len = %ld, qual len = %ld\n%s\n+\n%s\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
+//  }
+//  fflush(stdout);
+
   auto graph = SPOA::construct_partial_order_graph(seqs, quals, starts, ends,
                                              SPOA::AlignmentParams(param->match(), param->mismatch(),
                                              param->gap_open(), param->gap_ext(), (SPOA::AlignmentType) param->aln_type()));
@@ -323,6 +337,15 @@ void Racon::ReverseComplementInPlace_(std::string &seq) {
   }
 }
 
+double AvgQuality(const std::string& qual) {
+  double avg_qual = 0.0f;
+  for (int64_t j=0; j<qual.size(); j++) {
+    avg_qual += (double) (qual[j] - '!');
+  }
+  avg_qual /= std::max((double) qual.size(), 1.0);
+  return avg_qual;
+}
+
 void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::shared_ptr<Parameters> param, const Window& window, std::vector<std::string>& seqs, std::vector<std::string>& quals, std::vector<uint32_t> &starts, std::vector<uint32_t> &ends) {
   seqs.clear();
   quals.clear();
@@ -332,13 +355,13 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
   int64_t window_start = window.start();
   int64_t window_end = window.end();
   int64_t tid = window.target_id();
-  seqs.emplace_back(targets.get_sequences()[tid]->GetSequenceAsString(window_start, window_end));
+  seqs.emplace_back(targets.get_sequences()[tid]->GetSequenceAsString(window_start, window_end + 1));
 //  quals.push_back(targets.get_sequences()[tid]->GetQualityAsString(window_start, window_end));
   std::string dummy_quals((window_end - window_start + 1), '!');
   quals.emplace_back(dummy_quals);
 
-  starts.emplace_back(0),
-  ends.emplace_back(window_end - window_start);
+  starts.emplace_back((uint32_t) 0),
+  ends.emplace_back((uint32_t) (window_end - window_start));
 
   auto entries = window.entries();
   for (int64_t i=0; i<entries.size(); i++) {
@@ -348,24 +371,32 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
     auto target = targets.get_sequences()[overlap.Bid() - 1];
 
     if (overlap.Brev() == 0) {  // The query is forward.
-      seqs.emplace_back(query->GetSequenceAsString(entry.query().start, entry.query().end));
+      std::string qual = query->GetQualityAsString(entry.query().start, entry.query().end + 1);
 
-      starts.emplace_back(entry.target().start - window_start);
-      ends.emplace_back(entry.target().end - window_start);
+      if (AvgQuality(qual) >= param->qv_threshold()) {
+        seqs.emplace_back(query->GetSequenceAsString(entry.query().start, entry.query().end + 1));
+        quals.emplace_back(qual);
+
+        starts.emplace_back((uint32_t) (entry.target().start - window_start));
+        ends.emplace_back((uint32_t) (entry.target().end - window_start));
+      }
 
     } else {                    // The query is reverse-complemented.
-      int64_t start = overlap.Alen() - entry.query().end;
+      int64_t start = overlap.Alen() - entry.query().end - 1;
       int64_t end = overlap.Alen() - entry.query().start - 1;
-      std::string seq = query->GetSequenceAsString(start, end);
-      ReverseComplementInPlace_(seq);
-      seqs.emplace_back(seq);
 
       std::string qual = query->GetQualityAsString(start, end);
-      ReverseInPlace_(qual);
-      quals.emplace_back(qual);
+      if (AvgQuality(qual) >= param->qv_threshold()) {
+        ReverseInPlace_(qual);
+        quals.emplace_back(qual);
 
-      starts.emplace_back(entry.target().start - window_start);
-      ends.emplace_back(entry.target().end - window_start);
+        std::string seq = query->GetSequenceAsString(start, end);
+        ReverseComplementInPlace_(seq);
+        seqs.emplace_back(seq);
+
+        starts.emplace_back((uint32_t) (entry.target().start - window_start));
+        ends.emplace_back((uint32_t) (entry.target().end - window_start));
+      }
     }
   }
 }
