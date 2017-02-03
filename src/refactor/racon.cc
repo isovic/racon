@@ -371,10 +371,10 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
     auto target = targets.get_sequences()[overlap.Bid() - 1];
 
     if (overlap.Brev() == 0) {  // The query is forward.
-      std::string qual = query->GetQualityAsString(entry.query().start, entry.query().end + 1);
+      std::string qual = query->GetQualityAsString(entry.query().start, entry.query().end);
 
       if (AvgQuality(qual) >= param->qv_threshold()) {
-        seqs.emplace_back(query->GetSequenceAsString(entry.query().start, entry.query().end + 1));
+        seqs.emplace_back(query->GetSequenceAsString(entry.query().start, entry.query().end));
         quals.emplace_back(qual);
 
         starts.emplace_back((uint32_t) (entry.target().start - window_start));
@@ -382,7 +382,7 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
       }
 
     } else {                    // The query is reverse-complemented.
-      int64_t start = overlap.Alen() - entry.query().end - 1;
+      int64_t start = overlap.Alen() - entry.query().end;
       int64_t end = overlap.Alen() - entry.query().start - 1;
 
       std::string qual = query->GetQualityAsString(start, end);
