@@ -297,6 +297,7 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
 //    printf ("@%ld start = %ld, end = %ld, seq len = %ld, qual len = %ld\n%s\n+\n%s\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
 //  }
 //  fflush(stdout);
+//  exit(1);
 
   auto graph = SPOA::construct_partial_order_graph(seqs, quals, starts, ends,
                                              SPOA::AlignmentParams(param->match(), param->mismatch(),
@@ -355,37 +356,52 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
   int64_t window_start = window.start();
   int64_t window_end = window.end();
   int64_t tid = window.target_id();
-  seqs.emplace_back(targets.get_sequences()[tid]->GetSequenceAsString(window_start, window_end + 1));
-//  quals.push_back(targets.get_sequences()[tid]->GetQualityAsString(window_start, window_end));
-  std::string dummy_quals((window_end - window_start + 1), '!');
-  quals.emplace_back(dummy_quals);
 
+  // Add the target sequence as the backbone.
+  seqs.emplace_back(targets.get_sequences()[tid]->GetSequenceAsString(window_start, window_end + 1));
+
+  // Add qualities for the backbone if user-specified, otherwise fill with QV0 (the '!' ASCII value).
+  if (param->use_contig_qvs() && targets.get_sequences()[tid]->HasQV()) {
+    quals.push_back(targets.get_sequences()[tid]->GetQualityAsString(window_start, window_end));
+  } else {
+    std::string dummy_quals((window_end - window_start + 1), '!');
+    quals.emplace_back(dummy_quals);
+  }
+
+  // Start and end positions of the sequence in the window.
   starts.emplace_back((uint32_t) 0),
   ends.emplace_back((uint32_t) (window_end - window_start));
 
-  auto entries = window.entries();
-  for (int64_t i=0; i<entries.size(); i++) {
-    auto& entry = entries[i];
+  for (int64_t i=0; i<window.entries().size(); i++) {
+    auto& entry = window.entries()[i];
     auto& overlap = overlaps.overlaps()[entry.overlap_id()];
     auto query = queries.get_sequences()[overlap.Aid() - 1];
     auto target = targets.get_sequences()[overlap.Bid() - 1];
 
-    if (overlap.Brev() == 0) {  // The query is forward.
-      std::string qual = query->GetQualityAsString(entry.query().start, entry.query().end);
+    if (overlap.Brev() == 0) {                          // The query is forward.
+      int64_t start = entry.query().start;
+      int64_t end = entry.query().end;
 
+      // Get the quality first, to check if it's above threshold.
+      std::string qual = query->GetQualityAsString(start, end);
+
+      // If it's ok, add the sequence.
       if (AvgQuality(qual) >= param->qv_threshold()) {
-        seqs.emplace_back(query->GetSequenceAsString(entry.query().start, entry.query().end));
+        seqs.emplace_back(query->GetSequenceAsString(start, end));
         quals.emplace_back(qual);
 
-        starts.emplace_back((uint32_t) (entry.target().start - window_start));
-        ends.emplace_back((uint32_t) (entry.target().end - window_start));
+        starts.emplace_back((uint32_t) (start - window_start));
+        ends.emplace_back((uint32_t) (end - window_start));
       }
 
-    } else {                    // The query is reverse-complemented.
+    } else {                                            // The query is reverse-complemented.
       int64_t start = overlap.Alen() - entry.query().end;
       int64_t end = overlap.Alen() - entry.query().start - 1;
 
+      // Get the quality first, to check if it's above threshold.
       std::string qual = query->GetQualityAsString(start, end);
+
+      // If it's ok, add the sequence.
       if (AvgQuality(qual) >= param->qv_threshold()) {
         ReverseInPlace_(qual);
         quals.emplace_back(qual);
