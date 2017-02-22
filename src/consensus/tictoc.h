@@ -10,6 +10,7 @@
 
 #include <time.h>
 
+namespace racon {
 class TicToc {
  public:
   TicToc();
@@ -23,5 +24,7 @@ class TicToc {
   clock_t start_;
   clock_t end_;
 };
+
+}
 
 #endif /* SRC_CONSENSUS_TICTOC_H_ */

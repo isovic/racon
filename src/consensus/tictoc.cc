@@ -7,6 +7,7 @@
 
 #include "tictoc.h"
 
+namespace racon {
 TicToc::TicToc() : start_(0), end_(0) {
 }
 
@@ -24,4 +25,6 @@ void TicToc::stop() {
 double TicToc::get_secs() {
   double elapsed_secs = double(end_ - start_) / CLOCKS_PER_SEC;
   return elapsed_secs;
+}
+
 }

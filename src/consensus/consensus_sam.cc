@@ -277,7 +277,7 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
     LOG_DEBUG ("current_contig->get_sequence_length() = %ld, parameters.window_len = %ld, num_windows = %ld\n", contig->get_sequence_length(), parameters.window_len, num_windows);
   }
 
-  TicToc clk1;
+  racon::TicToc clk1;
   clk1.start();
   // Build the interval tree for fast overlap calculation.
   std::vector<IntervalSS> aln_intervals;
@@ -304,7 +304,7 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
     #pragma omp parallel for num_threads(num_window_threads) reduction(+:clk_total_extract, clk_total_spoa) schedule(dynamic, 1)
     for (int64_t id_in_batch = 0; id_in_batch < windows_to_process; id_in_batch += 1) {
 
-      TicToc clk2;
+      racon::TicToc clk2;
       clk2.start();
        int64_t window_start = std::max((int64_t) 0, (int64_t) ((window_batch_start + id_in_batch) * parameters.window_len - (parameters.window_len * parameters.win_ovl_margin)));
        int64_t window_end = window_start + parameters.window_len + (parameters.window_len * parameters.win_ovl_margin) - 1;
@@ -343,7 +343,7 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
 //       LOG_ALL("CPU time for extracting a window: %f sec.\n", clk2.get_secs());
        clk_total_extract += clk2.get_secs();
 
-       TicToc clk3;
+       racon::TicToc clk3;
        clk3.start();
        auto graph = construct_partial_order_graph(windows_for_msa, quals_for_msa, starts_for_msa, ends_for_msa,
                                                   SPOA::AlignmentParams(parameters.match, parameters.mismatch,

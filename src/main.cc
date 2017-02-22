@@ -109,10 +109,10 @@ int main(int argc, char* argv[]) {
 
   /// Check if help was triggered.
   if (argparser.GetArgumentByLongName("help")->is_set == true) {
-    fprintf (stderr, "  %s [options] <raw> <aln> <temp>\n\n", argv[0]);
-    fprintf (stderr, "%s\n", argparser.VerboseUsage().c_str());
-    fflush(stderr);
-    exit(1);
+    fprintf (stdout, "  %s [options] <raw> <aln> <temp>\n\n", argv[0]);
+    fprintf (stdout, "%s\n", argparser.VerboseUsage().c_str());
+    fflush(stdout);
+    exit(0);
   }
 
   std::string gfa = argv[1];

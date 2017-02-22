@@ -124,7 +124,7 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
               thread_id, (i + 1), contigs.get_sequences().size(), 100.0*((float) (i + 1)) / ((float) contigs.get_sequences().size()), FormatStringToLength(contig->get_header(), 40).c_str());
     }
 
-    TicToc clock_aln;
+    racon::TicToc clock_aln;
     clock_aln.start();
     SequenceFile alns;
     std::vector<OverlapLine> extracted_overlaps(sorted_overlaps.begin()+it->second.start, sorted_overlaps.begin()+it->second.end);
@@ -143,7 +143,7 @@ int ConsensusFromOverlaps(const ProgramParameters &parameters, const SequenceFil
     clock_aln.stop();
     LOG_DEBUG("CPU time spent on alignment: %.2lf sec.\n", clock_aln.get_secs());
 
-    TicToc clock_cons;
+    racon::TicToc clock_cons;
     clock_cons.start();
     FILE *fp_out_cons = fopen(parameters.consensus_path.c_str(), "a");
     std::string consensus;
