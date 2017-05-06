@@ -5,8 +5,8 @@ BIN = bin/racon
 
 # CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -m64 -std=c++11 -Werror=return-type -pthread -march=native
 # CC_FLAGS_RELEASE = -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -m64 -std=c++11 -Werror=return-type -pthread -march=native
-CC_FLAGS_DEBUG = -c -O0 -g -std=c++11 -m64 -Werror=return-type -pthread
-CC_FLAGS_RELEASE = -c -O3 -std=c++11 -m64 -Werror=return-type -pthread
+CC_FLAGS_DEBUG = -c -O0 -g -std=c++11 -m64 -Werror=return-type -pthread -march=native
+CC_FLAGS_RELEASE = -c -O3 -std=c++11 -m64 -Werror=return-type -pthread -march=native
 # LD_FLAGS = -static-libgcc -static-libstdc++ -m64 -ffreestanding
 LD_FLAGS = -m64
 LD_LIBS = -lpthread -lm -lz

@@ -314,25 +314,25 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
 //  fflush(stdout);
 //  exit(1);
 
-  printf ("seqs.size() = %ld\n", seqs.size());
-  for (int32_t i=0; i<seqs.size(); i++) {
-    printf ("[%d] start = %d, end = %d, seqs[i].size() = %lu, quals[i].size() = %lu\n%s\n%s\n\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
-  }
+  // printf ("seqs.size() = %ld\n", seqs.size());
+  // for (int32_t i=0; i<seqs.size(); i++) {
+  //   printf ("[%d] start = %d, end = %d, seqs[i].size() = %lu, quals[i].size() = %lu\n%s\n%s\n\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
+  // }
 
-  printf ("Constructing POA graph.\n");
-  fflush(stdout);
+  // printf ("Constructing POA graph.\n");
+  // fflush(stdout);
 
   auto graph = SPOA::construct_partial_order_graph(seqs, quals, starts, ends,
                                              SPOA::AlignmentParams(param->match(), param->mismatch(),
                                              param->gap_open(), param->gap_ext(), (SPOA::AlignmentType) param->aln_type()));
 
   std::vector<uint32_t> coverages;
-  printf ("Generating consensus.\n");
-  fflush(stdout);
+  // printf ("Generating consensus.\n");
+  // fflush(stdout);
   cons_seq = graph->generate_consensus(coverages);
 
-  printf ("Trimming the consensus.\n");
-  fflush(stdout);
+  // printf ("Trimming the consensus.\n");
+  // fflush(stdout);
 
   // Unfortunately, POA is bad when there are errors, such as long insertions, at
   // the end of a sequence. The consensus walk will also have those overhang
@@ -347,8 +347,8 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
 
   cons_seq = cons_seq.substr(start_offset, (end_offset - start_offset + 1));
 
-  printf ("Window done.\n");
-  fflush(stdout);
+  // printf ("Window done.\n");
+  // fflush(stdout);
 
   return 0;
 }
@@ -401,7 +401,7 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
 
   // Start and end positions of the sequence in the window.
   starts.emplace_back((uint32_t) 0),
-  ends.emplace_back((uint32_t) (window_end - window_start));
+  ends.emplace_back((uint32_t) (window_end - window_start));  // Window start and end are abs coords, need to convert them to the range [0, window_len].
 
   for (int64_t i=0; i<window.entries().size(); i++) {
     auto& entry = window.entries()[i];
@@ -421,8 +421,8 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
         seqs.emplace_back(query->GetSequenceAsString(start, end));
         quals.emplace_back(qual);
 
-        starts.emplace_back((uint32_t) (start - window_start));
-        ends.emplace_back((uint32_t) (end - window_start));
+        starts.emplace_back((uint32_t) (entry.target().start - window_start));
+        ends.emplace_back((uint32_t) (entry.target().end - window_start));
       }
 
     } else {                                            // The query is reverse-complemented.
