@@ -41,10 +41,13 @@ void Racon::CreateConsensus() {
 
 void Racon::RunFromOverlaps_() {
   // Parse the backbone.
+  LOG_ALL("Loading target sequences.\n");
   SequenceFile targets(SEQ_FORMAT_AUTO, param_->contigs_path());
 
   // Parse the reads.
+  LOG_ALL("Loading reads.\n");
   SequenceFile queries(SEQ_FORMAT_AUTO, param_->reads_path());
+
   // Sanity check to see if the reads have quality values.
   if (queries.HasQV() == false) {
     FATAL_REPORT(ERR_WRONG_FILE_TYPE, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
@@ -52,6 +55,7 @@ void Racon::RunFromOverlaps_() {
   }
 
   // Hash the sequences by their name.
+  LOG_ALL("Hashing qnames.\n");
   MapId query_id, target_id;
   HashNames_(queries, query_id);
   HashNames_(targets, target_id);
@@ -164,7 +168,7 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
     int64_t tlen = target->get_sequence_length();
 
     // int64_t num_windows = (tlen + window_len + window_ext - 1) / (window_len + window_ext);
-    int64_t num_windows = (tlen + window_len- 1) / (window_len);
+    int64_t num_windows = (tlen + window_len - 1) / (window_len);
     windows[i].resize(num_windows, Window(i));
 
     for (int64_t j=0; j<windows[i].size(); j++) {
@@ -251,6 +255,8 @@ void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets
     cons_qual[i].resize(windows[i].size());     // Needs to be known during emplacement.
   }
 
+  LOG_ALL("Emplacing futures.\n");
+
   // Emplace all jobs.
   for (int64_t i=0; i<windows.size(); i++) {
     for (int64_t j=0; j<windows[i].size(); j++) {
@@ -261,8 +267,12 @@ void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets
   FILE *fp_out = fopen(param_->consensus_path().c_str(), "w");
   assert(fp_out);
 
+  LOG_ALL("Waiting for futures.\n");
+
   for (int64_t i=0; i<futures.size(); i++) {
+    LOG_ALL("i = %ld / %ld\n", (i + 1), futures.size());
     for (int64_t j=0; j<futures[i].size(); j++) {
+      LOG_ALL("  j = %ld / %ld\n", (j + 1), futures[i].size());
       futures[i][j].wait();
     }
 
@@ -275,6 +285,9 @@ void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets
   }
 
   fclose(fp_out);
+
+  LOG_ALL("Done!\n");
+
 }
 
 int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::shared_ptr<Parameters> param, const Window& window, std::string& cons_seq, std::string& cons_qual) {
@@ -301,12 +314,25 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
 //  fflush(stdout);
 //  exit(1);
 
+  printf ("seqs.size() = %ld\n", seqs.size());
+  for (int32_t i=0; i<seqs.size(); i++) {
+    printf ("[%d] start = %d, end = %d, seqs[i].size() = %lu, quals[i].size() = %lu\n%s\n%s\n\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
+  }
+
+  printf ("Constructing POA graph.\n");
+  fflush(stdout);
+
   auto graph = SPOA::construct_partial_order_graph(seqs, quals, starts, ends,
                                              SPOA::AlignmentParams(param->match(), param->mismatch(),
                                              param->gap_open(), param->gap_ext(), (SPOA::AlignmentType) param->aln_type()));
 
   std::vector<uint32_t> coverages;
+  printf ("Generating consensus.\n");
+  fflush(stdout);
   cons_seq = graph->generate_consensus(coverages);
+
+  printf ("Trimming the consensus.\n");
+  fflush(stdout);
 
   // Unfortunately, POA is bad when there are errors, such as long insertions, at
   // the end of a sequence. The consensus walk will also have those overhang
@@ -320,6 +346,9 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
   }
 
   cons_seq = cons_seq.substr(start_offset, (end_offset - start_offset + 1));
+
+  printf ("Window done.\n");
+  fflush(stdout);
 
   return 0;
 }
