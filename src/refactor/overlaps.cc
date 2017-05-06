@@ -192,8 +192,7 @@ void Overlaps::ParseUnique_(const std::string& path, const OverlapFormat& of,
   std::istream& input =(path != "-") ? infile : std::cin;       // Choose the input stream.
 
   std::string line;
-  while (std::getline(input, line))
-  {
+  while (std::getline(input, line)) {
     if (line.size() == 0) { continue; }
     std::istringstream iss(line);
 

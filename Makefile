@@ -3,12 +3,16 @@ GCC = $(CXX)
 
 BIN = bin/racon
 
-CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
-CC_FLAGS_RELEASE = -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
-LD_FLAGS = -static-libgcc -static-libstdc++ -m64 -ffreestanding
-LD_LIBS = -lpthread -lgomp -lm -lz
+# CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -m64 -std=c++11 -Werror=return-type -pthread -march=native
+# CC_FLAGS_RELEASE = -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -m64 -std=c++11 -Werror=return-type -pthread -march=native
+CC_FLAGS_DEBUG = -c -O0 -g -std=c++11 -m64 -Werror=return-type -pthread
+CC_FLAGS_RELEASE = -c -O3 -std=c++11 -m64 -Werror=return-type -pthread
+# LD_FLAGS = -static-libgcc -static-libstdc++ -m64 -ffreestanding
+LD_FLAGS = -m64
+LD_LIBS = -lpthread -lm -lz
 LIB_DIRS = -L"/usr/local/lib"
-CC_LIBS = -static-libgcc -static-libstdc++ -D__cplusplus=201103L
+# CC_LIBS = -static-libgcc -static-libstdc++ -D__cplusplus=201103L
+CC_LIBS = -D__cplusplus=201103L
 
 SOURCE_DIR = src
 CODEBASE_DIR = codebase
@@ -36,7 +40,7 @@ clean: cleanbuild cleantest
 ### Compiling Racon ###
 #######################
 
-debug: $(OBJ_FILES_DEBUG) 
+debug: $(OBJ_FILES_DEBUG)
 	@echo [LD DEBUG] $<
 	@mkdir -p $(dir $(BIN))
 	@$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN) $(OBJ_FILES_DEBUG) $(LD_LIBS)
@@ -133,7 +137,8 @@ cleantest:
 modules:
 	git submodule update --init --recursive
 
-tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/edlib/src/aligner tools/minimap/minimap tools/miniasm/miniasm
+# tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_release tools/edlib/src/aligner tools/minimap/minimap tools/miniasm/miniasm
+tools: tools/edlib/src/aligner tools/minimap/minimap tools/miniasm/miniasm
 	echo "All tools installed."
 
 tools/graphmap/bin/Linux-x64/graphmap:

@@ -37,4 +37,4 @@ comparison*.sh
 test-data/ecoli_map006_ont
 lib/googletest/build
 lib/googletest/obj
-
+.vscode*

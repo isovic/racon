@@ -28,20 +28,16 @@ namespace is {
 
 class Racon;
 
-std::shared_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param);
+std::unique_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param);
 
 class Racon {
  public:
   ~Racon();
 
-  friend std::shared_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param);
+  friend std::unique_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param);
   void CreateConsensus();
 
  private:
-  const std::shared_ptr<Parameters> param_;
-  std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
-  std::vector<std::vector<Window>> windows_;
-
   Racon(const Racon&) = delete;
   const Racon& operator=(const Racon&) = delete;
   Racon(std::shared_ptr<Parameters> param);
@@ -73,6 +69,10 @@ class Racon {
 
   static void ReverseInPlace_(std::string &seq);
   static void ReverseComplementInPlace_(std::string &seq);
+
+  const std::shared_ptr<Parameters> param_;
+  std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
+  std::vector<std::vector<Window>> windows_;
 };
 
 } /* namespace is */

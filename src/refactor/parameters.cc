@@ -12,8 +12,8 @@
 
 namespace is{
 
-std::shared_ptr<Parameters> createParameters(int argc, char* argv[]) {
-  return std::shared_ptr<Parameters>(new Parameters(argc, argv));
+std::unique_ptr<Parameters> createParameters(int argc, char* argv[]) {
+  return std::unique_ptr<Parameters>(new Parameters(argc, argv));
 }
 
 Parameters::Parameters(int argc, char* argv[]) :

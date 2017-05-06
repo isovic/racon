@@ -18,11 +18,11 @@ namespace is {
 
 class Parameters;
 
-std::shared_ptr<Parameters> createParameters(int argc, char* argv[]);
+std::unique_ptr<Parameters> createParameters(int argc, char* argv[]);
 
 class Parameters {
  public:
-  friend std::shared_ptr<Parameters> createParameters(int argc, char* argv[]);
+  friend std::unique_ptr<Parameters> createParameters(int argc, char* argv[]);
 
   const std::string& aln_path() const {
     return aln_path_;

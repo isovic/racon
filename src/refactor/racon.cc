@@ -19,15 +19,17 @@
 
 namespace is {
 
-std::shared_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param) {
-  return std::shared_ptr<Racon>(new Racon(param));
+std::unique_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param) {
+  return std::unique_ptr<Racon>(new Racon(param));
 }
 
 Racon::~Racon() {
 
 }
 
-Racon::Racon(const std::shared_ptr<Parameters> param) : param_(param), thread_pool_(thread_pool::createThreadPool(param->num_threads())) {
+Racon::Racon(const std::shared_ptr<Parameters> param) :
+                  param_(param),
+                  thread_pool_(thread_pool::createThreadPool(param->num_threads())) {
 
 }
 

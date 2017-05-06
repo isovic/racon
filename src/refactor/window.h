@@ -28,21 +28,19 @@ class WindowEntry {
   }
   ~WindowEntry() { }
 
-  int64_t overlap_id() const {
-  	return overlap_id_;
-  }
-  Range query() const {
-  	return query_;
-  }
-  Range target() const {
-  	return target_;
-  }
+  int64_t overlap_id() const { return overlap_id_; }
+  Range query() const { return query_; }
+  Range target() const { return target_; }
 
  private:
-  int64_t overlap_id_ = - 1;
+  int64_t overlap_id_;
   Range query_, target_;					// Query and target start and end locations.
 };
 
+/* A container object that keeps track about all sequences covering that part
+   of a given target sequence.
+   Used to parallelize the consensus method.
+*/
 class Window {
  public:
   Window(int64_t target_id);
@@ -56,32 +54,15 @@ class Window {
   	entries_.emplace_back(WindowEntry(overlap_id, qstart, qend, tstart, tend));
   }
 
-  const std::vector<WindowEntry>& entries() const {
-  	return entries_;
-  }
+  const std::vector<WindowEntry>& entries() const { return entries_; }
 
-  int64_t target_id() const {
-    return target_id_;
-  }
-
-  int64_t start() const {
-  	return start_;
-  }
-
-  void start(int64_t new_start) {
-  	start_ = new_start;
-  }
-
-  int64_t end() const {
-  	return end_;
-  }
-
-  void end(int64_t new_end) {
-  	end_ = new_end;
-  }
+  int64_t target_id() const { return target_id_; }
+  int64_t start() const { return start_; }
+  void start(int64_t new_start) { start_ = new_start; }
+  int64_t end() const { return end_; }
+  void end(int64_t new_end) { end_ = new_end; }
 
  private:
-//  std::vector<
   std::vector<WindowEntry> entries_;
   int64_t target_id_;
   int64_t start_;
