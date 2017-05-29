@@ -55,20 +55,20 @@ tools: tools/graphmap/bin/Linux-x64/graphmap tools/graphmap/bin/graphmap-not_rel
 	echo "All tools installed."
 
 tools/graphmap/bin/Linux-x64/graphmap:
-	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make -j
+	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make
 
 tools/graphmap/bin/graphmap-not_release:
-	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make -j testing
+	mkdir -p tools; cd tools; git clone https://github.com/isovic/graphmap.git; cd graphmap && make modules && make testing
 
 tools/edlib/src/aligner:
-	mkdir -p tools; cd tools; git clone https://github.com/isovic/edlib.git; cd edlib; cd src && make -j
+	mkdir -p tools; cd tools; git clone https://github.com/isovic/edlib.git; cd edlib; cd src && make
 	# mkdir -p tools; cd tools; git clone https://github.com/Martinsos/edlib.git; cd edlib; git checkout 06d8e77f6ec5efb43aa04109caf53e9868695c75; cd src && make -j
 
 tools/minimap/minimap:
-	mkdir -p tools; cd tools; git clone https://github.com/lh3/minimap.git; cd minimap; make -j
+	mkdir -p tools; cd tools; git clone https://github.com/lh3/minimap.git; cd minimap; make
 
 tools/miniasm/miniasm:
-	mkdir -p tools; cd tools; git clone https://github.com/lh3/miniasm.git; cd miniasm; make -j
+	mkdir -p tools; cd tools; git clone https://github.com/lh3/miniasm.git; cd miniasm; make
 
 mm: tools/minimap/minimap tools/miniasm/miniasm tools/edlib/src/aligner
 
