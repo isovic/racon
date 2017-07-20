@@ -45,13 +45,25 @@ class Racon {
   void RunFromOverlaps_();
   void RunFromAlignments_();
 
-  int AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, std::vector<std::shared_ptr<SampledOverlap>> &sampled);
+  int AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
+                              std::vector<std::shared_ptr<SampledOverlap>> &sampled);
 
-  void ConstructWindows_(const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::shared_ptr<SampledOverlap>> &sampled_overlaps, std::vector<std::vector<Window>> &windows) const;
-  void AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap, int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const;
-  void RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::vector<Window>> &windows) const;
-  static int WindowConsensus_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::shared_ptr<Parameters> param, const Window& window, std::string& cons_seq, std::string& cons_qual);
-  static void ExtractSequencesForSPOA_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::shared_ptr<Parameters> param, const Window& window, std::vector<std::string>& seqs, std::vector<std::string>& quals, std::vector<uint32_t> &starts, std::vector<uint32_t> &ends);
+  void ConstructWindows_(const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::shared_ptr<SampledOverlap>> &sampled_overlaps,
+                         std::vector<std::vector<Window>> &windows) const;
+
+  void AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap,
+                            int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const;
+
+  void RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
+                   const std::vector<std::vector<Window>> &windows, ConsensusType cons_type) const;
+
+  static int WindowConsensus_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
+                              const std::shared_ptr<Parameters> param, const std::vector<Window>& windows, std::vector<std::string>& cons_seqs,
+                              std::vector<std::string>& cons_quals, int64_t starting_window, int64_t ending_window);
+
+  static void ExtractSequencesForSPOA_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
+                                       const std::shared_ptr<Parameters> param, const Window& window, std::vector<std::string>& seqs,
+                                       std::vector<std::string>& quals, std::vector<uint32_t> &starts, std::vector<uint32_t> &ends);
 
   /** A helper function to fill a map in which the key is a sequence
   	* name, and the value is the ordinal number of the sequence in

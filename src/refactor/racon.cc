@@ -79,7 +79,8 @@ void Racon::RunFromOverlaps_() {
 
   ConstructWindows_(targets, overlaps, sampled, windows_);
 
-  RunAllJobs_(queries, targets, overlaps, windows_);
+  ConsensusType cons_type = (param_->do_erc()) ? ConsensusType::Read : ConsensusType::Contig;
+  RunAllJobs_(queries, targets, overlaps, windows_, cons_type);
 
   LOG_ALL("Done!\n");
 
@@ -239,7 +240,8 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
 //  fflush(stdout);
 }
 
-void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::vector<Window>> &windows) const {
+void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
+                        const std::vector<std::vector<Window>> &windows, ConsensusType cons_type) const {
   LOG_ALL("Running consensus on all windows.\n");
 
   // Create storage for return values.
@@ -259,8 +261,21 @@ void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets
 
   // Emplace all jobs.
   for (int64_t i=0; i<windows.size(); i++) {
-    for (int64_t j=0; j<windows[i].size(); j++) {
-      futures[i].emplace_back(thread_pool_->submit_task(Racon::WindowConsensus_, std::cref(queries), std::cref(targets), std::cref(overlaps), param_, std::cref(windows[i][j]), std::ref(cons_seq[i][j]), std::ref(cons_qual[i][j])));
+    if (cons_type == ConsensusType::Read) {     // Put all windows of the sequence in a single thread.
+      if (windows[i].size() > 0) {
+        futures[i].emplace_back(thread_pool_->submit_task(Racon::WindowConsensus_,
+                                                          std::cref(queries), std::cref(targets),
+                                                          std::cref(overlaps), param_, std::cref(windows[i]),
+                                                          std::ref(cons_seq[i]), std::ref(cons_qual[i]), 0, windows[i].size()));
+      }
+
+    } else {                                    // Distribute windows to threads.
+      for (int64_t j=0; j<windows[i].size(); j++) {
+        futures[i].emplace_back(thread_pool_->submit_task(Racon::WindowConsensus_,
+                                                          std::cref(queries), std::cref(targets),
+                                                          std::cref(overlaps), param_, std::cref(windows[i]),
+                                                          std::ref(cons_seq[i]), std::ref(cons_qual[i]), j, j+1));
+      }
     }
   }
 
@@ -270,15 +285,15 @@ void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets
   LOG_ALL("Waiting for futures.\n");
 
   for (int64_t i=0; i<futures.size(); i++) {
-    LOG_ALL("i = %ld / %ld\n", (i + 1), futures.size());
+    // LOG_ALL("i = %ld / %ld\n", (i + 1), futures.size());
     for (int64_t j=0; j<futures[i].size(); j++) {
-      LOG_ALL("  j = %ld / %ld\n", (j + 1), futures[i].size());
+      // LOG_ALL("  j = %ld / %ld\n", (j + 1), futures[i].size());
       futures[i][j].wait();
     }
 
     auto target = targets.get_sequences()[i];
     fprintf (fp_out, ">Consensus_%s\n", target->get_header());
-    for (int64_t j=0; j<futures[i].size(); j++) {
+    for (int64_t j=0; j<windows[i].size(); j++) {
       fprintf (fp_out, "%s", cons_seq[i][j].c_str());
     }
     fflush(fp_out);
@@ -290,65 +305,74 @@ void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets
 
 }
 
-int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::shared_ptr<Parameters> param, const Window& window, std::string& cons_seq, std::string& cons_qual) {
-  std::vector<std::string> seqs, quals;
-  std::vector<uint32_t> starts, ends;
+int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
+                            const std::shared_ptr<Parameters> param, const std::vector<Window>& windows, std::vector<std::string>& cons_seqs,
+                            std::vector<std::string>& cons_quals, int64_t starting_window, int64_t ending_window) {
 
-  // Get the actual sequences which will be fed to SPOA.
-  Racon::ExtractSequencesForSPOA_(queries, targets, overlaps, param, window, seqs, quals, starts, ends);
+  for (int64_t win_id = starting_window; win_id < ending_window; win_id++) {
+    const Window& window = windows[win_id];
+    std::string& cons_seq = cons_seqs[win_id];
+    std::string& cons_qual = cons_quals[win_id];
 
-  // In case the coverage is too low, just pick the first sequence in the window.
-  if (seqs.size() <= 2) {
-    cons_seq = seqs[0];
-    return 1;
+    std::vector<std::string> seqs, quals;
+    std::vector<uint32_t> starts, ends;
+
+    // Get the actual sequences which will be fed to SPOA.
+    Racon::ExtractSequencesForSPOA_(queries, targets, overlaps, param, window, seqs, quals, starts, ends);
+
+    // In case the coverage is too low, just pick the first sequence in the window.
+    if (seqs.size() <= 2) {
+      cons_seq = seqs[0];
+      return 1;
+    }
+
+  //  fprintf (stderr, "seqs.size() = %ld\n", seqs.size());
+  //  fprintf (stderr, "quals.size() = %ld\n", quals.size());
+  //  fprintf (stderr, "starts.size() = %ld\n", starts.size());
+  //  fprintf (stderr, "ends.size() = %ld\n", ends.size());
+  //
+  //  for (int64_t i=0; i<seqs.size(); i++) {
+  //    printf ("@%ld start = %ld, end = %ld, seq len = %ld, qual len = %ld\n%s\n+\n%s\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
+  //  }
+  //  fflush(stdout);
+  //  exit(1);
+
+    // printf ("seqs.size() = %ld\n", seqs.size());
+    // for (int32_t i=0; i<seqs.size(); i++) {
+    //   printf ("[%d] start = %d, end = %d, seqs[i].size() = %lu, quals[i].size() = %lu\n%s\n%s\n\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
+    // }
+
+    // printf ("Constructing POA graph.\n");
+    // fflush(stdout);
+
+    auto graph = SPOA::construct_partial_order_graph(seqs, quals, starts, ends,
+                                              SPOA::AlignmentParams(param->match(), param->mismatch(),
+                                              param->gap_open(), param->gap_ext(), (SPOA::AlignmentType) param->aln_type()));
+
+    std::vector<uint32_t> coverages;
+    // printf ("Generating consensus.\n");
+    // fflush(stdout);
+    cons_seq = graph->generate_consensus(coverages);
+
+    // printf ("Trimming the consensus.\n");
+    // fflush(stdout);
+
+    // Unfortunately, POA is bad when there are errors, such as long insertions, at
+    // the end of a sequence. The consensus walk will also have those overhang
+    // nodes, which then need to be trimmed heuristically.
+    int32_t start_offset = 0, end_offset = cons_seq.size() - 1;
+    for (;start_offset<cons_seq.size(); start_offset++) {
+      if (coverages[start_offset] >= ((seqs.size() - 1) / 2)) { break; }
+    }
+    for (; end_offset >= 0; end_offset--) {
+      if (coverages[start_offset] >= ((seqs.size() - 1) / 2)) { break; }
+    }
+
+    cons_seq = cons_seq.substr(start_offset, (end_offset - start_offset + 1));
+
+    // printf ("Window done.\n");
+    // fflush(stdout);
   }
-
-//  fprintf (stderr, "seqs.size() = %ld\n", seqs.size());
-//  fprintf (stderr, "quals.size() = %ld\n", quals.size());
-//  fprintf (stderr, "starts.size() = %ld\n", starts.size());
-//  fprintf (stderr, "ends.size() = %ld\n", ends.size());
-//
-//  for (int64_t i=0; i<seqs.size(); i++) {
-//    printf ("@%ld start = %ld, end = %ld, seq len = %ld, qual len = %ld\n%s\n+\n%s\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
-//  }
-//  fflush(stdout);
-//  exit(1);
-
-  // printf ("seqs.size() = %ld\n", seqs.size());
-  // for (int32_t i=0; i<seqs.size(); i++) {
-  //   printf ("[%d] start = %d, end = %d, seqs[i].size() = %lu, quals[i].size() = %lu\n%s\n%s\n\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
-  // }
-
-  // printf ("Constructing POA graph.\n");
-  // fflush(stdout);
-
-  auto graph = SPOA::construct_partial_order_graph(seqs, quals, starts, ends,
-                                             SPOA::AlignmentParams(param->match(), param->mismatch(),
-                                             param->gap_open(), param->gap_ext(), (SPOA::AlignmentType) param->aln_type()));
-
-  std::vector<uint32_t> coverages;
-  // printf ("Generating consensus.\n");
-  // fflush(stdout);
-  cons_seq = graph->generate_consensus(coverages);
-
-  // printf ("Trimming the consensus.\n");
-  // fflush(stdout);
-
-  // Unfortunately, POA is bad when there are errors, such as long insertions, at
-  // the end of a sequence. The consensus walk will also have those overhang
-  // nodes, which then need to be trimmed heuristically.
-  int32_t start_offset = 0, end_offset = cons_seq.size() - 1;
-  for (;start_offset<cons_seq.size(); start_offset++) {
-    if (coverages[start_offset] >= ((seqs.size() - 1) / 2)) { break; }
-  }
-  for (; end_offset >= 0; end_offset--) {
-    if (coverages[start_offset] >= ((seqs.size() - 1) / 2)) { break; }
-  }
-
-  cons_seq = cons_seq.substr(start_offset, (end_offset - start_offset + 1));
-
-  // printf ("Window done.\n");
-  // fflush(stdout);
 
   return 0;
 }

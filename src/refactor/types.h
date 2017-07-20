@@ -25,6 +25,11 @@ typedef std::map<std::string, int64_t> MapId;
 typedef std::map<int64_t, Range> MapOverlapRange;
 // typedef std::map<std::string, const SingleSequence*> MapSeqs;
 
+enum class ConsensusType {
+  Contig,
+  Read
+};
+
 class OverlapFormat {
  public:
   OverlapFormat(const OverlapFormat& op) { // Public copy constructor to allow setting
