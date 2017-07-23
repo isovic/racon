@@ -242,8 +242,9 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
       fprintf (stderr, "overlap.Bname() = %s, overlap.Bstart() = %ld, overlap.Bend() = %ld, overlap.Blen() = %ld, overlap.Brev() = %ld\n", overlap.Bname().c_str(), overlap.Bstart(), overlap.Bend(), overlap.Blen(), overlap.Brev());
       fprintf (stderr, "window_start = %ld, window_end = %ld\n", window_start, window_end);
       int64_t temp_qend = (overlap.Brev() == 0) ? (overlap.Aend()) : (overlap.Alen() - overlap.Astart() - 1);
-      fprintf ("temp_qend = %ld, i = %ld, tstart = %ld, tend = %ld, tlen = %ld, overlap.Bstart() = %ld, overlap.Bend() = %ld\n", temp_qend, i, tstart, tend, tlen, overlap.Bstart(), overlap.Bend());
-      sampled_overlap->Verbose(std::cout);
+      fprintf (stderr, "temp_qend = %ld, i = %ld, tstart = %ld, tend = %ld, tlen = %ld, overlap.Bstart() = %ld, overlap.Bend() = %ld\n",
+               temp_qend, i, tstart, tend, tlen, overlap.Bstart(), overlap.Bend());
+      sampled_overlap->Verbose(std::cerr);
     }
 
   	assert (qstart >= 0 && qend >= 0);
