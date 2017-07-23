@@ -98,31 +98,12 @@ void SampledOverlap::PopulatePos_(const Overlap& overlap, int64_t overlap_id,
 
   pos_.clear();
 
-
-//  for (int64_t i=0; i<alignment.size(); i++) {
-//    printf ("%d", alignment[i]);
-//  }
-//  printf ("\n");
-//  fflush(stdout);
-//
-//  printf ("qpos = %ld, rpos = %ld, rpos_end = %ld\n", qpos, rpos, rpos_end);
-//  for (auto it=pos_to_store.begin(); it!=pos_to_store.end(); it++) {
-//    printf ("%ld, ", *it);
-//  }
-//  printf ("\n");
-//  printf ("\n");
-//  printf ("Ops:\n");
-//  fflush(stdout);
-
   for (auto& op : alignment) {
     if (pos_to_store.size() == 0) { break; }
     // Hash the positions.
-//    printf ("%d", op);
-//    fflush(stdout);
     if (op == EDLIB_EDOP_MATCH || op == EDLIB_EDOP_MISMATCH
         || op == EDLIB_EDOP_DELETE) {
       if (rpos == pos_to_store.front()) {
-//        printf ("\nTu sam 2!\n");
         pos_[rpos] = qpos;
         pos_to_store.pop_front();
       }
@@ -138,14 +119,6 @@ void SampledOverlap::PopulatePos_(const Overlap& overlap, int64_t overlap_id,
       rpos += 1;
     }
   }
-
-//  printf ("\n");
-//  printf ("\npos_:\n");
-//  for (auto it=pos_.begin(); it!=pos_.end(); it++) {
-//    printf ("first = %ld, second = %ld\n", it->first, it->second);
-//  }
-//  printf ("\n");
-//  fflush(stdout);
 
 }
 

@@ -83,30 +83,6 @@ void Racon::RunFromOverlaps_() {
   RunAllJobs_(queries, targets, overlaps, windows_, cons_type);
 
   LOG_ALL("Done!\n");
-
-//  MapOverlapRange contig_overlaps;
-//  FindContigOverlaps_(overlaps, contig_overlaps);
-
-//  // Process each contig individually.
-//  auto& tseqs = targets.get_sequences();
-//  for (int64_t i=0; i<tseqs.size(); i++) {
-//    auto t = tseqs[i];
-//    std::string tname = TrimToFirstSpace(std::string(t->get_header()));
-//
-//    // Retrieve all overlaps for the current target.
-//    auto it = contig_overlaps.find(i);
-//
-//    if (it == contig_overlaps.end()) {  // This target has no overlaps. Put it in a special place.
-//      fprintf (stderr, "TODO: targets without overlaps not handled yet!\n");
-//      fflush(stderr);
-//      exit(1);
-//    }
-//
-////    AlignOverlaps_();
-////    CreateIntervalTree_();
-////    PopulateJobs_();
-////    wait for threads to finish
-//  }
 }
 
 void Racon::RunFromAlignments_() {
@@ -127,7 +103,6 @@ int Racon::AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFi
   sampled.clear();
   sampled.resize(n_overlaps, nullptr);
 
-//  n_overlaps = 1;
   for (int64_t oid=0; oid<n_overlaps; oid++) {
     auto& overlap = overlaps.overlaps()[oid];
 
@@ -207,34 +182,25 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
   // Process only a part of the target sequence right around overlap positions.
   int64_t tstart = (overlap.Bstart() / window_len) * window_len;
   int64_t tend = std::min(((overlap.Bend() + window_len - 1) / window_len) * window_len, tlen);
-//  printf ("Processing overlap: %ld, Astart = %ld, Aend = %ld, Alen = %ld, Bstart = %ld, Bend = %ld, Bend = %ld, Brev = %ld\n", overlap_id, overlap.Astart(), overlap.Aend(), overlap.Alen(), overlap.Bstart(), overlap.Bend(), overlap.Blen(), overlap.Brev());
   for (int64_t i=tstart; i<tend; i+=window_len) {
     // TODO: Play with the window_end coordinate - maybe it would be better to remove the -1
     // and instead just trim the sequence to 1 base less?
   	int64_t window_id = i / window_len;
   	int64_t window_start = tw[window_id].start(); // std::max(i - window_ext, (int64_t) 0);
   	int64_t window_end = tw[window_id].end(); // std::min(i + window_len + window_ext, tlen) - 1;
-//    int64_t window_start = std::max(i - window_ext, (int64_t) 0);
-//    int64_t window_end = std::min(i + window_len + window_ext, tlen) - 1;
 
   	int64_t qstart = sampled_overlap->find(window_start);	// Found query start, or -1 if invalid.
   	int64_t qend = sampled_overlap->find(window_end);		// Found query end, or -1 if invalid.
 
-//    printf ("  Lookup: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", qstart, qend, window_start, window_end);
-
   	if (qstart < 0 && i == tstart) { // The beginning of a query may fall in the middle of a window.
-//  	  printf ("  qstart < 0 (qstart = %ld)\n", qstart);
       qstart = (overlap.Brev() == 0) ? (overlap.Astart()) : (overlap.Alen() - overlap.Aend());
       window_start = overlap.Bstart();
   	}
 
   	if (qend < 0 && ((i + window_len) >= tend)) {   // The end of a query may also fall in the middle of a window.
-//      printf ("  qend < 0 (qend = %ld)\n", qend);
       qend = (overlap.Brev() == 0) ? (overlap.Aend()) : (overlap.Alen() - overlap.Astart() - 1);
       window_end = overlap.Bend();
   	}
-
-//    printf ("  Before assert, window %ld: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", window_id, qstart, qend, window_start, window_end);
 
     if (qstart < 0 || qend < 0) {
       fprintf (stderr, "qstart = %d, qend = %d, (i + window_len) = %ld, tend = %ld\n", qstart, qend, (i + window_len), tend);
@@ -249,12 +215,8 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
 
   	assert (qstart >= 0 && qend >= 0);
 
-//  	printf ("  Adding to window %ld: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", window_id, qstart, qend, window_start, window_end);
-//  	fflush(stdout);
     tw[window_id].add(overlap_id, qstart, qend, window_start, window_end);
   }
-//  printf ("\n");
-//  fflush(stdout);
 }
 
 void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
@@ -343,25 +305,6 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
       return 1;
     }
 
-  //  fprintf (stderr, "seqs.size() = %ld\n", seqs.size());
-  //  fprintf (stderr, "quals.size() = %ld\n", quals.size());
-  //  fprintf (stderr, "starts.size() = %ld\n", starts.size());
-  //  fprintf (stderr, "ends.size() = %ld\n", ends.size());
-  //
-  //  for (int64_t i=0; i<seqs.size(); i++) {
-  //    printf ("@%ld start = %ld, end = %ld, seq len = %ld, qual len = %ld\n%s\n+\n%s\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
-  //  }
-  //  fflush(stdout);
-  //  exit(1);
-
-    // printf ("seqs.size() = %ld\n", seqs.size());
-    // for (int32_t i=0; i<seqs.size(); i++) {
-    //   printf ("[%d] start = %d, end = %d, seqs[i].size() = %lu, quals[i].size() = %lu\n%s\n%s\n\n", i, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
-    // }
-
-    // printf ("Constructing POA graph.\n");
-    // fflush(stdout);
-
     auto graph = SPOA::construct_partial_order_graph(seqs, quals, starts, ends,
                                               SPOA::AlignmentParams(param->match(), param->mismatch(),
                                               param->gap_open(), param->gap_ext(), (SPOA::AlignmentType) param->aln_type()));
@@ -386,9 +329,6 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
     }
 
     cons_seq = cons_seq.substr(start_offset, (end_offset - start_offset + 1));
-
-    // printf ("Window done.\n");
-    // fflush(stdout);
   }
 
   return 0;
