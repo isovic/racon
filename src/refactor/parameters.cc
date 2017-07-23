@@ -45,6 +45,7 @@ Parameters::Parameters(int argc, char* argv[]) :
   argparser.AddArgument(&(win_ovl_margin_), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
   argparser.AddArgument(&(do_erc_), VALUE_TYPE_BOOL, "", "erc", "0", "Perform error-correction instead of contig consensus. The only difference is in the type of parallelization to achieve better performance.", 0, "Control");
   argparser.AddArgument(&(error_rate_), VALUE_TYPE_DOUBLE, "e", "error-rate", "0.30", "Maximum allowed error rate. Used for filtering faulty overlaps.", 0, "Algorithm");
+  argparser.AddArgument(&(no_read_qv_), VALUE_TYPE_BOOL, "", "no-qv", "0", "If specified, reads can be provided without quality values.", 0, "Algorithm");
 
   // Alignment options.
   argparser.AddArgument(&(match_), VALUE_TYPE_INT32, "M", "match", "5", "Match score (positive value).", 0, "Alignment");

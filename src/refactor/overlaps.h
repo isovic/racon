@@ -44,7 +44,7 @@ class Overlap {
   std::string Aname() const {
     return Aname_;
   }
-  std::string Nname() const {
+  std::string Bname() const {
     return Bname_;
   }
   double perc_err() const {

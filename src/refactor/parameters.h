@@ -112,6 +112,10 @@ class Parameters {
     return window_len_;
   }
 
+  bool no_read_qv() const {
+    return no_read_qv_;
+  }
+
  private:
   Parameters(int argc, char* argv[]);
 
@@ -154,6 +158,8 @@ class Parameters {
   int32_t gap_open_ = -8;
   int32_t gap_ext_ = -6;
   int32_t aln_type_ = 1;     // SW 0, NW 1, OV 2
+
+  bool no_read_qv_ = false;
 };
 
 }

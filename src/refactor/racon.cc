@@ -49,7 +49,7 @@ void Racon::RunFromOverlaps_() {
   SequenceFile queries(SEQ_FORMAT_AUTO, param_->reads_path());
 
   // Sanity check to see if the reads have quality values.
-  if (queries.HasQV() == false) {
+  if (param_->no_read_qv() == false && queries.HasQV() == false) {
     FATAL_REPORT(ERR_WRONG_FILE_TYPE, "ERROR: Reads are not specified in a format which contains quality information. Exiting.\n");
     exit(1);
   }
@@ -154,7 +154,8 @@ int Racon::AlignAndSampleOverlaps_(const SequenceFile &queries, const SequenceFi
   return 0;
 }
 
-void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::shared_ptr<SampledOverlap>> &sampled_overlaps, std::vector<std::vector<Window>> &windows) const {
+void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overlaps, const std::vector<std::shared_ptr<SampledOverlap>> &sampled_overlaps,
+                              std::vector<std::vector<Window>> &windows) const {
   LOG_ALL("Constructing windows.\n");
 
   int64_t num_targets = targets.get_sequences().size();
@@ -187,7 +188,12 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
 
 }
 
-void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap, int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const {
+void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap,
+                                 int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const {
+  if (sampled_overlap->pos().size() == 0) {  
+    return;
+  }
+
   int64_t overlap_id = sampled_overlap->overlap_id();
   auto& overlap = overlaps.overlaps()[overlap_id];
 
@@ -229,6 +235,16 @@ void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &ov
   	}
 
 //    printf ("  Before assert, window %ld: qstart = %ld, qend = %ld, window_start = %ld, window_end = %ld\n", window_id, qstart, qend, window_start, window_end);
+
+    if (qstart < 0 || qend < 0) {
+      fprintf (stderr, "qstart = %d, qend = %d, (i + window_len) = %ld, tend = %ld\n", qstart, qend, (i + window_len), tend);
+      fprintf (stderr, "overlap.Aname() = %s, overlap.Astart() = %ld, overlap.Aend() = %ld, overlap.Alen() = %ld, overlap.Arev() = %ld\n", overlap.Aname().c_str(), overlap.Astart(), overlap.Aend(), overlap.Alen(), overlap.Arev());
+      fprintf (stderr, "overlap.Bname() = %s, overlap.Bstart() = %ld, overlap.Bend() = %ld, overlap.Blen() = %ld, overlap.Brev() = %ld\n", overlap.Bname().c_str(), overlap.Bstart(), overlap.Bend(), overlap.Blen(), overlap.Brev());
+      fprintf (stderr, "window_start = %ld, window_end = %ld\n", window_start, window_end);
+      int64_t temp_qend = (overlap.Brev() == 0) ? (overlap.Aend()) : (overlap.Alen() - overlap.Astart() - 1);
+      fprintf ("temp_qend = %ld, i = %ld, tstart = %ld, tend = %ld, tlen = %ld, overlap.Bstart() = %ld, overlap.Bend() = %ld\n", temp_qend, i, tstart, tend, tlen, overlap.Bstart(), overlap.Bend());
+      sampled_overlap->Verbose(std::cout);
+    }
 
   	assert (qstart >= 0 && qend >= 0);
 
@@ -402,7 +418,9 @@ double AvgQuality(const std::string& qual) {
   return avg_qual;
 }
 
-void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps, const std::shared_ptr<Parameters> param, const Window& window, std::vector<std::string>& seqs, std::vector<std::string>& quals, std::vector<uint32_t> &starts, std::vector<uint32_t> &ends) {
+void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
+                                     const std::shared_ptr<Parameters> param, const Window& window, std::vector<std::string>& seqs,
+                                     std::vector<std::string>& quals, std::vector<uint32_t> &starts, std::vector<uint32_t> &ends) {
   seqs.clear();
   quals.clear();
   starts.clear();
@@ -438,7 +456,12 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
       int64_t end = entry.query().end;
 
       // Get the quality first, to check if it's above threshold.
-      std::string qual = query->GetQualityAsString(start, end);
+      std::string qual;
+      if (param->no_read_qv() == false) {  // Use query qualities unless otherwise specified.
+        qual = query->GetQualityAsString(start, end);
+      } else {                            // Use dummy quality values instead.
+        qual = std::string((end - start), '!' + 30);
+      }
 
       // If it's ok, add the sequence.
       if (AvgQuality(qual) >= param->qv_threshold()) {
@@ -454,7 +477,12 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
       int64_t end = overlap.Alen() - entry.query().start - 1;
 
       // Get the quality first, to check if it's above threshold.
-      std::string qual = query->GetQualityAsString(start, end);
+      std::string qual;
+      if (param->no_read_qv() == false) {  // Use query qualities unless otherwise specified.
+        qual = query->GetQualityAsString(start, end);
+      } else {                            // Use dummy quality values instead.
+        qual = std::string((end - start), '!' + 30);
+      }
 
       // If it's ok, add the sequence.
       if (AvgQuality(qual) >= param->qv_threshold()) {

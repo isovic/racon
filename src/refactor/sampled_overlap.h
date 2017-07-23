@@ -10,6 +10,8 @@
 
 #include <memory>
 #include <unordered_map>
+#include <ostream>
+#include <sstream>
 
 #include "sequences/sequence_alignment.h"
 #include "libs/edlib.h"
@@ -46,6 +48,8 @@ class SampledOverlap {
   int64_t overlap_id() const {
     return overlap_id_;
   }
+
+  void Verbose(std::ostream& os);
 
  private:
   SampledOverlap();

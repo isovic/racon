@@ -49,6 +49,16 @@ int64_t SampledOverlap::find(int64_t target_pos) const {
   return it->second;
 }
 
+void SampledOverlap::Verbose(std::ostream& os) {
+  int64_t i = 0;
+  os << "This overlap has " << pos_.size() << " sampled points:\n";
+  for (auto& it: pos_) {
+    os << "[" << i << "] " << it.first << " -> " << it.second << "\n";
+    i += 1;
+  }
+
+}
+
 void SampledOverlap::PopulatePos_(const Overlap& overlap, int64_t overlap_id,
                                   const std::vector<uint8_t>& alignment,
                                   int64_t sample_step, int64_t extension) {
