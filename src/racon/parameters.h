@@ -96,6 +96,10 @@ class Parameters {
     return start_window_;
   }
 
+  int64_t num_windows() const {
+    return num_windows_;
+  }
+
   bool use_contig_qvs() const {
     return use_contig_qvs_;
   }
@@ -137,6 +141,7 @@ class Parameters {
   int64_t batch_of_windows_ = 20000;
   int64_t num_batches_ = -1;
   int64_t start_window_ = 0;
+  int64_t num_windows_ = 0;
   double qv_threshold_ = 10.0;
   int32_t num_threads_ = 4;
   double win_ovl_margin_ = 0.00;     // Window overlapping is disabled by default.

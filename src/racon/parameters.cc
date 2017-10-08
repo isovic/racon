@@ -42,6 +42,7 @@ Parameters::Parameters(int argc, char* argv[]) :
   argparser.AddArgument(&(batch_of_windows_), VALUE_TYPE_INT64, "b", "winbatch", "20000", "Size of the batch in which to process windows. After a batch is finished, consensus of the windows is joined and output to file.", 0, "Control");
   argparser.AddArgument(&(num_batches_), VALUE_TYPE_INT64, "", "num-batches", "-1", "The number of batches which to process", 0, "Control");
   argparser.AddArgument(&(start_window_), VALUE_TYPE_INT64, "", "start-window", "0", "ID of the window to start processing from.", 0, "Control");
+  argparser.AddArgument(&(num_windows_), VALUE_TYPE_INT64, "", "num-windows", "0", "Number of windows to process.", 0, "Control");
   argparser.AddArgument(&(win_ovl_margin_), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
   argparser.AddArgument(&(do_erc_), VALUE_TYPE_BOOL, "", "erc", "0", "Perform error-correction instead of contig consensus. The only difference is in the type of parallelization to achieve better performance.", 0, "Control");
   argparser.AddArgument(&(error_rate_), VALUE_TYPE_DOUBLE, "e", "error-rate", "0.30", "Maximum allowed error rate. Used for filtering faulty overlaps.", 0, "Algorithm");
