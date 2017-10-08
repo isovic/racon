@@ -56,6 +56,8 @@ class Window {
 
   const std::vector<WindowEntry>& entries() const { return entries_; }
 
+  void SortEntries(bool skip_first);
+
   int64_t target_id() const { return target_id_; }
   int64_t start() const { return start_; }
   void start(int64_t new_start) { start_ = new_start; }
