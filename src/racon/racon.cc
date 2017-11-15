@@ -158,14 +158,14 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
   }
 
   for (int64_t i=0; i<sampled_overlaps.size(); i++) {
-    AddOverlapToWindows_(targets, overlaps, sampled_overlaps[i], window_len, window_ext, windows);
+    AddSampledOverlapToWindows_(targets, overlaps, sampled_overlaps[i], window_len, window_ext, windows);
   }
 
 }
 
-void Racon::AddOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap,
+void Racon::AddSampledOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap,
                                  int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const {
-  if (sampled_overlap->pos().size() == 0) {  
+  if (sampled_overlap->pos().size() == 0) {
     return;
   }
 
