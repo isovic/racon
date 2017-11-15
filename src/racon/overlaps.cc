@@ -152,6 +152,13 @@ int Overlap::ParsePaf_(const std::string &line, const MapId &q_ids, const MapId 
   return 0;
 }
 
+std::string Overlap::Verbose() const {
+  std::stringstream ss;
+  ss << Aname_ << " " << Bname_ << " " << perc_err_ << " " << shared_minmers_ << Arev_ << " " << Astart_ << " " <<  Aend_ << " " <<  Alen_ << " " << Brev_ << " " <<  Bstart_ << " " <<  Bend_ << " " <<  Blen_;
+  return ss.str();
+}
+
+
 
 
 Overlaps::Overlaps(const std::string& path, const OverlapFormat &of,
@@ -171,7 +178,29 @@ Overlaps::~Overlaps() {
 
 void Overlaps::SortByTargetId() {
   std::sort(overlaps_.begin(), overlaps_.end(),
-            [](const Overlap &a, const Overlap &b){ return (a.Bid() < b.Bid()); } );
+            [](const Overlap &a, const Overlap &b) {
+
+                  // if (a.Bstart() == b.Bstart()) {
+                  //   printf ("a.Aname() = '%s'\nb.Aname() = '%s'\n", a.Aname().c_str(), b.Aname().c_str());
+                  //   printf ("a = %s\n", a.Verbose().c_str());
+                  //   printf ("b = %s\n", b.Verbose().c_str());
+                  //   printf ("a.Bid() = %ld\n", a.Bid());
+                  //   printf ("b.Bid() = %ld\n", b.Bid());
+                  //   printf ("a.Aname() > b.Aname() = %d\n", a.Aname() < b.Aname());
+                  //   printf ("------------\n\n");
+                  //   // exit(1);
+                  // }
+
+                if (a.Bid() == b.Bid()) {
+                  if (a.Bstart() == b.Bstart()) {
+                    return a.Aname() > b.Aname();
+                  }
+                  return (a.Bstart() < b.Bstart());
+                  //  || (a.Bstart() == b.Bstart() && a.Aname() < b.Aname()));
+                }
+                return (a.Bid() < b.Bid());
+                // return (a.Bid() < b.Bid() || (a.Bid() == b.Bid() && a.Bstart() < b.Bstart()));
+            } );
 }
 
 void Overlaps::ParseUnique_(const std::string& path, const OverlapFormat& of,

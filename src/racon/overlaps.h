@@ -30,6 +30,8 @@ class Overlap {
   Overlap& operator=(const Overlap& op);
   void swap(Overlap& op);
 
+  std::string Verbose() const;
+
   /** Checks the length of the overlap in query and target coordinates.
    * Returns 0 if the ratio of those is within the specified error_rate.
    */
