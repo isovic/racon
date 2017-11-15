@@ -63,6 +63,17 @@ void SampledOverlap::PopulatePos_(const Overlap& overlap, int64_t overlap_id,
                                   const std::vector<uint8_t>& alignment,
                                   int64_t sample_step, int64_t extension) {
 
+  // TODO: 15.11.2017. Leftover debug info when hunting the diff between results from refactored and master version.
+  #ifdef HEAVY_DUTY_DEBUG_MODE
+    // if (overlap.Aname() == std::string("channel_127_read_8_twodirections")) {
+    if (overlap.Aname() == std::string(HEAVY_DUTY_DEBUG_QNAME)) {
+      printf ("Sampling!\n");
+      printf ("%s\n", overlap.Verbose().c_str());
+      fflush(stdout);
+      // exit(1);
+    }
+  #endif
+
   overlap_id_ = overlap_id;
 
   int64_t qpos = (overlap.Brev() == 0) ? (overlap.Astart()) : (overlap.Alen() - overlap.Aend());
@@ -71,11 +82,23 @@ void SampledOverlap::PopulatePos_(const Overlap& overlap, int64_t overlap_id,
   // Find the first position of a window at >= rpos.
   int64_t window_pos = ((rpos + sample_step - 1) / sample_step) * sample_step;
 
+  #ifdef HEAVY_DUTY_DEBUG_MODE
+    if (overlap.Aname() == std::string(HEAVY_DUTY_DEBUG_QNAME)) {
+      printf ("window_pos = %ld, rpos_end = %ld\n", window_pos, rpos_end);
+    }
+  #endif
+
   // Initialize a queue with positions of interest.
   // This includes the actual window boundaries, as well as the
   // locations of extended windows in the overlapping windows mode.
   std::deque<int64_t> pos_to_store;
   for (int64_t i = window_pos; i < rpos_end; i += sample_step) {
+    #ifdef HEAVY_DUTY_DEBUG_MODE
+      if (overlap.Aname() == std::string(HEAVY_DUTY_DEBUG_QNAME)) {
+        printf ("Window: i = %ld, window_pos = %ld, rpos_end = %ld\n", i, window_pos, rpos_end);
+      }
+    #endif
+
     if (extension > 0) {
       // Store the overlapping window extension coordinates.
       if ((i - extension - 1) >= 0) { pos_to_store.push_back(i - extension - 1); }
@@ -96,21 +119,51 @@ void SampledOverlap::PopulatePos_(const Overlap& overlap, int64_t overlap_id,
     }
   }
 
-  pos_.clear();
+  #ifdef HEAVY_DUTY_DEBUG_MODE
+    if (overlap.Aname() == std::string(HEAVY_DUTY_DEBUG_QNAME)) {
+      printf ("Sampling 2!\n");
+      printf ("%s\n", overlap.Verbose().c_str());
+      fflush(stdout);
+      // exit(1);
+    }
+  #endif
 
+  pos_.clear();
+  int64_t last_match_qpos = 0;
+
+  #ifdef HEAVY_DUTY_DEBUG_MODE
+    if (overlap.Aname() == std::string(HEAVY_DUTY_DEBUG_QNAME)) {
+      printf ("pos_to_store:\n");
+      for (int64_t i = 0; i<pos_to_store.size(); i++) {
+        printf ("%ld\n", pos_to_store[i]);
+      }
+    }
+  #endif
+
+  // This loop pops the next position to find from a queue.
+  // Positions to find are linear and ascending, so we just glide
+  // on through and for required query positions find their positions
+  // on the reference.
   for (auto& op : alignment) {
     if (pos_to_store.size() == 0) { break; }
+
     // Hash the positions.
-    if (op == EDLIB_EDOP_MATCH || op == EDLIB_EDOP_MISMATCH
-        || op == EDLIB_EDOP_DELETE) {
-      if (rpos == pos_to_store.front()) {
-        pos_[rpos] = qpos;
-        pos_to_store.pop_front();
-      }
+    if (rpos == pos_to_store.front() &&
+        (op == EDLIB_EDOP_MATCH || op == EDLIB_EDOP_MISMATCH
+        || op == EDLIB_EDOP_DELETE || op == EDLIB_EDOP_INSERT)) {
+
+      // TODO: 15.11.2017. Experimenting with placing the position at only the match positions.
+      int64_t qpos_to_store = (op == EDLIB_EDOP_DELETE || op == EDLIB_EDOP_INSERT) ? last_match_qpos : qpos;
+      // int64_t qpos_to_store = (op == EDLIB_EDOP_INSERT) ? last_match_qpos : qpos;
+      // int64_t qpos_to_store = qpos;
+
+      pos_[rpos] = qpos_to_store;
+      pos_to_store.pop_front();
     }
 
     // Move down the alignment.
     if (op == EDLIB_EDOP_MATCH || op == EDLIB_EDOP_MISMATCH) {
+      last_match_qpos = qpos;
       qpos += 1;
       rpos += 1;
     } else if (op == EDLIB_EDOP_INSERT) {
@@ -120,6 +173,14 @@ void SampledOverlap::PopulatePos_(const Overlap& overlap, int64_t overlap_id,
     }
   }
 
+  #ifdef HEAVY_DUTY_DEBUG_MODE
+    if (overlap.Aname() == std::string(HEAVY_DUTY_DEBUG_QNAME)) {
+      printf ("Sampling 3!\n");
+      printf ("%s\n", overlap.Verbose().c_str());
+      fflush(stdout);
+      // exit(1);
+    }
+  #endif
 }
 
 } /* namespace is */
