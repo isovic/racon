@@ -242,7 +242,7 @@ void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets
 
   // Emplace all jobs.
   for (int64_t i=0; i<windows.size(); i++) {
-    if (cons_type == ConsensusType::Read) {     // Put all windows of the sequence in a single thread.
+    if (cons_type == ConsensusType::Read) {     // ERC. Put all windows of the sequence in a single thread.
       if (windows[i].size() > 0) {
         futures[i].emplace_back(thread_pool_->submit_task(Racon::WindowConsensus_,
                                                           std::cref(queries), std::cref(targets),
@@ -250,8 +250,11 @@ void Racon::RunAllJobs_(const SequenceFile &queries, const SequenceFile &targets
                                                           std::ref(cons_seq[i]), std::ref(cons_qual[i]), 0, windows[i].size()));
       }
 
-    } else {                                    // Distribute windows to threads.
-      for (int64_t j=0; j<windows[i].size(); j++) {
+    } else {                                    // Polishing. Distribute windows to threads.
+      int64_t start_window = std::max((int64_t) 0, param_->start_window());
+      int64_t end_window = (param_->num_windows() > 0) ? (start_window + param_->num_windows()) : windows[i].size();
+
+      for (int64_t j=start_window; j<end_window; j++) {
         futures[i].emplace_back(thread_pool_->submit_task(Racon::WindowConsensus_,
                                                           std::cref(queries), std::cref(targets),
                                                           std::cref(overlaps), param_, std::cref(windows[i]),
@@ -397,6 +400,9 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
     if (overlap.Brev() == 0) {                          // The query is forward.
       int64_t start = entry.query().start;
       int64_t end = entry.query().end;
+
+      // Safety percaution.
+      if ((end - start) < 3) { continue; }
 
       // Get the quality first, to check if it's above threshold.
       std::string qual;
