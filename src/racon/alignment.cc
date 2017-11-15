@@ -28,7 +28,12 @@ int Alignment::AlignOverlap(const SingleSequence& query, const SingleSequence& t
   if (overlap.Brev()) {
     seq->ReverseComplement();
     Astart = overlap.Alen() - overlap.Aend();
-    Aend = overlap.Alen() - overlap.Astart() - 1;
+    Aend = overlap.Alen() - overlap.Astart(); // There used to be a "- 1" here in the previous version of Racon and
+                                              // the previous commits of the refactoring, but this is wrong. The alignment
+                                              // of a sequence which should be perfect (the exact sequence used in the tiling path)
+                                              // turned out to be by 1 longer than the query and target, having one 'I' at the
+                                              // beginning and one 'D' at the end.
+                                              // This demistyfies whether the END coordinate is non-inclusive or not (it is not inclusive!).
   }
 
   int64_t aln_start = 0, aln_end = 0, editdist = 0;
@@ -38,9 +43,41 @@ int Alignment::AlignOverlap(const SingleSequence& query, const SingleSequence& t
                           &aln_start, &aln_end, &editdist, alignment);
 
   if (!rcaln) {
+
+    // if (!overlap.Brev()) {
+    //   printf ("Query:\n");
+    //   for (int64_t i = Astart; i<Aend; i++) {
+    //     printf ("%c", seq->get_data()[i]);
+    //   }
+    //   printf ("\n");
+    //   printf ("\n");
+    //   printf ("Target:\n");
+    //   printf ("overlap.Bstart() = %ld\n", overlap.Bstart());
+    //   printf ("overlap.Bend() = %ld\n", overlap.Bend());
+    //   for (int64_t i = overlap.Bstart(); i<(overlap.Bend()); i++) {
+    //     printf ("%c", target.get_data()[i]);
+    //   }
+    //   printf ("\n");
+    //   printf ("\n");
+    //   int64_t nm = 0, ni = 0, nd = 0, nx = 0;
+    //   for (int64_t i=0; i<alignment.size(); i++) {
+    //     printf ("%c", "=IDX"[alignment[i]]);
+    //     nm += (alignment[i] == 0) ? 1 : 0;
+    //     ni += (alignment[i] == 1) ? 1 : 0;
+    //     nd += (alignment[i] == 2) ? 1 : 0;
+    //     nx += (alignment[i] == 3) ? 1 : 0;
+    //   }
+    //   printf ("\n");
+    //   printf ("nm = %ld, nx = %ld, ni = %ld, nd = %ld\n", nm, nx, ni, nd);
+    //   printf ("e = %.2f\n", 100.0 * ((float) (nx + ni + nd)) / ((float) (nm + nx + ni + nd)));
+    //   fflush(stdout);
+    //   // exit(1);
+    // }
+
     sampled->set(overlap, overlap_id, alignment, win_size, win_ext);
 
   } else {
+
     return 1;
 
   }
