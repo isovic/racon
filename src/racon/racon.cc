@@ -20,7 +20,7 @@
 // #define DEBUG_DUMP_WINDOWS
 // #define DEBUG_SEGFAULT
 // #define HEAVY_DUTY_DEBUG_MODE
-// #define HEAVY_DUTY_DEBUG_QNAME "channel_127_read_8_twodirections"
+// #define HEAVY_DUTY_DEBUG_QNAME ""
 
 namespace is {
 
@@ -175,24 +175,9 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
 
 void Racon::AddSampledOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap,
                                  int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const {
-
-  #ifdef HEAVY_DUTY_DEBUG_MODE
-    // if (overlap.Aname() == std::string("channel_127_read_8_twodirections")) {
-    int64_t overlap_id = sampled_overlap->overlap_id();
-    auto& overlap = overlaps.overlaps()[overlap_id];
-    if (overlap.Aname() == std::string(HEAVY_DUTY_DEBUG_QNAME)) {
-      printf ("Exists! I can't add an overlap!!\n");
-      printf ("%s\n", overlap.Verbose().c_str());
-      fflush(stdout);
-      // exit(1);
-    }
-  #endif
-
   if (sampled_overlap->pos().size() == 0) {
     return;
   }
-
-
 
   int64_t overlap_id = sampled_overlap->overlap_id();
   auto& overlap = overlaps.overlaps()[overlap_id];
@@ -340,31 +325,12 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
       return 1;
     }
 
-    #ifdef DEBUG_SEGFAULT
-      printf ("I'm here -1!\n");
-      fflush(stdout);
-    #endif
-
     auto graph = SPOA::construct_partial_order_graph(window_data.seqs, window_data.quals, window_data.starts, window_data.ends,
                                               SPOA::AlignmentParams(param->match(), param->mismatch(),
                                               param->gap_open(), param->gap_ext(), (SPOA::AlignmentType) param->aln_type()));
 
     std::vector<uint32_t> coverages;
-    #ifdef DEBUG_SEGFAULT
-      printf ("I'm here 0!\n");
-      fflush(stdout);
-    #endif
-
-    // printf ("Generating consensus.\n");
-    // fflush(stdout);
     cons_seq = graph->generate_consensus(coverages);
-
-    // printf ("Trimming the consensus.\n");
-    // fflush(stdout);
-    #ifdef DEBUG_SEGFAULT
-      printf ("I'm here 1!\n");
-      fflush(stdout);
-    #endif
 
     // Unfortunately, POA is bad when there are errors, such as long insertions, at
     // the end of a sequence. The consensus walk will also have those overhang
@@ -377,10 +343,6 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
       if (coverages[start_offset] >= ((window_data.seqs.size() - 1) / 2)) { break; }
     }
 
-    #ifdef DEBUG_SEGFAULT
-      printf ("I'm here 2!\n");
-      fflush(stdout);
-    #endif
     cons_seq = cons_seq.substr(start_offset, (end_offset - start_offset + 1));
   }
 
