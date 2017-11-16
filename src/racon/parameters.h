@@ -120,6 +120,10 @@ class Parameters {
     return no_read_qv_;
   }
 
+  const std::string& write_window() const {
+    return write_window_;
+  }
+
  private:
   Parameters(int argc, char* argv[]);
 
@@ -165,6 +169,8 @@ class Parameters {
   int32_t aln_type_ = 1;     // SW 0, NW 1, OV 2
 
   bool no_read_qv_ = false;
+
+  std::string write_window_ = "";
 };
 
 }

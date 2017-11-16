@@ -58,6 +58,9 @@ Parameters::Parameters(int argc, char* argv[]) :
   argparser.AddArgument(&(verbose_level_), VALUE_TYPE_INT32, "v", "verbose", "5", "Verbose level. 0 off, 1 low, 2 medium, 3 high, 4 and 5 all levels, 6-9 debug.", 0, "Other");
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other");
 
+  // Debug options.
+  argparser.AddArgument(&(write_window_), VALUE_TYPE_STRING, "", "write-window", "", "Writes down the current window being processed to file specified by STR. This is strictly a debug option, and is not multithreading safe. Run it with -t 1. For every window being processed, it first writes it to disk, then calls SPOA. If there are inconsistencies or breaks, this allows easier inspection. Dumping windows only occurs if DEBUG_DUMP_WINDOWS is defined.", 0, "Debug");
+
   // Check if program was run with no parameters. Verbose usage and exit.
   if (argc == 1) {
     std::cerr << "  " << usage_cmd << std::endl << std::endl;
