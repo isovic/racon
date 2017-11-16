@@ -30,6 +30,30 @@ class Racon;
 
 std::unique_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param);
 
+class DataForSpoa {
+ public:
+  DataForSpoa(const Window& _window, int64_t _window_id) : window(_window), window_id(_window_id) { }
+
+  const Window& window;
+  int64_t window_id;
+  std::vector<std::string> seqs, quals;
+  std::vector<uint32_t> starts, ends;
+
+  void WriteFASTQ(const std::string& out_path) {
+    FILE *fp_out = fopen(out_path.c_str(), "w");
+    WriteFASTQ(fp_out);
+    fclose(fp_out);
+  }
+
+  void WriteFASTQ(FILE* fp_out) {
+    for (int64_t i=0; i<seqs.size(); i++) {
+      fprintf (fp_out, "@%ld window_id = %d, window = %ld:%ld-%ld, qstart = %ld, qend = %ld, tstart = %ld, tend = %ld, seq len = %ld, qual len = %ld\n%s\n+\n%s\n", i, window_id, window.target_id(), window.start(), window.end(), -1, -1, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
+    }
+    fflush(fp_out);
+  }
+
+};
+
 class Racon {
  public:
   ~Racon();
@@ -61,9 +85,11 @@ class Racon {
                               const std::shared_ptr<Parameters> param, const std::vector<Window>& windows, std::vector<std::string>& cons_seqs,
                               std::vector<std::string>& cons_quals, int64_t starting_window, int64_t ending_window);
 
+  // static void ExtractSequencesForSPOA_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
+  //                                      const std::shared_ptr<Parameters> param, const Window& window, std::vector<std::string>& seqs,
+  //                                      std::vector<std::string>& quals, std::vector<uint32_t> &starts, std::vector<uint32_t> &ends);
   static void ExtractSequencesForSPOA_(const SequenceFile &queries, const SequenceFile &targets, const Overlaps &overlaps,
-                                       const std::shared_ptr<Parameters> param, const Window& window, std::vector<std::string>& seqs,
-                                       std::vector<std::string>& quals, std::vector<uint32_t> &starts, std::vector<uint32_t> &ends);
+                                       const std::shared_ptr<Parameters> param, const Window& window, DataForSpoa& window_data);
 
   /** A helper function to fill a map in which the key is a sequence
   	* name, and the value is the ordinal number of the sequence in
