@@ -17,6 +17,11 @@
 #include "spoa.hpp"
 #include "graph.hpp"
 
+// #define DEBUG_DUMP_WINDOWS
+// #define DEBUG_SEGFAULT
+// #define HEAVY_DUTY_DEBUG_MODE
+// #define HEAVY_DUTY_DEBUG_QNAME "channel_127_read_8_twodirections"
+
 namespace is {
 
 std::unique_ptr<Racon> createRacon(const std::shared_ptr<Parameters> param) {
@@ -160,13 +165,34 @@ void Racon::ConstructWindows_(const SequenceFile &targets, const Overlaps &overl
   for (int64_t i=0; i<sampled_overlaps.size(); i++) {
     AddSampledOverlapToWindows_(targets, overlaps, sampled_overlaps[i], window_len, window_ext, windows);
   }
+
+  // for (auto& target_window: windows) {
+  //   for (auto& window: target_window) {
+  //     window.SortEntries(false);
+  //   }
+  // }
 }
 
 void Racon::AddSampledOverlapToWindows_(const SequenceFile &targets, const Overlaps &overlaps, std::shared_ptr<SampledOverlap> sampled_overlap,
                                  int64_t window_len, int64_t window_ext, std::vector<std::vector<Window>> &windows) const {
+
+  #ifdef HEAVY_DUTY_DEBUG_MODE
+    // if (overlap.Aname() == std::string("channel_127_read_8_twodirections")) {
+    int64_t overlap_id = sampled_overlap->overlap_id();
+    auto& overlap = overlaps.overlaps()[overlap_id];
+    if (overlap.Aname() == std::string(HEAVY_DUTY_DEBUG_QNAME)) {
+      printf ("Exists! I can't add an overlap!!\n");
+      printf ("%s\n", overlap.Verbose().c_str());
+      fflush(stdout);
+      // exit(1);
+    }
+  #endif
+
   if (sampled_overlap->pos().size() == 0) {
     return;
   }
+
+
 
   int64_t overlap_id = sampled_overlap->overlap_id();
   auto& overlap = overlaps.overlaps()[overlap_id];
@@ -304,23 +330,45 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
     // Get the actual sequences which will be fed to SPOA.
     Racon::ExtractSequencesForSPOA_(queries, targets, overlaps, param, window, seqs, quals, starts, ends);
 
+    #ifdef DEBUG_DUMP_WINDOWS
+      for (int64_t i=0; i<seqs.size(); i++) {
+        printf ("@%ld qstart = %ld, qend = %ld, tstart = %ld, tend = %ld, seq len = %ld, qual len = %ld\n%s\n+\n%s\n", i, -1, -1, starts[i], ends[i], seqs[i].size(), quals[i].size(), seqs[i].c_str(), quals[i].c_str());
+      }
+      fflush(stdout);
+      exit(1);
+    #endif
+
     // In case the coverage is too low, just pick the first sequence in the window.
     if (seqs.size() <= 2) {
       cons_seq = seqs[0];
       return 1;
     }
 
+    #ifdef DEBUG_SEGFAULT
+      printf ("I'm here -1!\n");
+      fflush(stdout);
+    #endif
+
     auto graph = SPOA::construct_partial_order_graph(seqs, quals, starts, ends,
                                               SPOA::AlignmentParams(param->match(), param->mismatch(),
                                               param->gap_open(), param->gap_ext(), (SPOA::AlignmentType) param->aln_type()));
 
     std::vector<uint32_t> coverages;
+    #ifdef DEBUG_SEGFAULT
+      printf ("I'm here 0!\n");
+      fflush(stdout);
+    #endif
+
     // printf ("Generating consensus.\n");
     // fflush(stdout);
     cons_seq = graph->generate_consensus(coverages);
 
     // printf ("Trimming the consensus.\n");
     // fflush(stdout);
+    #ifdef DEBUG_SEGFAULT
+      printf ("I'm here 1!\n");
+      fflush(stdout);
+    #endif
 
     // Unfortunately, POA is bad when there are errors, such as long insertions, at
     // the end of a sequence. The consensus walk will also have those overhang
@@ -333,6 +381,10 @@ int Racon::WindowConsensus_(const SequenceFile &queries, const SequenceFile &tar
       if (coverages[start_offset] >= ((seqs.size() - 1) / 2)) { break; }
     }
 
+    #ifdef DEBUG_SEGFAULT
+      printf ("I'm here 2!\n");
+      fflush(stdout);
+    #endif
     cons_seq = cons_seq.substr(start_offset, (end_offset - start_offset + 1));
   }
 
@@ -424,6 +476,9 @@ void Racon::ExtractSequencesForSPOA_(const SequenceFile &queries, const Sequence
     } else {                                            // The query is reverse-complemented.
       int64_t start = overlap.Alen() - entry.query().end;
       int64_t end = overlap.Alen() - entry.query().start;
+
+      // Safety percaution.
+      if ((end - start) < 3) { continue; }
 
       // Get the quality first, to check if it's above threshold.
       std::string qual;
