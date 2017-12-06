@@ -19,6 +19,8 @@
 #include "pileup.h"
 #include "tictoc.h"
 
+#define DEBUG_DUMP_WINDOWS
+
 int GroupAlignmentsToContigs(const SequenceFile &alns, double qv_threshold, std::vector<std::string> &ctg_names, std::map<std::string, std::vector<const SingleSequence *> > &ctg_alns) {
   ctg_names.clear();
   ctg_alns.clear();
@@ -295,10 +297,14 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
 
   // Process the genome in windows, but also process windows in batches. Each batch is processed in multiple threads,
   // then the results are collected and output to file. After that, a new batch is loaded.
+
   for (int64_t window_batch_start = parameters.start_window, num_batches = 0; window_batch_start < num_windows && (parameters.num_batches < 0 || num_batches < parameters.num_batches); window_batch_start += parameters.batch_of_windows, num_batches++) {
     std::vector<std::string> consensus_windows;
     consensus_windows.resize(parameters.batch_of_windows);
     int64_t windows_to_process = std::min(parameters.batch_of_windows, num_windows - window_batch_start);
+
+    printf ("parameters.num_batches = %d, num_batches = %d\n", parameters.num_batches, num_batches);
+    fflush(stdout);
 
 //    #pragma omp parallel for num_threads(parameters.num_threads) schedule(dynamic, 1)
     #pragma omp parallel for num_threads(num_window_threads) reduction(+:clk_total_extract, clk_total_spoa) schedule(dynamic, 1)
@@ -330,6 +336,34 @@ void CreateConsensusAln(const ProgramParameters &parameters, int32_t num_window_
                              window_start, window_end, parameters.qv_threshold, parameters.use_contig_qvs,
                              windows_for_msa, quals_for_msa, refs_for_msa,
                              starts_for_msa, ends_for_msa, starts_on_read, ends_on_read, NULL);
+
+      #ifdef DEBUG_DUMP_WINDOWS
+        if (parameters.write_window.size() > 0) {
+          if (parameters.num_batches < 1 || (parameters.num_batches * parameters.batch_of_windows) > 1000) {
+            LOG_ALL("Refusing to output windows to individual files because there could potentially be too many. Comment out this and the following line, recompile and rerun if you think you know what you are doing.\n");
+            exit(1);
+          }
+          int64_t window_id = window_batch_start + id_in_batch;
+          std::stringstream temp_ss;
+          temp_ss << parameters.write_window << "." << window_id;
+          FILE *fp_out = fopen(temp_ss.str().c_str(), "w");
+          for (int64_t i=0; i<windows_for_msa.size(); i++) {
+            double avg_qual = 0.0f;
+            for (int64_t j=0; j<quals_for_msa[i].size(); j++) {
+              avg_qual += (double) (quals_for_msa[i][j] - '!');
+            }
+            avg_qual /= std::max((double) quals_for_msa[i].size(), 1.0);
+
+            fprintf (fp_out, "@%ld qstart = %ld, qend = %ld, tstart = %ld, tend = %ld, seq len = %ld, qual len = %ld qv = %f\n%s\n+\n%s\n",
+                              i, starts_on_read[i], ends_on_read[i], starts_for_msa[i], ends_for_msa[i], windows_for_msa[i].size(),
+                              quals_for_msa[i].size(), avg_qual, windows_for_msa[i].c_str(), quals_for_msa[i].c_str());
+          }
+          fflush(fp_out);
+          fclose(fp_out);
+          // exit(1);
+        }
+      #endif
+
        //       ExtractWindowFromAlns(contig, ctg_alns, aln_lens_on_ref, aln_interval_tree, window_start, window_end, qv_threshold, windows_for_msa, quals_for_msa, refs_for_msa, starts_for_msa, ends_for_msa, NULL);
        if (parameters.do_erc == false && thread_id == 0) { LOG_MEDHIGH_NOHEADER(", coverage: %ldx", windows_for_msa.size()) }
        if (windows_for_msa.size() == 0) {

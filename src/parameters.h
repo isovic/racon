@@ -53,6 +53,8 @@ struct ProgramParameters {
 
 //  bool do_align = false;
   bool do_sparse = false;
+
+  std::string write_window;
 };
 
 #endif /* SRC_PARAMETERS_H_ */

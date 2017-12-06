@@ -65,6 +65,9 @@ int main(int argc, char* argv[]) {
   // TODO: Deprecated feature. Consider removing permanently.
   argparser.AddArgument(&(parameters.win_ovl_margin), VALUE_TYPE_DOUBLE, "", "ovl-margin", "0.0", "Fraction of the window size to overlap the windows by.", 0, "Algorithm");
 
+  // Debug options.
+  argparser.AddArgument(&(parameters.write_window), VALUE_TYPE_STRING, "", "write-window", "", "Writes down the current window being processed to file specified by STR. This is strictly a debug option, and is not multithreading safe. Run it with -t 1. For every window being processed, it first writes it to disk, then calls SPOA. If there are inconsistencies or breaks, this allows easier inspection. Dumping windows only occurs if DEBUG_DUMP_WINDOWS is defined.", 0, "Debug");
+
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
 
   if (argc == 1) {
