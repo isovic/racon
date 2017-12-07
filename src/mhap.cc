@@ -372,7 +372,7 @@ int AlignOverlaps(const SequenceFile &refs, const SequenceFile &reads, const std
     if (omhap.Brev) {
       seq->ReverseComplement();
       omhap.Astart = mhap.Alen - mhap.Aend;
-      omhap.Aend = mhap.Alen - mhap.Astart - 1;
+      omhap.Aend = mhap.Alen - mhap.Astart; // - 1;
     }
 
 //    LOG_ALL(", len = %ld", seq->get_sequence_length());
