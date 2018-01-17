@@ -16,3 +16,6 @@
 [submodule "vendor/spoa"]
 	path = vendor/spoa
 	url = https://github.com/rvaser/spoa
+[submodule "vendor/thread_pool"]
+	path = vendor/thread_pool
+	url = https://github.com/rvaser/thread_pool

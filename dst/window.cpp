@@ -10,7 +10,7 @@
 
 namespace racon {
 
-std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, DataType type,
+std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, WindowType type,
     const std::string& backbone, const std::string& quality) {
 
     if (backbone.empty() || backbone.size() != quality.size()) {
@@ -22,7 +22,7 @@ std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, DataType type,
     return std::unique_ptr<Window>(new Window(id, rank, type, backbone, quality));
 }
 
-Window::Window(uint32_t id, uint32_t rank, DataType type, const std::string& backbone,
+Window::Window(uint32_t id, uint32_t rank, WindowType type, const std::string& backbone,
     const std::string& quality)
         : id_(id), rank_(rank), type_(type), consensus_(), sequences_(1, backbone),
         qualities_(1, quality), positions_(1, std::make_pair(0,0)) {
@@ -83,7 +83,7 @@ void Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
     std::vector<uint32_t> coverages;
     consensus_ = graph->generate_consensus(coverages);
 
-    if (type_ == DataType::kTGS) {
+    if (type_ == WindowType::kTGS) {
         uint32_t avg_coverage = (sequences_.size() - 1) / 2;
 
         int32_t begin = 0, end = consensus_.size() - 1;

@@ -18,13 +18,13 @@ namespace spoa {
 
 namespace racon {
 
-enum class DataType {
+enum class WindowType {
     kNGS, // Next Generation Sequencing
     kTGS // Third Generation Sequencing
 };
 
 class Window;
-std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, DataType type,
+std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, WindowType type,
     const std::string& backbone, const std::string& quality);
 
 class Window {
@@ -42,16 +42,16 @@ public:
         uint32_t end);
 
     friend std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank,
-        DataType type, const std::string& backbone, const std::string& quality);
+        WindowType type, const std::string& backbone, const std::string& quality);
 private:
-    Window(uint32_t id, uint32_t rank, DataType type, const std::string& backbone,
+    Window(uint32_t id, uint32_t rank, WindowType type, const std::string& backbone,
         const std::string& quality);
     Window(const Window&) = delete;
     const Window& operator=(const Window&) = delete;
 
     uint32_t id_;
     uint32_t rank_;
-    DataType type_;
+    WindowType type_;
     std::string consensus_;
     std::vector<std::string> sequences_;
     std::vector<std::string> qualities_;
