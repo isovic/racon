@@ -10,3 +10,9 @@
 [submodule "codebase/samscripts"]
 	path = codebase/samscripts
 	url = https://github.com/isovic/samscripts.git
+[submodule "vendor/bioparser"]
+	path = vendor/bioparser
+	url = https://github.com/rvaser/bioparser
+[submodule "vendor/spoa"]
+	path = vendor/spoa
+	url = https://github.com/rvaser/spoa

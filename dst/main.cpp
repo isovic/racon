@@ -45,27 +45,30 @@ int main(int argc, char** argv) {
     }
 
     if (input_paths.size() < 3) {
+        fprintf(stderr, "racon:: error: missing input file(s)!\n");
         help();
         exit(1);
     }
 
-    auto polisher = racon::createPolisher();
+    //auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
+        //input_paths[2]);
 
     return 0;
 }
 
 void help() {
     printf(
-        "usage: racon [options ...] <reads> <mappings> <contigs/target reads>\n"
+        "usage: racon [options ...] <sequences> <mappings> <target sequences>\n"
         "\n"
-        "    <reads>\n"
-        "        input file in FASTA/FASTQ format containing reads\n"
+        "    <sequences>\n"
+        "        input file in FASTA/FASTQ format containing seqeunces used for\n"
+        "        correction\n"
         "    <mappings>\n"
-        "        input file in MHAP/PAF format containing mappings to contigs or\n"
-        "        targer reads\n"
-        "    <contigs/target reads>\n"
-        "        input file in FASTA/FASTQ format containing contigs or reads\n"
-        "        which will be corrected\n"
+        "        input file in MHAP/PAF/SAM format containing mappings between\n"
+        "        sequences and target sequences\n"
+        "    <target seqeunces>\n"
+        "        input file in FASTA/FASTQ format containing sequences which will\n"
+        "        be corrected\n"
         "\n"
         "    options:\n");
 }
