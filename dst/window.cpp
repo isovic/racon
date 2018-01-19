@@ -11,21 +11,27 @@
 namespace racon {
 
 std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, WindowType type,
-    const std::string& backbone, const std::string& quality) {
+    const char* backbone, uint32_t backbone_length, const char* quality,
+    uint32_t quality_length) {
 
-    if (backbone.empty() || backbone.size() != quality.size()) {
+    if (backbone_length == 0 || backbone_length != quality_length) {
         fprintf(stderr, "racon::createWindow error: "
             "empty backbone sequence/unequal quality length!\n");
         exit(1);
     }
 
-    return std::unique_ptr<Window>(new Window(id, rank, type, backbone, quality));
+    return std::unique_ptr<Window>(new Window(id, rank, type, backbone,
+        backbone_length, quality, quality_length));
 }
 
-Window::Window(uint32_t id, uint32_t rank, WindowType type, const std::string& backbone,
-    const std::string& quality)
-        : id_(id), rank_(rank), type_(type), consensus_(), sequences_(1, backbone),
-        qualities_(1, quality), positions_(1, std::make_pair(0,0)) {
+Window::Window(uint32_t id, uint32_t rank, WindowType type, const char* backbone,
+    uint32_t backbone_length, const char* quality, uint32_t quality_length)
+        : id_(id), rank_(rank), type_(type), consensus_(), sequences_(),
+        qualities_(), positions_() {
+
+    sequences_.emplace_back(backbone, backbone_length);
+    qualities_.emplace_back(quality, quality_length);
+    positions_.emplace_back(0, 0);
 }
 
 Window::~Window() {

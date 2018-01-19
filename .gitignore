@@ -36,3 +36,6 @@ scripts/test-leftalign/data/
 *.memtime
 comparison*.sh
 test-data/ecoli_map006_ont
+
+# Compiled Object files
+build

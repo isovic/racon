@@ -25,7 +25,8 @@ enum class WindowType {
 
 class Window;
 std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, WindowType type,
-    const std::string& backbone, const std::string& quality);
+    const char* backbone, uint32_t backbone_length, const char* quality,
+    uint32_t quality_length);
 
 class Window {
 public:
@@ -42,10 +43,11 @@ public:
         uint32_t end);
 
     friend std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank,
-        WindowType type, const std::string& backbone, const std::string& quality);
+        WindowType type, const char* backbone, uint32_t backbone_length,
+        const char* quality, uint32_t quality_length);
 private:
-    Window(uint32_t id, uint32_t rank, WindowType type, const std::string& backbone,
-        const std::string& quality);
+    Window(uint32_t id, uint32_t rank, WindowType type, const char* backbone,
+        uint32_t backbone_length, const char* quality, uint32_t quality_length);
     Window(const Window&) = delete;
     const Window& operator=(const Window&) = delete;
 

@@ -87,6 +87,8 @@ int main(int argc, char** argv) {
         racon::PolisherType::kF, window_length, quality_threshold,
         error_threshold, match, mismatch, gap, num_threads);
 
+    polisher->initialize();
+
     return 0;
 }
 

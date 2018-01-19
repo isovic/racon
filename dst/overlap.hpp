@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <unordered_map>
 
 namespace bioparser {
     template<class T>
@@ -25,10 +26,38 @@ namespace bioparser {
 
 namespace racon {
 
+class Sequence;
+
 class Overlap {
 public:
 
     ~Overlap() = default;
+
+    uint32_t q_id() const {
+        return q_id_;
+    }
+
+    uint32_t t_id() const {
+        return t_id_;
+    }
+
+    bool is_valid() const {
+        return is_valid_;
+    }
+
+    void transmute(const std::unordered_map<std::string, uint32_t>& name_to_nid,
+        const std::unordered_map<uint32_t, uint32_t>& id_to_nid);
+
+    double error() const {
+        return error_;
+    }
+
+    const std::vector<std::tuple<uint32_t, uint32_t, uint32_t>>& breaking_points() const {
+        return breaking_points_;
+    }
+
+    void find_brekaing_points(const std::vector<std::unique_ptr<Sequence>>& sequences,
+        uint32_t window_length);
 
     friend bioparser::MhapParser<Overlap>;
     friend bioparser::PafParser<Overlap>;
@@ -58,8 +87,6 @@ private:
     uint32_t q_begin_;
     uint32_t q_end_;
     uint32_t q_length_;
-    std::string q_sequence_;
-    std::string q_quality_;
 
     std::string t_name_;
     uint32_t t_id_;
@@ -69,7 +96,10 @@ private:
 
     uint32_t strand_;
     double error_;
+    std::string cigar_;
 
+    bool is_valid_;
+    bool is_transmuted_;
     std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> breaking_points_;
 };
 
