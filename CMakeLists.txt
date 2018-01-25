@@ -21,8 +21,9 @@ add_executable(racon
 add_subdirectory(vendor/bioparser EXCLUDE_FROM_ALL)
 add_subdirectory(vendor/spoa EXCLUDE_FROM_ALL)
 add_subdirectory(vendor/thread_pool EXCLUDE_FROM_ALL)
+add_subdirectory(vendor/edlib EXCLUDE_FROM_ALL)
 
-target_link_libraries(racon bioparser spoa thread_pool pthread)
+target_link_libraries(racon bioparser spoa thread_pool pthread edlib_static)
 
 install(TARGETS racon DESTINATION bin)
 

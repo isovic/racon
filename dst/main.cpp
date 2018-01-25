@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "sequence.hpp"
 #include "polisher.hpp"
 
 static struct option options[] = {
@@ -88,6 +89,9 @@ int main(int argc, char** argv) {
         error_threshold, match, mismatch, gap, num_threads);
 
     polisher->initialize();
+
+    std::vector<std::unique_ptr<racon::Sequence>> sequences;
+    polisher->polish(sequences);
 
     return 0;
 }

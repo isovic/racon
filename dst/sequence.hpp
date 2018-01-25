@@ -34,9 +34,19 @@ public:
         return data_;
     }
 
+    const std::string& reverse_complement() const {
+        return reverse_complement_;
+    }
+
     const std::string& quality() const {
         return quality_;
     }
+
+    const std::string& reverse_quality() const {
+        return reverse_quality_;
+    }
+
+    void create_reverse_complement();
 
     friend bioparser::FastaParser<Sequence>;
     friend bioparser::FastqParser<Sequence>;
@@ -52,7 +62,9 @@ private:
 
     std::string name_;
     std::string data_;
+    std::string reverse_complement_;
     std::string quality_;
+    std::string reverse_quality_;
 };
 
 }

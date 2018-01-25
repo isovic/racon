@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <vector>
 #include <memory>
+#include <unordered_map>
+#include <thread>
 
 namespace bioparser {
     template<class T>
@@ -47,7 +49,7 @@ public:
 
     void initialize();
 
-    void polish();
+    void polish(std::vector<std::unique_ptr<Sequence>>& dst);
 
     friend std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         const std::string& overlaps_path, const std::string& target_path,
@@ -64,6 +66,8 @@ private:
     Polisher(const Polisher&) = delete;
     const Polisher& operator=(const Polisher&) = delete;
 
+    void thread_polish(uint32_t window_id) const;
+
     std::unique_ptr<bioparser::Parser<Sequence>> sparser_;
     std::unique_ptr<bioparser::Parser<Overlap>> oparser_;
     std::unique_ptr<bioparser::Parser<Sequence>> tparser_;
@@ -76,7 +80,8 @@ private:
     uint32_t window_length_;
     std::vector<std::unique_ptr<Window>> windows_;
 
-    std::unique_ptr<thread_pool::ThreadPool> thread_pool;
+    std::unique_ptr<thread_pool::ThreadPool> thread_pool_;
+    std::unordered_map<std::thread::id, uint32_t> thread_to_id_;
 };
 
 }

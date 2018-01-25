@@ -118,11 +118,18 @@ Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         tparser_(std::move(tparser)), type_(type), quality_threshold_(
         quality_threshold), error_threshold_(error_threshold),
         alignment_engines_(), window_length_(window_length), windows_(),
-        thread_pool(thread_pool::createThreadPool(num_threads)) {
+        thread_pool_(thread_pool::createThreadPool(num_threads)),
+        thread_to_id_() {
+
+    uint32_t id = 0;
+    for (const auto& it: thread_pool_->thread_identifiers()) {
+        thread_to_id_[it] = id++;
+    }
 
     for (uint32_t i = 0; i < num_threads; ++i) {
         alignment_engines_.emplace_back(spoa::createAlignmentEngine(
             spoa::AlignmentType::kNW, match, mismatch, gap));
+        alignment_engines_.back()->prealloc(window_length_, 5);
     }
 }
 
@@ -132,33 +139,42 @@ Polisher::~Polisher() {
 void Polisher::initialize() {
 
     std::vector<std::unique_ptr<Sequence>> sequences;
-    std::unordered_map<std::string, uint32_t> name_to_nid;
-    std::unordered_map<uint32_t, uint32_t> id_to_nid;
-
-    sparser_->reset();
-    sparser_->parse_objects(sequences, -1);
-
-    uint32_t sequences_size = sequences.size();
-    for (uint32_t i = 0; i < sequences.size(); ++i) {
-        name_to_nid[sequences[i]->name()] = i;
-        id_to_nid[i << 1 | 0] = i;
-    }
+    std::unordered_map<std::string, uint32_t> name_to_id;
+    std::unordered_map<uint32_t, uint32_t> id_to_id;
 
     tparser_->reset();
-    uint32_t t = sequences_size, j = sequences_size;
+    tparser_->parse_objects(sequences, -1);
+
+    fprintf(stderr, "Size = %u\n", sequences.size());
+
+    uint32_t num_targets = sequences.size();
+    for (uint32_t i = 0; i < sequences.size(); ++i) {
+        fprintf(stderr, "%s\n", sequences[i]->name().c_str());
+        name_to_id[sequences[i]->name() + "1"] = i;
+        id_to_id[i << 1 | 1] = i;
+    }
+
+    uint32_t average_sequence_length = 0;
+    uint32_t num_sequences = 0;
+    uint32_t new_id = num_targets;
+
+    sparser_->reset();
     while (true) {
         uint32_t l = sequences.size();
-        auto status = tparser_->parse_objects(sequences, kChunkSize);
+        auto status = sparser_->parse_objects(sequences, kChunkSize);
 
-        for (uint32_t i = l; i < sequences.size(); ++i, ++j) {
-            auto it = name_to_nid.find(sequences[i]->name());
-            if (it != name_to_nid.end()) {
+        for (uint32_t i = l; i < sequences.size(); ++i, ++num_sequences) {
+            average_sequence_length += sequences[i]->data().size();
+
+            auto it = name_to_id.find(sequences[i]->name() + "1");
+            if (it != name_to_id.end()) {
                 sequences[i].reset();
-                id_to_nid[(j - sequences_size) << 1 | 1] = it->second;
+                name_to_id[sequences[i]->name() + "0"] = it->second;
+                id_to_id[num_sequences << 1 | 0] = it->second;
             } else {
-                name_to_nid[sequences[i]->name()] = t;
-                id_to_nid[(j - sequences_size) << 1 | 1] = t;
-                ++t;
+                name_to_id[sequences[i]->name() + "0"] = new_id;
+                id_to_id[num_sequences << 1 | 0] = new_id;
+                ++new_id;
             }
         }
 
@@ -168,6 +184,22 @@ void Polisher::initialize() {
             break;
         }
     }
+
+    average_sequence_length /= num_sequences;
+    WindowType window_type = average_sequence_length <= 1000 ? WindowType::kNGS :
+        WindowType::kTGS;
+
+    std::vector<std::future<void>> thread_futures;
+    for (uint32_t i = 0; i < num_sequences; ++i) {
+        thread_futures.emplace_back(thread_pool_->submit_task(
+            [&](uint32_t j) -> void {
+                sequences[j]->create_reverse_complement();
+            }, id_to_id[i << 1 | 0]));
+    }
+    for (const auto& it: thread_futures) {
+        it.wait();
+    }
+    thread_futures.clear();
 
     std::vector<std::unique_ptr<Overlap>> overlaps;
 
@@ -207,7 +239,7 @@ void Polisher::initialize() {
                 overlaps[i].reset();
                 continue;
             }
-            overlaps[i]->transmute(name_to_nid, id_to_nid);
+            overlaps[i]->transmute(name_to_id, id_to_id);
 
             while (overlaps[c] == nullptr) {
                 ++c;
@@ -217,15 +249,26 @@ void Polisher::initialize() {
                 c = i;
             } else if (!status && i + 1 == overlaps.size()) {
                 remove_invalid_overlaps(c, i + 1);
+                c = i + 1;
             }
         }
 
         uint64_t n = 0;
         for (uint64_t i = l; i < c; ++i) {
-            if (overlaps[i] == nullptr) {
+            if (overlaps[i] != nullptr) {
+                thread_futures.emplace_back(thread_pool_->submit_task(
+                    [&](uint64_t j) -> void {
+                        overlaps[j]->find_breaking_points(sequences, window_length_);
+                    }, i));
+            } else {
                 ++n;
             }
         }
+        for (const auto& it: thread_futures) {
+            it.wait();
+        }
+        thread_futures.clear();
+
         shrinkToFit(overlaps, l);
         l = c - n;
 
@@ -233,6 +276,102 @@ void Polisher::initialize() {
             break;
         }
     }
+
+    std::string dummy_backbone_quality(window_length_ * 2, '!');
+    std::vector<uint32_t> window_index(num_targets + 1, 0);
+
+    for (uint32_t i = 0; i < num_targets; ++i) {
+        uint32_t k = 0;
+        for (uint32_t j = 0; j < sequences[i]->data().size(); j += window_length_, ++k) {
+
+            uint32_t length = std::min(j + window_length_,
+                static_cast<uint32_t>(sequences[i]->data().size())) - j;
+
+            windows_.emplace_back(createWindow(i, k, window_type,
+                &(sequences[i]->data()[j]), length,
+                sequences[i]->quality().empty() ? &(dummy_backbone_quality[0]) :
+                &(sequences[i]->quality()[j]), length));
+        }
+
+        window_index[i + 1] = window_index[i] + k;
+    }
+
+    std::string dummy_layer_quality(window_length_ * 2, '"');
+    uint32_t low_coverage = 0;
+    for (const auto& it: overlaps) {
+        const auto& breaking_points = it->breaking_points();
+
+        for (uint32_t i = 1; i < breaking_points.size(); ++i) {
+            if (breaking_points[i].second - breaking_points[i - 1].second < 0.02 * window_length_) {
+                continue;
+            }
+
+            double average_quality = 0;
+            for (uint32_t j = breaking_points[i - 1].second; j < breaking_points[i].second; ++j) {
+                average_quality += sequences[it->q_id()]->quality()[j] - 33;
+            }
+            average_quality /= breaking_points[i].second - breaking_points[i - 1].second;
+
+            if (average_quality < quality_threshold_) {
+                ++low_coverage;
+                continue;
+            }
+
+            uint32_t window_id = window_index[it->t_id()] +
+                breaking_points[i - 1].first / 500;
+            uint32_t window_start = (breaking_points[i - 1].first / 500) * 500;
+
+            const char* sequence = it->strand() ?
+                &(sequences[it->q_id()]->reverse_complement()[breaking_points[i - 1].second]) :
+                &(sequences[it->q_id()]->data()[breaking_points[i - 1].second]);
+
+            const char* quality = sequences[it->q_id()]->quality().empty() ?
+                &(dummy_layer_quality[0]) : (it->strand() ?
+                &(sequences[it->q_id()]->reverse_quality()[breaking_points[i - 1].second]) :
+                &(sequences[it->q_id()]->quality()[breaking_points[i - 1].second]));
+
+            uint32_t length = breaking_points[i].second -
+                breaking_points[i - 1].second;
+
+            windows_[window_id]->add_layer(sequence, length, quality, length,
+                breaking_points[i - 1].first - window_start,
+                breaking_points[i].first - window_start - 1);
+        }
+    }
+    fprintf(stderr, "Low coverage = %d\n", low_coverage);
+}
+
+void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst) {
+
+    std::vector<std::future<void>> thread_futures;
+    for (uint32_t i = 0; i < windows_.size(); ++i) {
+        thread_futures.emplace_back(thread_pool_->submit_task(
+            [&](uint32_t j) {
+                this->thread_polish(j);
+            }, i));
+    }
+    for (const auto& it: thread_futures) {
+        it.wait();
+    }
+
+    fprintf(stdout, ">consensus\n");
+    for (const auto& it: windows_) {
+        fprintf(stdout, "%s", it->consensus().c_str());
+    }
+    fprintf(stdout, "\n");
+}
+
+void Polisher::thread_polish(uint32_t window_id) const {
+
+    auto it = thread_to_id_.find(std::this_thread::get_id());
+    if (it == thread_to_id_.end()) {
+        fprintf(stderr, "racon::Polisher::polish error: "
+            "thread identifier not present!\n");
+        exit(1);
+    }
+
+    fprintf(stderr, "T,w = %u,%u\n", it->second, window_id);
+    windows_[window_id]->generate_consensus(alignment_engines_[it->second]);
 }
 
 }

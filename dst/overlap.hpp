@@ -41,22 +41,26 @@ public:
         return t_id_;
     }
 
+    uint32_t strand() const {
+        return strand_;
+    }
+
     bool is_valid() const {
         return is_valid_;
     }
 
-    void transmute(const std::unordered_map<std::string, uint32_t>& name_to_nid,
-        const std::unordered_map<uint32_t, uint32_t>& id_to_nid);
+    void transmute(const std::unordered_map<std::string, uint32_t>& name_to_id,
+        const std::unordered_map<uint32_t, uint32_t>& id_to_id);
 
     double error() const {
         return error_;
     }
 
-    const std::vector<std::tuple<uint32_t, uint32_t, uint32_t>>& breaking_points() const {
+    const std::vector<std::pair<uint32_t, uint32_t>>& breaking_points() const {
         return breaking_points_;
     }
 
-    void find_brekaing_points(const std::vector<std::unique_ptr<Sequence>>& sequences,
+    void find_breaking_points(const std::vector<std::unique_ptr<Sequence>>& sequences,
         uint32_t window_length);
 
     friend bioparser::MhapParser<Overlap>;
@@ -100,7 +104,7 @@ private:
 
     bool is_valid_;
     bool is_transmuted_;
-    std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> breaking_points_;
+    std::vector<std::pair<uint32_t, uint32_t>> breaking_points_;
 };
 
 }

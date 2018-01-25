@@ -41,12 +41,12 @@ void Window::add_layer(const char* sequence, uint32_t sequence_length,
     const char* quality, uint32_t quality_length, uint32_t begin, uint32_t end) {
 
     if (sequence_length != quality_length) {
-        fprintf(stderr, "racon::Window::add_layer error:"
+        fprintf(stderr, "racon::Window::add_layer error: "
             "unequal quality size!\n");
         exit(1);
     }
     if (begin >= end || begin > sequences_.front().size() || end > sequences_.front().size()) {
-        fprintf(stderr, "racon::Window::add_layer error:"
+        fprintf(stderr, "racon::Window::add_layer error: "
             "layer begin and end positions are invalid!\n");
         exit(1);
     }
@@ -63,12 +63,24 @@ void Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         return;
     }
 
+    fprintf(stderr, "Num sequences = %zu\n", sequences_.size());
+
     auto graph = spoa::createGraph();
     graph->add_alignment(spoa::Alignment(), sequences_.front(), qualities_.front());
 
     uint32_t offset = 0.01 * sequences_.front().size();
 
+    fprintf(stderr, "---\n");
+    fprintf(stderr, "%u\n", sequences_.size());
+    for (uint32_t i = 0; i < sequences_.size(); ++i) {
+        fprintf(stderr, "%u %u %u\n", sequences_[i].size(), positions_[i].first,
+            positions_[i].second);
+    }
+
     for (uint32_t i = 1; i < sequences_.size(); ++i) {
+        fprintf(stderr, "%u %u %u %u\n", sequences_.front().size(),
+            sequences_[i].size(), qualities_[i].size(),
+            positions_[i].first, positions_[i].second);
         if (positions_[i].first < offset && positions_[i].second >
             sequences_.front().size() - offset) {
 
@@ -86,27 +98,30 @@ void Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         }
     }
 
+    fprintf(stderr, "Finished window %u %u\n", id_, rank_);
+    //exit(1);
+
     std::vector<uint32_t> coverages;
     consensus_ = graph->generate_consensus(coverages);
 
     if (type_ == WindowType::kTGS) {
-        uint32_t avg_coverage = (sequences_.size() - 1) / 2;
+        uint32_t average_coverage = (sequences_.size() - 1) / 2;
 
         int32_t begin = 0, end = consensus_.size() - 1;
         for (; begin < static_cast<int32_t>(consensus_.size()); ++begin) {
-            if (coverages[begin] >= avg_coverage) {
+            if (coverages[begin] >= average_coverage) {
                 break;
             }
         }
         for (; end >= 0; --end) {
-            if (coverages[end] >= avg_coverage) {
+            if (coverages[end] >= average_coverage) {
                 break;
             }
         }
 
-        if (begin <= end) {
+        if (begin >= end) {
             fprintf(stderr, "racon::Window::generate_consensus error: "
-                "window %d:%d is broken!\n", id_, rank_);
+                "window %d %d is broken!\n", id_, rank_);
             exit(1);
         }
         consensus_ = consensus_.substr(begin, end - begin);

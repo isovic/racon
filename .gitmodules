@@ -19,3 +19,6 @@
 [submodule "vendor/thread_pool"]
 	path = vendor/thread_pool
 	url = https://github.com/rvaser/thread_pool
+[submodule "vendor/edlib"]
+	path = vendor/edlib
+	url = https://github.com/martinsos/edlib
