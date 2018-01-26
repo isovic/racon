@@ -247,10 +247,11 @@ void Polisher::initialize() {
             if (overlaps[c]->q_id() != overlaps[i]->q_id()) {
                 remove_invalid_overlaps(c, i);
                 c = i;
-            } else if (!status && i + 1 == overlaps.size()) {
-                remove_invalid_overlaps(c, i + 1);
-                c = i + 1;
             }
+        }
+        if (!status) {
+            remove_invalid_overlaps(c, overlaps.size());
+            c = overlaps.size();
         }
 
         uint64_t n = 0;
@@ -306,15 +307,21 @@ void Polisher::initialize() {
                 continue;
             }
 
-            double average_quality = 0;
-            for (uint32_t j = breaking_points[i - 1].second; j < breaking_points[i].second; ++j) {
-                average_quality += sequences[it->q_id()]->quality()[j] - 33;
-            }
-            average_quality /= breaking_points[i].second - breaking_points[i - 1].second;
+            if (!sequences[it->q_id()]->quality().empty()) {
+                double average_quality = 0;
+                for (uint32_t j = breaking_points[i - 1].second; j < breaking_points[i].second; ++j) {
+                    if (it->strand()) {
+                        average_quality += sequences[it->q_id()]->reverse_quality()[j] - 33;
+                    } else {
+                        average_quality += sequences[it->q_id()]->quality()[j] - 33;
+                    }
+                }
+                average_quality /= breaking_points[i].second - breaking_points[i - 1].second;
 
-            if (average_quality < quality_threshold_) {
-                ++low_coverage;
-                continue;
+                if (average_quality < quality_threshold_) {
+                    ++low_coverage;
+                    continue;
+                }
             }
 
             uint32_t window_id = window_index[it->t_id()] +

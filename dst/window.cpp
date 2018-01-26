@@ -124,7 +124,7 @@ void Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
                 "window %d %d is broken!\n", id_, rank_);
             exit(1);
         }
-        consensus_ = consensus_.substr(begin, end - begin);
+        consensus_ = consensus_.substr(begin, end - begin + 1);
     }
 }
 

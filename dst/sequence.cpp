@@ -19,6 +19,15 @@ Sequence::Sequence(const char* name, uint32_t name_length, const char* data,
         : name_(name, name_length), data_(data, data_length),
         reverse_complement_(), quality_(quality, quality_length),
         reverse_quality_() {
+
+    uint32_t quality_sum = 0;
+    for (const auto& it: quality_) {
+        quality_sum += it - '!';
+    }
+
+    if (quality_sum == 0) {
+        std::string().swap(quality_);
+    }
 }
 
 void Sequence::create_reverse_complement() {
