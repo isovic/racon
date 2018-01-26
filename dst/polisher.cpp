@@ -145,11 +145,8 @@ void Polisher::initialize() {
     tparser_->reset();
     tparser_->parse_objects(sequences, -1);
 
-    fprintf(stderr, "Size = %u\n", sequences.size());
-
     uint32_t num_targets = sequences.size();
     for (uint32_t i = 0; i < sequences.size(); ++i) {
-        fprintf(stderr, "%s\n", sequences[i]->name().c_str());
         name_to_id[sequences[i]->name() + "1"] = i;
         id_to_id[i << 1 | 1] = i;
     }
@@ -217,7 +214,7 @@ void Polisher::initialize() {
                     if (overlaps[j] == nullptr) {
                         continue;
                     }
-                    if (overlaps[i]->error() < overlaps[j]->error()) {
+                    if (overlaps[i]->length() > overlaps[j]->length()) {
                         overlaps[j].reset();
                     } else {
                         overlaps[i].reset();
@@ -280,7 +277,6 @@ void Polisher::initialize() {
 
     std::string dummy_backbone_quality(window_length_ * 2, '!');
     std::vector<uint32_t> window_index(num_targets + 1, 0);
-
     for (uint32_t i = 0; i < num_targets; ++i) {
         uint32_t k = 0;
         for (uint32_t j = 0; j < sequences[i]->data().size(); j += window_length_, ++k) {
@@ -298,54 +294,50 @@ void Polisher::initialize() {
     }
 
     std::string dummy_layer_quality(window_length_ * 2, '"');
-    uint32_t low_coverage = 0;
     for (const auto& it: overlaps) {
         const auto& breaking_points = it->breaking_points();
 
-        for (uint32_t i = 1; i < breaking_points.size(); ++i) {
-            if (breaking_points[i].second - breaking_points[i - 1].second < 0.02 * window_length_) {
+        for (uint32_t i = 0; i < breaking_points.size(); i += 2) {
+            if (breaking_points[i + 1].second - breaking_points[i].second < 0.02 * window_length_) {
                 continue;
             }
 
             if (!sequences[it->q_id()]->quality().empty()) {
                 double average_quality = 0;
-                for (uint32_t j = breaking_points[i - 1].second; j < breaking_points[i].second; ++j) {
+                for (uint32_t j = breaking_points[i].second; j < breaking_points[i + 1].second; ++j) {
                     if (it->strand()) {
                         average_quality += sequences[it->q_id()]->reverse_quality()[j] - 33;
                     } else {
                         average_quality += sequences[it->q_id()]->quality()[j] - 33;
                     }
                 }
-                average_quality /= breaking_points[i].second - breaking_points[i - 1].second;
+                average_quality /= breaking_points[i + 1].second - breaking_points[i].second;
 
                 if (average_quality < quality_threshold_) {
-                    ++low_coverage;
                     continue;
                 }
             }
 
-            uint32_t window_id = window_index[it->t_id()] +
-                breaking_points[i - 1].first / 500;
-            uint32_t window_start = (breaking_points[i - 1].first / 500) * 500;
+            uint32_t window_id = window_index[it->t_id()] + breaking_points[i].first / 500;
+            uint32_t window_start = (breaking_points[i].first / 500) * 500;
 
             const char* sequence = it->strand() ?
-                &(sequences[it->q_id()]->reverse_complement()[breaking_points[i - 1].second]) :
-                &(sequences[it->q_id()]->data()[breaking_points[i - 1].second]);
+                &(sequences[it->q_id()]->reverse_complement()[breaking_points[i].second]) :
+                &(sequences[it->q_id()]->data()[breaking_points[i].second]);
 
             const char* quality = sequences[it->q_id()]->quality().empty() ?
                 &(dummy_layer_quality[0]) : (it->strand() ?
-                &(sequences[it->q_id()]->reverse_quality()[breaking_points[i - 1].second]) :
-                &(sequences[it->q_id()]->quality()[breaking_points[i - 1].second]));
+                &(sequences[it->q_id()]->reverse_quality()[breaking_points[i].second]) :
+                &(sequences[it->q_id()]->quality()[breaking_points[i].second]));
 
-            uint32_t length = breaking_points[i].second -
-                breaking_points[i - 1].second;
+            uint32_t length = breaking_points[i + 1].second -
+                breaking_points[i].second;
 
             windows_[window_id]->add_layer(sequence, length, quality, length,
-                breaking_points[i - 1].first - window_start,
-                breaking_points[i].first - window_start - 1);
+                breaking_points[i].first - window_start,
+                breaking_points[i + 1].first - window_start - 1);
         }
     }
-    fprintf(stderr, "Low coverage = %d\n", low_coverage);
 }
 
 void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst) {
@@ -377,7 +369,6 @@ void Polisher::thread_polish(uint32_t window_id) const {
         exit(1);
     }
 
-    fprintf(stderr, "T,w = %u,%u\n", it->second, window_id);
     windows_[window_id]->generate_consensus(alignment_engines_[it->second]);
 }
 

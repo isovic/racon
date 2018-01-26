@@ -4,6 +4,8 @@
  * @brief Window class source file
  */
 
+#include <algorithm>
+
 #include "window.hpp"
 
 #include "spoa/spoa.hpp"
@@ -63,24 +65,21 @@ void Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         return;
     }
 
-    fprintf(stderr, "Num sequences = %zu\n", sequences_.size());
-
     auto graph = spoa::createGraph();
     graph->add_alignment(spoa::Alignment(), sequences_.front(), qualities_.front());
 
-    uint32_t offset = 0.01 * sequences_.front().size();
-
-    fprintf(stderr, "---\n");
-    fprintf(stderr, "%u\n", sequences_.size());
+    std::vector<uint32_t> rank;
+    rank.reserve(sequences_.size());
     for (uint32_t i = 0; i < sequences_.size(); ++i) {
-        fprintf(stderr, "%u %u %u\n", sequences_[i].size(), positions_[i].first,
-            positions_[i].second);
+        rank.emplace_back(i);
     }
 
-    for (uint32_t i = 1; i < sequences_.size(); ++i) {
-        fprintf(stderr, "%u %u %u %u\n", sequences_.front().size(),
-            sequences_[i].size(), qualities_[i].size(),
-            positions_[i].first, positions_[i].second);
+    std::sort(rank.begin() + 1, rank.end(), [&](uint32_t lhs, uint32_t rhs) {
+        return positions_[lhs].first < positions_[rhs].first; });
+
+    uint32_t offset = 0.01 * sequences_.front().size();
+    for (uint32_t j = 1; j < sequences_.size(); ++j) {
+        uint32_t i = rank[j];
         if (positions_[i].first < offset && positions_[i].second >
             sequences_.front().size() - offset) {
 
@@ -97,9 +96,6 @@ void Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
             graph->add_alignment(alignment, sequences_[i], qualities_[i]);
         }
     }
-
-    fprintf(stderr, "Finished window %u %u\n", id_, rank_);
-    //exit(1);
 
     std::vector<uint32_t> coverages;
     consensus_ = graph->generate_consensus(coverages);

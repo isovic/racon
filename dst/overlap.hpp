@@ -52,6 +52,10 @@ public:
     void transmute(const std::unordered_map<std::string, uint32_t>& name_to_id,
         const std::unordered_map<uint32_t, uint32_t>& id_to_id);
 
+    uint32_t length() const {
+        return length_;
+    }
+
     double error() const {
         return error_;
     }
@@ -99,6 +103,7 @@ private:
     uint32_t t_length_;
 
     uint32_t strand_;
+    uint32_t length_;
     double error_;
     std::string cigar_;
 
