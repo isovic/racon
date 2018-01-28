@@ -293,7 +293,7 @@ void Polisher::initialize() {
         window_index[i + 1] = window_index[i] + k;
     }
 
-    std::string dummy_layer_quality(window_length_ * 2, '"');
+    std::string dummy_layer_quality(window_length_ * 4, '"');
     for (const auto& it: overlaps) {
         const auto& breaking_points = it->breaking_points();
 

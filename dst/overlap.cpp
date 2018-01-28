@@ -162,7 +162,7 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
             free(cigar);
         } else {
             fprintf(stderr, "racon::Overlap::find_breaking_points error: "
-                "edlib unable to align sequences (%d x %d)!\n", q_id_, t_id_);
+                "edlib unable to align sequences (%u x %u)!\n", q_id_, t_id_);
             exit(1);
         }
 
@@ -173,7 +173,7 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
         for (uint32_t i = 0, j = 0; i < cigar_.size(); ++i) {
             if (cigar_[i] == 'S' || cigar_[i] == 'H') {
                 q_ptr += atoi(&cigar_[j]);
-                clip_size = q_ptr + 1;
+                clip_size = i + 1;
                 break;
             } else if (cigar_[i] == 'M' || cigar_[i] == '=' || cigar_[i] == 'I' ||
                 cigar_[i] == 'D' || cigar_[i] == 'N' || cigar_[i] == 'P' ||
