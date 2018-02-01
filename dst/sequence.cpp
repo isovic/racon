@@ -8,6 +8,12 @@
 
 namespace racon {
 
+std::unique_ptr<Sequence> createSequence(const std::string& name,
+    const std::string& data) {
+
+    return std::unique_ptr<Sequence>(new Sequence(name, data));
+}
+
 Sequence::Sequence(const char* name, uint32_t name_length, const char* data,
     uint32_t data_length)
         : name_(name, name_length), data_(data, data_length),
@@ -28,6 +34,11 @@ Sequence::Sequence(const char* name, uint32_t name_length, const char* data,
     if (quality_sum == 0) {
         std::string().swap(quality_);
     }
+}
+
+Sequence::Sequence(const std::string& name, const std::string& data)
+    : name_(name), data_(data), reverse_complement_(), quality_(),
+    reverse_quality_() {
 }
 
 void Sequence::create_reverse_complement() {

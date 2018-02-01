@@ -118,7 +118,7 @@ Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         tparser_(std::move(tparser)), type_(type), quality_threshold_(
         quality_threshold), error_threshold_(error_threshold),
         alignment_engines_(), window_length_(window_length), windows_(),
-        thread_pool_(thread_pool::createThreadPool(num_threads)),
+        target_names_(), thread_pool_(thread_pool::createThreadPool(num_threads)),
         thread_to_id_() {
 
     uint32_t id = 0;
@@ -147,6 +147,7 @@ void Polisher::initialize() {
 
     uint32_t num_targets = sequences.size();
     for (uint32_t i = 0; i < sequences.size(); ++i) {
+        target_names_.emplace_back(sequences[i]->name());
         name_to_id[sequences[i]->name() + "1"] = i;
         id_to_id[i << 1 | 1] = i;
     }
@@ -165,9 +166,9 @@ void Polisher::initialize() {
 
             auto it = name_to_id.find(sequences[i]->name() + "1");
             if (it != name_to_id.end()) {
-                sequences[i].reset();
                 name_to_id[sequences[i]->name() + "0"] = it->second;
                 id_to_id[num_sequences << 1 | 0] = it->second;
+                sequences[i].reset();
             } else {
                 name_to_id[sequences[i]->name() + "0"] = new_id;
                 id_to_id[num_sequences << 1 | 0] = new_id;
@@ -275,6 +276,15 @@ void Polisher::initialize() {
         }
     }
 
+    if (type_ == PolisherType::kF) {
+        uint64_t num_overlaps = overlaps.size();
+        for (uint64_t i = 0; i < num_overlaps; ++i) {
+            if (overlaps[i]->q_id() < num_targets) {
+                overlaps.emplace_back(overlaps[i]->dual_overlap());
+            }
+        }
+    }
+
     std::string dummy_backbone_quality(window_length_ * 2, '!');
     std::vector<uint32_t> window_index(num_targets + 1, 0);
     for (uint32_t i = 0; i < num_targets; ++i) {
@@ -318,8 +328,10 @@ void Polisher::initialize() {
                 }
             }
 
-            uint32_t window_id = window_index[it->t_id()] + breaking_points[i].first / 500;
-            uint32_t window_start = (breaking_points[i].first / 500) * 500;
+            uint32_t window_id = window_index[it->t_id()] +
+                breaking_points[i].first / window_length_;
+            uint32_t window_start = (breaking_points[i].first / window_length_) *
+                window_length_;
 
             const char* sequence = it->strand() ?
                 &(sequences[it->q_id()]->reverse_complement()[breaking_points[i].second]) :
@@ -340,36 +352,51 @@ void Polisher::initialize() {
     }
 }
 
-void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst) {
+void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
+    bool drop_unpolished_sequences) {
 
-    std::vector<std::future<void>> thread_futures;
+    std::vector<std::future<bool>> thread_futures;
     for (uint32_t i = 0; i < windows_.size(); ++i) {
         thread_futures.emplace_back(thread_pool_->submit_task(
-            [&](uint32_t j) {
-                this->thread_polish(j);
+            [&](uint32_t j) -> bool {
+                auto it = thread_to_id_.find(std::this_thread::get_id());
+                if (it == thread_to_id_.end()) {
+                    fprintf(stderr, "racon::Polisher::polish error: "
+                        "thread identifier not present!\n");
+                    exit(1);
+                }
+                return windows_[j]->generate_consensus(
+                    alignment_engines_[it->second]);
             }, i));
     }
-    for (const auto& it: thread_futures) {
-        it.wait();
+
+    std::string polished_data = "";
+    uint32_t num_polished_windows = 0;
+
+    for (uint32_t i = 0; i < windows_.size(); ++i) {
+        thread_futures[i].wait();
+
+        num_polished_windows += thread_futures[i].get() == true ? 1 : 0;
+        polished_data += windows_[i]->consensus();
+
+        if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
+            double polished_ratio = num_polished_windows /
+                static_cast<double>(windows_[i]->rank() + 1);
+
+            if (!drop_unpolished_sequences || polished_ratio > 0) {
+                std::string ratio_str = " C:" + std::to_string(polished_ratio);
+                dst.emplace_back(createSequence(target_names_[windows_[i]->id()] +
+                    ratio_str, polished_data));
+            }
+
+            num_polished_windows = 0;
+            polished_data.clear();
+        }
+        windows_[i].reset();
     }
 
-    fprintf(stdout, ">consensus\n");
-    for (const auto& it: windows_) {
-        fprintf(stdout, "%s", it->consensus().c_str());
-    }
-    fprintf(stdout, "\n");
-}
-
-void Polisher::thread_polish(uint32_t window_id) const {
-
-    auto it = thread_to_id_.find(std::this_thread::get_id());
-    if (it == thread_to_id_.end()) {
-        fprintf(stderr, "racon::Polisher::polish error: "
-            "thread identifier not present!\n");
-        exit(1);
-    }
-
-    windows_[window_id]->generate_consensus(alignment_engines_[it->second]);
+    std::vector<std::unique_ptr<Window>>().swap(windows_);
+    std::vector<std::string>().swap(target_names_);
 }
 
 }

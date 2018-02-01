@@ -58,11 +58,11 @@ void Window::add_layer(const char* sequence, uint32_t sequence_length,
     positions_.emplace_back(begin, end);
 }
 
-void Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine) {
+bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine) {
 
     if (sequences_.size() < 3) {
         consensus_ = sequences_.front();
-        return;
+        return false;
     }
 
     auto graph = spoa::createGraph();
@@ -122,6 +122,8 @@ void Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         }
         consensus_ = consensus_.substr(begin, end - begin + 1);
     }
+
+    return true;
 }
 
 }

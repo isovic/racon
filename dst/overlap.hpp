@@ -30,7 +30,6 @@ class Sequence;
 
 class Overlap {
 public:
-
     ~Overlap() = default;
 
     uint32_t q_id() const {
@@ -64,15 +63,19 @@ public:
         return breaking_points_;
     }
 
+    const std::vector<std::pair<uint32_t, uint32_t>>& dual_breaking_points() const {
+        return dual_breaking_points_;
+    }
+
     void find_breaking_points(const std::vector<std::unique_ptr<Sequence>>& sequences,
         uint32_t window_length);
+
+    std::unique_ptr<Overlap> dual_overlap();
 
     friend bioparser::MhapParser<Overlap>;
     friend bioparser::PafParser<Overlap>;
     friend bioparser::SamParser<Overlap>;
-
 private:
-
     Overlap(uint32_t a_id, uint32_t b_id, double accuracy, uint32_t minmers,
         uint32_t a_rc, uint32_t a_begin, uint32_t a_end, uint32_t a_length,
         uint32_t b_rc, uint32_t b_begin, uint32_t b_end, uint32_t b_length);
@@ -87,6 +90,7 @@ private:
         const char* t_next_name, uint32_t t_next_name_length,
         uint32_t t_next_begin, uint32_t template_length, const char* sequence,
         uint32_t sequence_length, const char* quality, uint32_t quality_length);
+    Overlap();
     Overlap(const Overlap&) = delete;
     const Overlap& operator=(const Overlap&) = delete;
 
@@ -110,6 +114,7 @@ private:
     bool is_valid_;
     bool is_transmuted_;
     std::vector<std::pair<uint32_t, uint32_t>> breaking_points_;
+    std::vector<std::pair<uint32_t, uint32_t>> dual_breaking_points_;
 };
 
 }

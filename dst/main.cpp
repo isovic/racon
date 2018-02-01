@@ -10,6 +10,7 @@
 #include "polisher.hpp"
 
 static struct option options[] = {
+    {"include-unpolished", no_argument, 0, 'u'},
     {"fragment-correction", no_argument, 0, 'f'},
     {"window-length", required_argument, 0, 'w'},
     {"quality-threshold", required_argument, 0, 'q'},
@@ -37,11 +38,15 @@ int main(int argc, char** argv) {
     int8_t gap = -8;
     uint32_t type = 0;
 
+    bool drop_unpolished_sequences = true;
     uint32_t num_threads = 1;
 
     char argument;
-    while ((argument = getopt_long(argc, argv, "fw:q:e:m:x:g:t:h", options, nullptr)) != -1) {
+    while ((argument = getopt_long(argc, argv, "ufw:q:e:m:x:g:t:h", options, nullptr)) != -1) {
         switch (argument) {
+            case 'u':
+                drop_unpolished_sequences = false;
+                break;
             case 'f':
                 type = 1;
                 break;
@@ -90,8 +95,12 @@ int main(int argc, char** argv) {
 
     polisher->initialize();
 
-    std::vector<std::unique_ptr<racon::Sequence>> sequences;
-    polisher->polish(sequences);
+    std::vector<std::unique_ptr<racon::Sequence>> polished_sequences;
+    polisher->polish(polished_sequences, drop_unpolished_sequences);
+
+    for (const auto& it: polished_sequences) {
+        fprintf(stdout, ">%s\n%s\n", it->name().c_str(), it->data().c_str());
+    }
 
     return 0;
 }

@@ -32,11 +32,18 @@ class Window {
 public:
     ~Window();
 
+    uint32_t id() const {
+        return id_;
+    }
+    uint32_t rank() const {
+        return rank_;
+    }
+
     const std::string& consensus() const {
         return consensus_;
     }
 
-    void generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine);
+    bool generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine);
 
     void add_layer(const char* sequence, uint32_t sequence_length,
         const char* quality, uint32_t quality_length, uint32_t begin,
