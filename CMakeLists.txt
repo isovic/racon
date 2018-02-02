@@ -9,7 +9,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(racon_build_tests "Build racon google tests" OFF)
+option(racon_build_tests "Build racon unit tests" OFF)
 
 add_executable(racon
     src/main.cpp
@@ -28,4 +28,15 @@ target_link_libraries(racon bioparser spoa thread_pool pthread edlib_static)
 install(TARGETS racon DESTINATION bin)
 
 if (racon_build_tests)
+    set(racon_test_data_path ${PROJECT_SOURCE_DIR}/test/data/)
+    configure_file("${PROJECT_SOURCE_DIR}/test/racon_test_config.h.in"
+        "${PROJECT_BINARY_DIR}/config/racon_test_config.h")
+    include_directories(${PROJECT_BINARY_DIR}/config)
+    include_directories(${PROJECT_SOURCE_DIR}/src)
+
+    #add_executable(racon_test test/racon_test.cpp)
+
+    add_subdirectory(vendor/googletest/googletest EXCLUDE_FROM_ALL)
+
+    #target_link_libraries(racon_test gtest_main)
 endif(racon_build_tests)

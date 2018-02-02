@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
     }
 
     if (input_paths.size() < 3) {
-        fprintf(stderr, "racon:: error: missing input file(s)!\n");
+        fprintf(stderr, "[racon::] error: missing input file(s)!\n");
         help();
         exit(1);
     }

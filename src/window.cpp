@@ -17,7 +17,7 @@ std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type
     uint32_t quality_length) {
 
     if (backbone_length == 0 || backbone_length != quality_length) {
-        fprintf(stderr, "racon::createWindow error: "
+        fprintf(stderr, "[racon::createWindow] error: "
             "empty backbone sequence/unequal quality length!\n");
         exit(1);
     }
@@ -43,12 +43,12 @@ void Window::add_layer(const char* sequence, uint32_t sequence_length,
     const char* quality, uint32_t quality_length, uint32_t begin, uint32_t end) {
 
     if (sequence_length != quality_length) {
-        fprintf(stderr, "racon::Window::add_layer error: "
+        fprintf(stderr, "[racon::Window::add_layer] error: "
             "unequal quality size!\n");
         exit(1);
     }
     if (begin >= end || begin > sequences_.front().size() || end > sequences_.front().size()) {
-        fprintf(stderr, "racon::Window::add_layer error: "
+        fprintf(stderr, "[racon::Window::add_layer] error: "
             "layer begin and end positions are invalid!\n");
         exit(1);
     }
@@ -116,7 +116,7 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         }
 
         if (begin >= end) {
-            fprintf(stderr, "racon::Window::generate_consensus error: "
+            fprintf(stderr, "[racon::Window::generate_consensus] error: "
                 "window %lu-%u is broken!\n", id_, rank_);
             exit(1);
         }

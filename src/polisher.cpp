@@ -63,7 +63,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         sparser = bioparser::createParser<bioparser::FastqParser, Sequence>(
             sequences_path);
     } else {
-        fprintf(stderr, "racon::createPolisher error: "
+        fprintf(stderr, "[racon::createPolisher] error: "
             "file %s has unsupported format extension (valid extensions: "
             ".fasta, .fa, .fastq, .fq)!\n", sequences_path.c_str());
         exit(1);
@@ -81,7 +81,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         oparser = bioparser::createParser<bioparser::SamParser, Overlap>(
             overlaps_path);
     } else {
-        fprintf(stderr, "racon::createPolisher error: "
+        fprintf(stderr, "[racon::createPolisher] error: "
             "file %s has unsupported format extension (valid extensions: "
             ".mhap, .paf, .sam)!\n", overlaps_path.c_str());
         exit(1);
@@ -96,7 +96,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         tparser = bioparser::createParser<bioparser::FastqParser, Sequence>(
             target_path);
     } else {
-        fprintf(stderr, "racon::createPolisher error: "
+        fprintf(stderr, "[racon::createPolisher] error: "
             "file %s has unsupported format extension (valid extensions: "
             ".fasta, .fa, .fastq, .fq)!\n", target_path.c_str());
         exit(1);
@@ -146,7 +146,7 @@ void Polisher::initialize() {
     tparser_->parse_objects(sequences, -1);
 
     if (sequences.empty()) {
-        fprintf(stderr, "racon::Polisher::initialize error: "
+        fprintf(stderr, "[racon::Polisher::initialize] error: "
             "empty target sequences set!\n");
         exit(1);
     }
@@ -158,7 +158,7 @@ void Polisher::initialize() {
         id_to_id[i << 1 | 1] = i;
     }
 
-    fprintf(stderr, "racon::Polisher::initialize loaded target sequences\n");
+    fprintf(stderr, "[racon::Polisher::initialize] loaded target sequences\n");
 
     uint64_t average_sequence_length = 0;
     uint64_t num_sequences = 0;
@@ -207,7 +207,7 @@ void Polisher::initialize() {
     }
     thread_futures.clear();
 
-    fprintf(stderr, "racon::Polisher::initialize loaded sequences\n");
+    fprintf(stderr, "[racon::Polisher::initialize] loaded sequences\n");
 
     std::vector<std::unique_ptr<Overlap>> overlaps;
 
@@ -241,7 +241,7 @@ void Polisher::initialize() {
     while (true) {
         auto status = oparser_->parse_objects(overlaps, kChunkSize);
 
-        fprintf(stderr, "racon::Polisher::initialize loaded batch of overlaps\n");
+        fprintf(stderr, "[racon::Polisher::initialize] loaded batch of overlaps\n");
 
         uint64_t c = l;
         for (uint64_t i = l; i < overlaps.size(); ++i) {
@@ -278,7 +278,7 @@ void Polisher::initialize() {
         uint64_t i = 1;
         for (const auto& it: thread_futures) {
             it.wait();
-            fprintf(stderr, "racon::Polisher::initialize aligned overlap %lu/%lu\r",
+            fprintf(stderr, "[racon::Polisher::initialize] aligned overlap %lu/%lu\r",
                 i++, thread_futures.size());
         }
         thread_futures.clear();
@@ -293,7 +293,7 @@ void Polisher::initialize() {
     }
 
     if (overlaps.empty()) {
-        fprintf(stderr, "racon::Polisher::initialize error: "
+        fprintf(stderr, "[racon::Polisher::initialize] error: "
             "empty overlap set!\n");
         exit(1);
     }
@@ -373,7 +373,7 @@ void Polisher::initialize() {
         }
     }
 
-    fprintf(stderr, "racon::Polisher::initialize transformed data into windows\n");
+    fprintf(stderr, "[racon::Polisher::initialize] transformed data into windows\n");
 }
 
 void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
@@ -385,7 +385,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
             [&](uint64_t j) -> bool {
                 auto it = thread_to_id_.find(std::this_thread::get_id());
                 if (it == thread_to_id_.end()) {
-                    fprintf(stderr, "racon::Polisher::polish error: "
+                    fprintf(stderr, "[racon::Polisher::polish] error: "
                         "thread identifier not present!\n");
                     exit(1);
                 }
@@ -418,7 +418,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         }
         windows_[i].reset();
 
-        fprintf(stderr, "racon::Polisher::polish generated consensus for window %lu/%lu\r",
+        fprintf(stderr, "[racon::Polisher::polish] generated consensus for window %lu/%lu\r",
             i + 1, thread_futures.size());
     }
     fprintf(stderr, "\n");

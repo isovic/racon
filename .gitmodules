@@ -10,3 +10,6 @@
 [submodule "vendor/edlib"]
 	path = vendor/edlib
 	url = https://github.com/martinsos/edlib
+[submodule "vendor/googletest"]
+	path = vendor/googletest
+	url = https://github.com/google/googletest

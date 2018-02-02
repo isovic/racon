@@ -31,8 +31,9 @@ install:
 script:
     - mkdir build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=Release ..
+    - cmake -Dracon_build_tests=ON -DCMAKE_BUILD_TYPE=Release ..
     - make
+    - ./bin/racon_test
 
 notifications:
     email:
