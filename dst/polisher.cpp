@@ -139,29 +139,37 @@ Polisher::~Polisher() {
 void Polisher::initialize() {
 
     std::vector<std::unique_ptr<Sequence>> sequences;
-    std::unordered_map<std::string, uint32_t> name_to_id;
-    std::unordered_map<uint32_t, uint32_t> id_to_id;
+    std::unordered_map<std::string, uint64_t> name_to_id;
+    std::unordered_map<uint64_t, uint64_t> id_to_id;
 
     tparser_->reset();
     tparser_->parse_objects(sequences, -1);
 
-    uint32_t num_targets = sequences.size();
-    for (uint32_t i = 0; i < sequences.size(); ++i) {
+    if (sequences.empty()) {
+        fprintf(stderr, "racon::Polisher::initialize error: "
+            "empty target sequences set!\n");
+        exit(1);
+    }
+
+    uint64_t num_targets = sequences.size();
+    for (uint64_t i = 0; i < sequences.size(); ++i) {
         target_names_.emplace_back(sequences[i]->name());
         name_to_id[sequences[i]->name() + "1"] = i;
         id_to_id[i << 1 | 1] = i;
     }
 
-    uint32_t average_sequence_length = 0;
-    uint32_t num_sequences = 0;
-    uint32_t new_id = num_targets;
+    fprintf(stderr, "racon::Polisher::initialize loaded target sequences\n");
+
+    uint64_t average_sequence_length = 0;
+    uint64_t num_sequences = 0;
+    uint64_t new_id = num_targets;
 
     sparser_->reset();
     while (true) {
-        uint32_t l = sequences.size();
+        uint64_t l = sequences.size();
         auto status = sparser_->parse_objects(sequences, kChunkSize);
 
-        for (uint32_t i = l; i < sequences.size(); ++i, ++num_sequences) {
+        for (uint64_t i = l; i < sequences.size(); ++i, ++num_sequences) {
             average_sequence_length += sequences[i]->data().size();
 
             auto it = name_to_id.find(sequences[i]->name() + "1");
@@ -188,9 +196,9 @@ void Polisher::initialize() {
         WindowType::kTGS;
 
     std::vector<std::future<void>> thread_futures;
-    for (uint32_t i = 0; i < num_sequences; ++i) {
+    for (uint64_t i = 0; i < num_sequences; ++i) {
         thread_futures.emplace_back(thread_pool_->submit_task(
-            [&](uint32_t j) -> void {
+            [&](uint64_t j) -> void {
                 sequences[j]->create_reverse_complement();
             }, id_to_id[i << 1 | 0]));
     }
@@ -198,6 +206,8 @@ void Polisher::initialize() {
         it.wait();
     }
     thread_futures.clear();
+
+    fprintf(stderr, "racon::Polisher::initialize loaded sequences\n");
 
     std::vector<std::unique_ptr<Overlap>> overlaps;
 
@@ -231,6 +241,8 @@ void Polisher::initialize() {
     while (true) {
         auto status = oparser_->parse_objects(overlaps, kChunkSize);
 
+        fprintf(stderr, "racon::Polisher::initialize loaded batch of overlaps\n");
+
         uint64_t c = l;
         for (uint64_t i = l; i < overlaps.size(); ++i) {
             if (!overlaps[i]->is_valid()) {
@@ -263,10 +275,14 @@ void Polisher::initialize() {
                 ++n;
             }
         }
+        uint64_t i = 1;
         for (const auto& it: thread_futures) {
             it.wait();
+            fprintf(stderr, "racon::Polisher::initialize aligned overlap %lu/%lu\r",
+                i++, thread_futures.size());
         }
         thread_futures.clear();
+        fprintf(stderr, "\n");
 
         shrinkToFit(overlaps, l);
         l = c - n;
@@ -274,6 +290,12 @@ void Polisher::initialize() {
         if (!status) {
             break;
         }
+    }
+
+    if (overlaps.empty()) {
+        fprintf(stderr, "racon::Polisher::initialize error: "
+            "empty overlap set!\n");
+        exit(1);
     }
 
     if (type_ == PolisherType::kF) {
@@ -286,8 +308,8 @@ void Polisher::initialize() {
     }
 
     std::string dummy_backbone_quality(window_length_ * 2, '!');
-    std::vector<uint32_t> window_index(num_targets + 1, 0);
-    for (uint32_t i = 0; i < num_targets; ++i) {
+    std::vector<uint64_t> id_to_first_window_id(num_targets + 1, 0);
+    for (uint64_t i = 0; i < num_targets; ++i) {
         uint32_t k = 0;
         for (uint32_t j = 0; j < sequences[i]->data().size(); j += window_length_, ++k) {
 
@@ -300,7 +322,7 @@ void Polisher::initialize() {
                 &(sequences[i]->quality()[j]), length));
         }
 
-        window_index[i + 1] = window_index[i] + k;
+        id_to_first_window_id[i + 1] = id_to_first_window_id[i] + k;
     }
 
     std::string dummy_layer_quality(window_length_ * 4, '"');
@@ -328,7 +350,7 @@ void Polisher::initialize() {
                 }
             }
 
-            uint32_t window_id = window_index[it->t_id()] +
+            uint64_t window_id = id_to_first_window_id[it->t_id()] +
                 breaking_points[i].first / window_length_;
             uint32_t window_start = (breaking_points[i].first / window_length_) *
                 window_length_;
@@ -350,15 +372,17 @@ void Polisher::initialize() {
                 breaking_points[i + 1].first - window_start - 1);
         }
     }
+
+    fprintf(stderr, "racon::Polisher::initialize transformed data into windows\n");
 }
 
 void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     bool drop_unpolished_sequences) {
 
     std::vector<std::future<bool>> thread_futures;
-    for (uint32_t i = 0; i < windows_.size(); ++i) {
+    for (uint64_t i = 0; i < windows_.size(); ++i) {
         thread_futures.emplace_back(thread_pool_->submit_task(
-            [&](uint32_t j) -> bool {
+            [&](uint64_t j) -> bool {
                 auto it = thread_to_id_.find(std::this_thread::get_id());
                 if (it == thread_to_id_.end()) {
                     fprintf(stderr, "racon::Polisher::polish error: "
@@ -373,7 +397,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     std::string polished_data = "";
     uint32_t num_polished_windows = 0;
 
-    for (uint32_t i = 0; i < windows_.size(); ++i) {
+    for (uint64_t i = 0; i < windows_.size(); ++i) {
         thread_futures[i].wait();
 
         num_polished_windows += thread_futures[i].get() == true ? 1 : 0;
@@ -393,7 +417,11 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
             polished_data.clear();
         }
         windows_[i].reset();
+
+        fprintf(stderr, "racon::Polisher::polish generated consensus for window %lu/%lu\r",
+            i + 1, thread_futures.size());
     }
+    fprintf(stderr, "\n");
 
     std::vector<std::unique_ptr<Window>>().swap(windows_);
     std::vector<std::string>().swap(target_names_);

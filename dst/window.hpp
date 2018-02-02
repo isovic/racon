@@ -24,7 +24,7 @@ enum class WindowType {
 };
 
 class Window;
-std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, WindowType type,
+std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
     const char* backbone, uint32_t backbone_length, const char* quality,
     uint32_t quality_length);
 
@@ -32,7 +32,7 @@ class Window {
 public:
     ~Window();
 
-    uint32_t id() const {
+    uint64_t id() const {
         return id_;
     }
     uint32_t rank() const {
@@ -49,16 +49,16 @@ public:
         const char* quality, uint32_t quality_length, uint32_t begin,
         uint32_t end);
 
-    friend std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank,
+    friend std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank,
         WindowType type, const char* backbone, uint32_t backbone_length,
         const char* quality, uint32_t quality_length);
 private:
-    Window(uint32_t id, uint32_t rank, WindowType type, const char* backbone,
+    Window(uint64_t id, uint32_t rank, WindowType type, const char* backbone,
         uint32_t backbone_length, const char* quality, uint32_t quality_length);
     Window(const Window&) = delete;
     const Window& operator=(const Window&) = delete;
 
-    uint32_t id_;
+    uint64_t id_;
     uint32_t rank_;
     WindowType type_;
     std::string consensus_;

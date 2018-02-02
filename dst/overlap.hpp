@@ -48,8 +48,8 @@ public:
         return is_valid_;
     }
 
-    void transmute(const std::unordered_map<std::string, uint32_t>& name_to_id,
-        const std::unordered_map<uint32_t, uint32_t>& id_to_id);
+    void transmute(const std::unordered_map<std::string, uint64_t>& name_to_id,
+        const std::unordered_map<uint64_t, uint64_t>& id_to_id);
 
     uint32_t length() const {
         return length_;
@@ -76,7 +76,7 @@ public:
     friend bioparser::PafParser<Overlap>;
     friend bioparser::SamParser<Overlap>;
 private:
-    Overlap(uint32_t a_id, uint32_t b_id, double accuracy, uint32_t minmers,
+    Overlap(uint64_t a_id, uint64_t b_id, double accuracy, uint32_t minmers,
         uint32_t a_rc, uint32_t a_begin, uint32_t a_end, uint32_t a_length,
         uint32_t b_rc, uint32_t b_begin, uint32_t b_end, uint32_t b_length);
     Overlap(const char* q_name, uint32_t q_name_length, uint32_t q_length,
@@ -95,13 +95,13 @@ private:
     const Overlap& operator=(const Overlap&) = delete;
 
     std::string q_name_;
-    uint32_t q_id_;
+    uint64_t q_id_;
     uint32_t q_begin_;
     uint32_t q_end_;
     uint32_t q_length_;
 
     std::string t_name_;
-    uint32_t t_id_;
+    uint64_t t_id_;
     uint32_t t_begin_;
     uint32_t t_end_;
     uint32_t t_length_;

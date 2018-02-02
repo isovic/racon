@@ -12,7 +12,7 @@
 
 namespace racon {
 
-std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, WindowType type,
+std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
     const char* backbone, uint32_t backbone_length, const char* quality,
     uint32_t quality_length) {
 
@@ -26,7 +26,7 @@ std::unique_ptr<Window> createWindow(uint32_t id, uint32_t rank, WindowType type
         backbone_length, quality, quality_length));
 }
 
-Window::Window(uint32_t id, uint32_t rank, WindowType type, const char* backbone,
+Window::Window(uint64_t id, uint32_t rank, WindowType type, const char* backbone,
     uint32_t backbone_length, const char* quality, uint32_t quality_length)
         : id_(id), rank_(rank), type_(type), consensus_(), sequences_(),
         qualities_(), positions_() {
@@ -117,7 +117,7 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
 
         if (begin >= end) {
             fprintf(stderr, "racon::Window::generate_consensus error: "
-                "window %d %d is broken!\n", id_, rank_);
+                "window %lu-%u is broken!\n", id_, rank_);
             exit(1);
         }
         consensus_ = consensus_.substr(begin, end - begin + 1);
