@@ -12,11 +12,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(racon_build_tests "Build racon google tests" OFF)
 
 add_executable(racon
-    dst/main.cpp
-    dst/polisher.cpp
-    dst/overlap.cpp
-    dst/sequence.cpp
-    dst/window.cpp)
+    src/main.cpp
+    src/polisher.cpp
+    src/overlap.cpp
+    src/sequence.cpp
+    src/window.cpp)
 
 add_subdirectory(vendor/bioparser EXCLUDE_FROM_ALL)
 add_subdirectory(vendor/spoa EXCLUDE_FROM_ALL)
