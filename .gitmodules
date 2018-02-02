@@ -1,15 +1,3 @@
-[submodule "codebase/seqlib"]
-	path = codebase/seqlib
-	url = https://github.com/isovic/seqlib.git
-[submodule "codebase/argparser"]
-	path = codebase/argparser
-	url = https://github.com/isovic/argparser.git
-[submodule "codebase/spoa"]
-	path = codebase/spoa
-	url = https://github.com/rvaser/spoa
-[submodule "codebase/samscripts"]
-	path = codebase/samscripts
-	url = https://github.com/isovic/samscripts.git
 [submodule "vendor/bioparser"]
 	path = vendor/bioparser
 	url = https://github.com/rvaser/bioparser
