@@ -50,6 +50,16 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads) {
 
+    if (type != PolisherType::kC && type != PolisherType::kF) {
+        fprintf(stderr, "[racon::createPolisher] error: invalid polisher type!\n");
+        exit(1);
+    }
+
+    if (window_length == 0) {
+        fprintf(stderr, "[racon::createPolisher] error: invalid window length!\n");
+        exit(1);
+    }
+
     std::unique_ptr<bioparser::Parser<Sequence>> sparser = nullptr,
         tparser = nullptr;
     std::unique_ptr<bioparser::Parser<Overlap>> oparser = nullptr;

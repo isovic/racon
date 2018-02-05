@@ -34,9 +34,15 @@ if (racon_build_tests)
     include_directories(${PROJECT_BINARY_DIR}/config)
     include_directories(${PROJECT_SOURCE_DIR}/src)
 
-    #add_executable(racon_test test/racon_test.cpp)
+    add_executable(racon_test
+        test/racon_test.cpp
+        src/polisher.cpp
+        src/overlap.cpp
+        src/sequence.cpp
+        src/window.cpp)
 
     add_subdirectory(vendor/googletest/googletest EXCLUDE_FROM_ALL)
 
-    #target_link_libraries(racon_test gtest_main)
+    target_link_libraries(racon_test bioparser spoa thread_pool pthread
+        edlib_static gtest_main)
 endif(racon_build_tests)
