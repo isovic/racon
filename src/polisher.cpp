@@ -148,6 +148,12 @@ Polisher::~Polisher() {
 
 void Polisher::initialize() {
 
+    if (!windows_.empty()) {
+        fprintf(stderr, "[racon::Polisher::initialize] warning: "
+            "object already initialized!\n");
+        return;
+    }
+
     std::vector<std::unique_ptr<Sequence>> sequences;
     std::unordered_map<std::string, uint64_t> name_to_id;
     std::unordered_map<uint64_t, uint64_t> id_to_id;
