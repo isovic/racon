@@ -20,12 +20,12 @@ Racon can also be used as a read error-correction tool. In this scenario, the MH
 To install Racon run the following commands:
 
 ```bash
-    git clone --recursive https://github.com/isovic/racon.git racon
-    cd racon
-    mkdir build
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release ..
-    make
+git clone --recursive https://github.com/isovic/racon.git racon
+cd racon
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
 ```
 
 After successful installation, an executable named `racon` will appear in `build/bin`.
