@@ -4,7 +4,7 @@
  * @brief Polisher class source file
  */
 
-#include <unordered_map>
+#include <unordered_set>
 
 #include "overlap.hpp"
 #include "sequence.hpp"
@@ -315,12 +315,31 @@ void Polisher::initialize() {
     }
 
     if (type_ == PolisherType::kF) {
+        std::unordered_set<uint32_t> sequences_without_reverse_complements;
+
         uint64_t num_overlaps = overlaps.size();
         for (uint64_t i = 0; i < num_overlaps; ++i) {
             if (overlaps[i]->q_id() < num_targets) {
+                if (overlaps[i]->strand() &&
+                    sequences[overlaps[i]->t_id()]->reverse_complement().empty()) {
+
+                    sequences_without_reverse_complements.insert(overlaps[i]->t_id());
+                }
                 overlaps.emplace_back(overlaps[i]->dual_overlap());
             }
         }
+
+        for (const auto& it: sequences_without_reverse_complements) {
+            fprintf(stderr, "Sequences %d is readed\n", it);
+            thread_futures.emplace_back(thread_pool_->submit_task(
+                [&](uint64_t j) -> void {
+                    sequences[j]->create_reverse_complement();
+                }, it));
+        }
+        for (const auto& it: thread_futures) {
+            it.wait();
+        }
+        thread_futures.clear();
     }
 
     std::string dummy_backbone_quality(window_length_ * 2, '!');
