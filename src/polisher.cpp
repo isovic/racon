@@ -330,7 +330,6 @@ void Polisher::initialize() {
         }
 
         for (const auto& it: sequences_without_reverse_complements) {
-            fprintf(stderr, "Sequences %d is readed\n", it);
             thread_futures.emplace_back(thread_pool_->submit_task(
                 [&](uint64_t j) -> void {
                     sequences[j]->create_reverse_complement();
