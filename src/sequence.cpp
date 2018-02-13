@@ -61,6 +61,7 @@ void Sequence::create_reverse_complement() {
                 reverse_complement_ += 'C';
                 break;
             default:
+                reverse_complement_ += data_[i];
                 break;
         }
     }
