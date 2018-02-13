@@ -344,9 +344,7 @@ std::unique_ptr<Overlap> Overlap::dual_overlap() {
     other->q_id_ = t_id_;
     other->t_id_ = q_id_;
     other->strand_ = strand_;
-    other->breaking_points_ = dual_breaking_points_;
-
-    std::vector<std::pair<uint32_t, uint32_t>>().swap(dual_breaking_points_);
+    other->breaking_points_.swap(dual_breaking_points_);
 
     return std::move(other);
 }
