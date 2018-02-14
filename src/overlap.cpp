@@ -18,7 +18,7 @@ Overlap::Overlap(uint64_t a_id, uint64_t b_id, double, uint32_t,
         : q_name_(), q_id_(a_id - 1), q_begin_(a_begin), q_end_(a_end),
         q_length_(a_length), t_name_(), t_id_(b_id - 1), t_begin_(b_begin),
         t_end_(b_end), t_length_(b_length), strand_(a_rc ^ b_rc), length_(),
-        error_(), cigar_(), is_valid_(true), is_transmuted_(false),
+        error_(), cigar_(), is_valid_(true), is_transmuted_(true),
         breaking_points_(), dual_breaking_points_() {
 
     length_ = std::max(q_end_ - q_begin_, t_end_ - t_begin_);
@@ -115,20 +115,8 @@ Overlap::Overlap()
         breaking_points_(), dual_breaking_points_() {
 }
 
-template<typename T>
-bool transmuteId(const std::unordered_map<T, uint64_t>& hash, const T& key,
-    uint64_t& id) {
-
-    auto it = hash.find(key);
-    if (it == hash.end()) {
-        return false;
-    }
-    id = it->second;
-    return true;
-}
-
-void Overlap::transmute(const std::unordered_map<std::string, uint64_t>& name_to_id,
-    const std::unordered_map<uint64_t, uint64_t>& id_to_id) {
+void Overlap::transmute(const std::unordered_map<std::string, uint64_t>& q_name_to_id,
+    const std::unordered_map<std::string, uint64_t>& t_name_to_id) {
 
     if (!is_valid_) {
         fprintf(stderr, "[racon::Overlap::transmute] error: "
@@ -141,37 +129,32 @@ void Overlap::transmute(const std::unordered_map<std::string, uint64_t>& name_to
     }
 
     if (!q_name_.empty()) {
-        if (!transmuteId(name_to_id, q_name_ + "0", q_id_)) {
+        auto it = q_name_to_id.find(q_name_);
+        if (it == q_name_to_id.end()) {
             fprintf(stderr, "[racon::Overlap::transmute] error: "
                 "missing sequence with name %s!\n", q_name_.c_str());
             exit(1);
         }
-    } else {
-        if (!transmuteId(id_to_id, q_id_ << 1 | 0, q_id_)) {
-            fprintf(stderr, "[racon::Overlap::transmute] error: "
-                "missing sequence with id %lu!\n", q_id_ >> 1);
-            exit(1);
-        }
+        q_id_ = it->second;
+        std::string().swap(q_name_);
     }
     if (!t_name_.empty()) {
-        if (!transmuteId(name_to_id, t_name_ + "1", t_id_)) {
+        auto it = t_name_to_id.find(t_name_);
+        if (it == t_name_to_id.end()) {
             fprintf(stderr, "[racon::Overlap::transmute] error: "
-                "missing target sequence with name %s!\n", t_name_.c_str());
+                "missing target with name %s!\n", t_name_.c_str());
             exit(1);
         }
-    } else {
-        if (!transmuteId(id_to_id, t_id_ << 1 | 1, t_id_)) {
-            fprintf(stderr, "[racon::Overlap::transmute] error: "
-                "missing target sequence with id %lu!\n", t_id_ >> 1);
-            exit(1);
-        }
+        t_id_ = it->second;
+        std::string().swap(t_name_);
     }
 
     is_transmuted_ = true;
 }
 
-void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>& sequences,
-    uint32_t window_length) {
+void Overlap::find_breaking_points(uint32_t window_length,
+    const std::vector<std::unique_ptr<Sequence>>& sequences,
+    const std::vector<std::unique_ptr<Sequence>>& targets) {
 
     if (!is_transmuted_) {
         fprintf(stderr, "[racon::Overlap::find_breaking_points] error: "
@@ -185,16 +168,16 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
 
     if (q_length_ != sequences[q_id_]->data().size()) {
         fprintf(stderr, "[racon::overlap::find_breaking_points] error: "
-            "unmatched query lengths!\n");
+            "unmatched sequences lengths!\n");
         exit(1);
     }
-    t_length_ = sequences[t_id_]->data().size();
+    t_length_ = targets[t_id_]->data().size();
 
     if (cigar_.empty()) {
         // align overlaps with edlib
         const char* q = !strand_ ? &(sequences[q_id_]->data()[q_begin_]) :
             &(sequences[q_id_]->reverse_complement()[q_length_ - q_end_]);
-        const char* t = &(sequences[t_id_]->data()[t_begin_]);
+        const char* t = &(targets[t_id_]->data()[t_begin_]);
 
         EdlibAlignResult result = edlibAlign(q, q_end_ - q_begin_, t, t_end_ -
             t_begin_, edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH,
@@ -207,7 +190,7 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
             free(cigar);
         } else {
             fprintf(stderr, "[racon::Overlap::find_breaking_points] error: "
-                "edlib unable to align sequences (%lu x %lu)!\n", q_id_, t_id_);
+                "edlib unable to align pair (%lu x %lu)!\n", q_id_, t_id_);
             exit(1);
         }
 

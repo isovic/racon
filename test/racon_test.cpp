@@ -247,7 +247,7 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFull) {
     for (const auto& it: polished_sequences) {
         total_length += it->data().size();
     }
-    EXPECT_EQ(total_length, 1657980);
+    EXPECT_EQ(total_length, 1658339);
 }
 
 TEST_F(RaconPolishingTest, FragmentCorrectionWithoutQualitiesFull) {
@@ -265,7 +265,7 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithoutQualitiesFull) {
     for (const auto& it: polished_sequences) {
         total_length += it->data().size();
     }
-    EXPECT_EQ(total_length, 1663799);
+    EXPECT_EQ(total_length, 1664087);
 }
 
 TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFullMhap) {
@@ -283,5 +283,5 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFullMhap) {
     for (const auto& it: polished_sequences) {
         total_length += it->data().size();
     }
-    EXPECT_EQ(total_length, 1657980);
+    EXPECT_EQ(total_length, 1658339);
 }
