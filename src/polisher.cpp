@@ -428,15 +428,17 @@ void Polisher::initialize() {
                     breaking_points[j].first - window_start,
                     breaking_points[j + 1].first - window_start - 1);
             }
-        }
 
-        for (uint64_t i = ls; i < sequences.size(); ++i) {
-            sequences[i].reset();
+            overlaps[i].reset();
         }
 
         if (!status) {
             sequences.clear();
             break;
+        }
+
+        for (uint64_t i = ls; i < sequences.size(); ++i) {
+            sequences[i].reset();
         }
     }
 
