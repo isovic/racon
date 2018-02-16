@@ -33,7 +33,7 @@ public:
 
         polisher = createPolisher(sequences_path, overlaps_path, target_path,
             type, window_length, quality_threshold, error_threshold, match,
-            mismatch, gap, 1);
+            mismatch, gap, 4);
     }
 
     void TearDown() {}
