@@ -62,8 +62,8 @@ private:
     uint32_t rank_;
     WindowType type_;
     std::string consensus_;
-    std::vector<std::string> sequences_;
-    std::vector<std::string> qualities_;
+    std::vector<std::pair<const char*, uint32_t>> sequences_;
+    std::vector<std::pair<const char*, uint32_t>> qualities_;
     std::vector<std::pair<uint32_t, uint32_t>> positions_;
 };
 

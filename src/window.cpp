@@ -47,7 +47,7 @@ void Window::add_layer(const char* sequence, uint32_t sequence_length,
             "unequal quality size!\n");
         exit(1);
     }
-    if (begin >= end || begin > sequences_.front().size() || end > sequences_.front().size()) {
+    if (begin >= end || begin > sequences_.front().second || end > sequences_.front().second) {
         fprintf(stderr, "[racon::Window::add_layer] error: "
             "layer begin and end positions are invalid!\n");
         exit(1);
@@ -61,12 +61,14 @@ void Window::add_layer(const char* sequence, uint32_t sequence_length,
 bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine) {
 
     if (sequences_.size() < 3) {
-        consensus_ = sequences_.front();
+        consensus_ = std::string(sequences_.front().first, sequences_.front().second);
         return false;
     }
 
     auto graph = spoa::createGraph();
-    graph->add_alignment(spoa::Alignment(), sequences_.front(), qualities_.front());
+    graph->add_alignment(spoa::Alignment(), sequences_.front().first,
+        sequences_.front().second, qualities_.front().first,
+        qualities_.front().second);
 
     std::vector<uint32_t> rank;
     rank.reserve(sequences_.size());
@@ -77,23 +79,27 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
     std::sort(rank.begin() + 1, rank.end(), [&](uint32_t lhs, uint32_t rhs) {
         return positions_[lhs].first < positions_[rhs].first; });
 
-    uint32_t offset = 0.01 * sequences_.front().size();
+    uint32_t offset = 0.01 * sequences_.front().second;
     for (uint32_t j = 1; j < sequences_.size(); ++j) {
         uint32_t i = rank[j];
         if (positions_[i].first < offset && positions_[i].second >
-            sequences_.front().size() - offset) {
+            sequences_.front().second - offset) {
 
             auto alignment = alignment_engine->align_sequence_with_graph(
-                sequences_[i], graph);
-            graph->add_alignment(alignment, sequences_[i], qualities_[i]);
+                sequences_[i].first, sequences_[i].second, graph);
+            graph->add_alignment(alignment, sequences_[i].first,
+                sequences_[i].second, qualities_[i].first,
+                qualities_[i].second);
         } else {
             std::vector<int32_t> mapping;
             auto subgraph = graph->subgraph(positions_[i].first,
                 positions_[i].second, mapping);
             auto alignment = alignment_engine->align_sequence_with_graph(
-                sequences_[i], subgraph);
+                sequences_[i].first, sequences_[i].second, subgraph);
             subgraph->update_alignment(alignment, mapping);
-            graph->add_alignment(alignment, sequences_[i], qualities_[i]);
+            graph->add_alignment(alignment, sequences_[i].first,
+                sequences_[i].second, qualities_[i].first,
+                qualities_[i].second);
         }
     }
 

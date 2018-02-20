@@ -43,6 +43,10 @@ Sequence::Sequence(const std::string& name, const std::string& data)
 
 void Sequence::create_reverse_complement() {
 
+    if (!reverse_complement_.empty()) {
+        return;
+    }
+
     reverse_complement_.clear();
     reverse_complement_.reserve(data_.size());
 
@@ -71,6 +75,22 @@ void Sequence::create_reverse_complement() {
 
     for (int32_t i = quality_.size() - 1; i >= 0; --i) {
         reverse_quality_ += quality_[i];
+    }
+}
+
+void Sequence::transmute(bool has_name, bool has_data, bool has_reverse_data) {
+
+    if (!has_name) {
+        std::string().swap(name_);
+    }
+
+    if (has_reverse_data) {
+        create_reverse_complement();
+    }
+
+    if (!has_data) {
+        std::string().swap(data_);
+        std::string().swap(quality_);
     }
 }
 

@@ -51,6 +51,8 @@ public:
 
     void create_reverse_complement();
 
+    void transmute(bool has_name, bool has_data, bool has_reverse_data);
+
     friend bioparser::FastaParser<Sequence>;
     friend bioparser::FastqParser<Sequence>;
     friend std::unique_ptr<Sequence> createSequence(const std::string& name,

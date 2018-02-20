@@ -48,8 +48,8 @@ public:
         return is_valid_;
     }
 
-    void transmute(const std::unordered_map<std::string, uint64_t>& q_name_to_id,
-        const std::unordered_map<std::string, uint64_t>& t_name_to_id);
+    void transmute(const std::unordered_map<std::string, uint64_t>& name_to_id,
+        const std::unordered_map<uint64_t, uint64_t>& id_to_id);
 
     uint32_t length() const {
         return length_;
@@ -67,9 +67,8 @@ public:
         return dual_breaking_points_;
     }
 
-    void find_breaking_points(uint32_t window_length,
-        const std::vector<std::unique_ptr<Sequence>>& sequences,
-        const std::vector<std::unique_ptr<Sequence>>& targets);
+    void find_breaking_points(const std::vector<std::unique_ptr<Sequence>>& sequences,
+        uint32_t window_length);
 
     std::unique_ptr<Overlap> dual_overlap();
 

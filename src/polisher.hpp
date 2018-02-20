@@ -76,10 +76,12 @@ private:
     double error_threshold_;
     std::vector<std::shared_ptr<spoa::AlignmentEngine>> alignment_engines_;
 
+    std::vector<std::unique_ptr<Sequence>> sequences_;
+    std::string dummy_backbone_quality_;
+    std::string dummy_layer_quality_;
+
     uint32_t window_length_;
     std::vector<std::unique_ptr<Window>> windows_;
-
-    std::vector<std::string> target_names_;
 
     std::unique_ptr<thread_pool::ThreadPool> thread_pool_;
     std::unordered_map<std::thread::id, uint32_t> thread_to_id_;
