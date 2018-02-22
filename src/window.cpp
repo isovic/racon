@@ -122,11 +122,11 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         }
 
         if (begin >= end) {
-            fprintf(stderr, "[racon::Window::generate_consensus] error: "
-                "window %lu-%u is broken!\n", id_, rank_);
-            exit(1);
+            fprintf(stderr, "[racon::Window::generate_consensus] warning: "
+                "contig %lu might be chimeric in window %u!\n", id_, rank_);
+        } else {
+            consensus_ = consensus_.substr(begin, end - begin + 1);
         }
-        consensus_ = consensus_.substr(begin, end - begin + 1);
 
     } else if (type_ == WindowType::kNGS) {
         uint32_t i = 0;
