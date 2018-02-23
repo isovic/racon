@@ -80,8 +80,10 @@ Usage of racon is as following:
         -t, --threads <int>
             default: 1
             number of threads
-        -h, --help
-            prints out the help
+        --version
+            prints the version number
+        --help
+            prints out the usage
 
 ## Contact information
 

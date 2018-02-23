@@ -19,6 +19,7 @@ static struct option options[] = {
     {"mismatch", required_argument, 0, 'x'},
     {"gap", required_argument, 0, 'g'},
     {"threads", required_argument, 0, 't'},
+    {"version", no_argument, 0, 'v'},
     {"help", no_argument, 0, 'h'},
     {0, 0, 0, 0}
 };
@@ -42,7 +43,7 @@ int main(int argc, char** argv) {
     uint32_t num_threads = 1;
 
     char argument;
-    while ((argument = getopt_long(argc, argv, "ufw:q:e:m:x:g:t:h", options, nullptr)) != -1) {
+    while ((argument = getopt_long(argc, argv, "ufw:q:e:m:x:g:t:", options, nullptr)) != -1) {
         switch (argument) {
             case 'u':
                 drop_unpolished_sequences = false;
@@ -71,9 +72,13 @@ int main(int argc, char** argv) {
             case 't':
                 num_threads = atoi(optarg);
                 break;
+            case 'v':
+                printf("v1.0.0\n");
+                exit(0);
             case 'h':
-            default:
                 help();
+                exit(0);
+            default:
                 exit(1);
         }
     }
@@ -84,7 +89,6 @@ int main(int argc, char** argv) {
 
     if (input_paths.size() < 3) {
         fprintf(stderr, "[racon::] error: missing input file(s)!\n");
-        help();
         exit(1);
     }
 
@@ -148,6 +152,8 @@ void help() {
         "        -t, --threads <int>\n"
         "            default: 1\n"
         "            number of threads\n"
-        "        -h, --help\n"
-        "            prints out the help\n");
+        "        --version\n"
+        "            prints the version number\n"
+        "        --help\n"
+        "            prints out the usage\n");
 }
