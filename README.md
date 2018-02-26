@@ -1,6 +1,6 @@
 # Racon
 
-[![Build status for c++/clang++](https://travis-ci.org/isovic/racon.svg?branch=master)](https://travis-ci.org/isovic/racon)
+[![Build status for gcc/clang](https://travis-ci.org/isovic/racon.svg?branch=master)](https://travis-ci.org/isovic/racon)
 [![Published in Genome Research](https://img.shields.io/badge/published%20in-Genome%20Research-blue.svg)](https://doi.org/10.1101/gr.214270.116)
 
 Consensus module for raw de novo DNA assembly of long uncorrected reads.
@@ -83,7 +83,7 @@ Usage of racon is as following:
         --version
             prints the version number
         --help
-            prints out the usage
+            prints the usage
 
 ## Contact information
 

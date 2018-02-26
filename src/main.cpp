@@ -9,6 +9,8 @@
 #include "sequence.hpp"
 #include "polisher.hpp"
 
+static const char* version = "v1.0.1";
+
 static struct option options[] = {
     {"include-unpolished", no_argument, 0, 'u'},
     {"fragment-correction", no_argument, 0, 'f'},
@@ -73,7 +75,7 @@ int main(int argc, char** argv) {
                 num_threads = atoi(optarg);
                 break;
             case 'v':
-                printf("v1.0.0\n");
+                printf("%s\n", version);
                 exit(0);
             case 'h':
                 help();
@@ -155,5 +157,5 @@ void help() {
         "        --version\n"
         "            prints the version number\n"
         "        --help\n"
-        "            prints out the usage\n");
+        "            prints the usage\n");
 }
