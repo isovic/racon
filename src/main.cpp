@@ -9,7 +9,7 @@
 #include "sequence.hpp"
 #include "polisher.hpp"
 
-static const char* version = "v1.0.1";
+static const char* version = "v1.0.2";
 
 static struct option options[] = {
     {"include-unpolished", no_argument, 0, 'u'},
@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     uint32_t num_threads = 1;
 
     char argument;
-    while ((argument = getopt_long(argc, argv, "ufw:q:e:m:x:g:t:", options, nullptr)) != -1) {
+    while ((argument = getopt_long(argc, argv, "ufw:q:e:m:x:g:t:h", options, nullptr)) != -1) {
         switch (argument) {
             case 'u':
                 drop_unpolished_sequences = false;
@@ -91,6 +91,7 @@ int main(int argc, char** argv) {
 
     if (input_paths.size() < 3) {
         fprintf(stderr, "[racon::] error: missing input file(s)!\n");
+        help();
         exit(1);
     }
 
@@ -156,6 +157,6 @@ void help() {
         "            number of threads\n"
         "        --version\n"
         "            prints the version number\n"
-        "        --help\n"
+        "        -h, --help\n"
         "            prints the usage\n");
 }

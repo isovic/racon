@@ -82,7 +82,7 @@ Usage of racon is as following:
             number of threads
         --version
             prints the version number
-        --help
+        -h, --help
             prints the usage
 
 ## Contact information
