@@ -77,8 +77,7 @@ private:
     std::vector<std::shared_ptr<spoa::AlignmentEngine>> alignment_engines_;
 
     std::vector<std::unique_ptr<Sequence>> sequences_;
-    std::string dummy_backbone_quality_;
-    std::string dummy_layer_quality_;
+    std::string dummy_quality_;
 
     uint32_t window_length_;
     std::vector<std::unique_ptr<Window>> windows_;

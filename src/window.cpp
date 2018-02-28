@@ -42,7 +42,7 @@ Window::~Window() {
 void Window::add_layer(const char* sequence, uint32_t sequence_length,
     const char* quality, uint32_t quality_length, uint32_t begin, uint32_t end) {
 
-    if (sequence_length != quality_length) {
+    if (quality != nullptr && sequence_length != quality_length) {
         fprintf(stderr, "[racon::Window::add_layer] error: "
             "unequal quality size!\n");
         exit(1);
@@ -82,21 +82,25 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
     uint32_t offset = 0.01 * sequences_.front().second;
     for (uint32_t j = 1; j < sequences_.size(); ++j) {
         uint32_t i = rank[j];
+
+        spoa::Alignment alignment;
         if (positions_[i].first < offset && positions_[i].second >
             sequences_.front().second - offset) {
-
-            auto alignment = alignment_engine->align_sequence_with_graph(
+            alignment = alignment_engine->align_sequence_with_graph(
                 sequences_[i].first, sequences_[i].second, graph);
-            graph->add_alignment(alignment, sequences_[i].first,
-                sequences_[i].second, qualities_[i].first,
-                qualities_[i].second);
         } else {
             std::vector<int32_t> mapping;
             auto subgraph = graph->subgraph(positions_[i].first,
                 positions_[i].second, mapping);
-            auto alignment = alignment_engine->align_sequence_with_graph(
+            alignment = alignment_engine->align_sequence_with_graph(
                 sequences_[i].first, sequences_[i].second, subgraph);
             subgraph->update_alignment(alignment, mapping);
+        }
+
+        if (qualities_[i].first == nullptr) {
+            graph->add_alignment(alignment, sequences_[i].first,
+                sequences_[i].second);
+        } else {
             graph->add_alignment(alignment, sequences_[i].first,
                 sequences_[i].second, qualities_[i].first,
                 qualities_[i].second);

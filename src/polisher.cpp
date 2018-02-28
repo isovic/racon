@@ -130,9 +130,7 @@ Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         : sparser_(std::move(sparser)), oparser_(std::move(oparser)),
         tparser_(std::move(tparser)), type_(type), quality_threshold_(
         quality_threshold), error_threshold_(error_threshold),
-        alignment_engines_(), sequences_(),
-        dummy_backbone_quality_(window_length * 2, '!'),
-        dummy_layer_quality_(window_length * 4, '"'),
+        alignment_engines_(), sequences_(), dummy_quality_(window_length, '!'),
         window_length_(window_length), windows_(),
         thread_pool_(thread_pool::createThreadPool(num_threads)),
         thread_to_id_() {
@@ -386,7 +384,7 @@ void Polisher::initialize() {
 
             windows_.emplace_back(createWindow(i, k, window_type,
                 &(sequences_[i]->data()[j]), length,
-                sequences_[i]->quality().empty() ? &(dummy_backbone_quality_[0]) :
+                sequences_[i]->quality().empty() ? &(dummy_quality_[0]) :
                 &(sequences_[i]->quality()[j]), length));
         }
 
@@ -427,20 +425,19 @@ void Polisher::initialize() {
             const char* data = overlaps[i]->strand() ?
                 &(sequence->reverse_complement()[breaking_points[j].second]) :
                 &(sequence->data()[breaking_points[j].second]);
+            uint32_t data_length = breaking_points[j + 1].second -
+                breaking_points[j].second;
 
             const char* quality = overlaps[i]->strand() ?
                 (sequence->reverse_quality().empty() ?
-                    &(dummy_layer_quality_[0]) :
-                    &(sequence->reverse_quality()[breaking_points[j].second]))
+                    nullptr : &(sequence->reverse_quality()[breaking_points[j].second]))
                 :
                 (sequence->quality().empty() ?
-                    &(dummy_layer_quality_[0]) :
-                    &(sequence->quality()[breaking_points[j].second]));
+                    nullptr : &(sequence->quality()[breaking_points[j].second]));
+            uint32_t quality_length = quality == nullptr ? 0 : data_length;
 
-            uint32_t length = breaking_points[j + 1].second -
-                breaking_points[j].second;
-
-            windows_[window_id]->add_layer(data, length, quality, length,
+            windows_[window_id]->add_layer(data, data_length,
+                quality, quality_length,
                 breaking_points[j].first - window_start,
                 breaking_points[j + 1].first - window_start - 1);
         }
