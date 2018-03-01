@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <stdlib.h>
 #include <stdint.h>
 #include <memory>
 #include <vector>

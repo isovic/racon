@@ -353,7 +353,7 @@ void Polisher::initialize() {
     }
     for (uint64_t i = 0; i < thread_futures.size(); ++i) {
         thread_futures[i].wait();
-        fprintf(stderr, "[racon::Polisher::initialize] aligned overlap %lu/%lu\r",
+        fprintf(stderr, "[racon::Polisher::initialize] aligned overlap %zu/%zu\r",
             i + 1, overlaps.size());
     }
     fprintf(stderr, "\n");
@@ -490,7 +490,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         }
         windows_[i].reset();
 
-        fprintf(stderr, "[racon::Polisher::polish] generated consensus for window %lu/%lu\r",
+        fprintf(stderr, "[racon::Polisher::polish] generated consensus for window %zu/%zu\r",
             i + 1, thread_futures.size());
     }
     fprintf(stderr, "\n");

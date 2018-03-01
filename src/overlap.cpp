@@ -149,7 +149,7 @@ void Overlap::transmute(const std::unordered_map<std::string, uint64_t>& name_to
     } else {
         if (!transmuteId(id_to_id, q_id_ << 1 | 0, q_id_)) {
             fprintf(stderr, "[racon::Overlap::transmute] error: "
-                "missing sequence with id %lu!\n", q_id_);
+                "missing sequence with id %zu!\n", q_id_);
             exit(1);
         }
     }
@@ -162,7 +162,7 @@ void Overlap::transmute(const std::unordered_map<std::string, uint64_t>& name_to
     } else {
         if (!transmuteId(id_to_id, t_id_ << 1 | 1, t_id_)) {
             fprintf(stderr, "[racon::Overlap::transmute] error: "
-                "missing sequence with id %lu!\n", t_id_);
+                "missing sequence with id %zu!\n", t_id_);
             exit(1);
         }
     }
@@ -210,7 +210,7 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
             free(cigar);
         } else {
             fprintf(stderr, "[racon::Overlap::find_breaking_points] error: "
-                "edlib unable to align pair (%lu x %lu)!\n", q_id_, t_id_);
+                "edlib unable to align pair (%zu x %zu)!\n", q_id_, t_id_);
             exit(1);
         }
 
