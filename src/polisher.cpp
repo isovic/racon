@@ -178,7 +178,7 @@ void Polisher::initialize() {
     std::unordered_map<std::string, uint64_t> name_to_id;
     std::unordered_map<uint64_t, uint64_t> id_to_id;
     for (uint64_t i = 0; i < targets_size; ++i) {
-        name_to_id[sequences_[i]->name()] = i;
+        name_to_id[sequences_[i]->name() + "t"] = i;
         id_to_id[i << 1 | 1] = i;
     }
 
@@ -200,7 +200,7 @@ void Polisher::initialize() {
         for (uint64_t i = l; i < sequences_.size(); ++i, ++sequences_size) {
             total_sequences_length += sequences_[i]->data().size();
 
-            auto it = name_to_id.find(sequences_[i]->name());
+            auto it = name_to_id.find(sequences_[i]->name() + "t");
             if (it != name_to_id.end()) {
                 uint64_t j = it->second;
                 if (j >= targets_size) {
@@ -218,12 +218,14 @@ void Polisher::initialize() {
                     exit(1);
                 }
 
+                name_to_id[sequences_[i]->name() + "q"] = j;
+                id_to_id[sequences_size << 1 | 0] = j;
+
                 duplicate_sequences.insert(j);
                 sequences_[i].reset();
                 ++n;
-                id_to_id[sequences_size << 1 | 0] = j;
             } else {
-                name_to_id[sequences_[i]->name()] = i - n;
+                name_to_id[sequences_[i]->name() + "q"] = i - n;
                 id_to_id[sequences_size << 1 | 0] = i - n;
             }
         }

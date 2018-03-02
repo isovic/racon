@@ -141,7 +141,7 @@ void Overlap::transmute(const std::unordered_map<std::string, uint64_t>& name_to
     }
 
     if (!q_name_.empty()) {
-        if (!transmuteId(name_to_id, q_name_, q_id_)) {
+        if (!transmuteId(name_to_id, q_name_ + "q", q_id_)) {
             fprintf(stderr, "[racon::Overlap::transmute] error: "
                 "missing sequence with name %s!\n", q_name_.c_str());
             exit(1);
@@ -154,7 +154,7 @@ void Overlap::transmute(const std::unordered_map<std::string, uint64_t>& name_to
         }
     }
     if (!t_name_.empty()) {
-        if (!transmuteId(name_to_id, t_name_, t_id_)) {
+        if (!transmuteId(name_to_id, t_name_ + "t", t_id_)) {
             fprintf(stderr, "[racon::Overlap::transmute] error: "
                 "missing target sequence with name %s!\n", t_name_.c_str());
             exit(1);
@@ -187,7 +187,7 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
         q_length_ != sequences[q_id_]->reverse_complement().size()) {
 
         fprintf(stderr, "[racon::overlap::find_breaking_points] error: "
-            "unmatched sequences lengths!\n");
+            "mismatched sequence lengths in sequence and overlap file!\n");
         exit(1);
     }
 
