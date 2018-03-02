@@ -35,7 +35,7 @@ After successful installation, an executable named `racon` will appear in `build
 
 Optionally, you can run `sudo make install` to install racon executable to your machine.
 
-***Note***: if you omitted `--recursive` from `git clone`, run `git submodule init` and `git submodule update` before proceeding with compilation.
+***Note***: if you omitted `--recursive` from `git clone`, run `git submodule update --init --recursive` before proceeding with compilation.
 
 ## Usage
 Usage of racon is as following:
