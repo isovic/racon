@@ -67,51 +67,58 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         tparser = nullptr;
     std::unique_ptr<bioparser::Parser<Overlap>> oparser = nullptr;
 
-    auto extension = sequences_path.substr(std::min(sequences_path.rfind('.'),
-        sequences_path.size()));
-    if (extension == ".fasta" || extension == ".fa") {
+    auto is_suffix = [](const std::string& src, const std::string& suffix) -> bool {
+        if (src.size() < suffix.size()) {
+            return false;
+        }
+        return src.compare(src.size() - suffix.size(), suffix.size(), suffix) == 0;
+    };
+
+    if (is_suffix(sequences_path, ".fasta") || is_suffix(sequences_path, ".fa") ||
+        is_suffix(sequences_path, ".fasta.gz") || is_suffix(sequences_path, ".fa.gz")) {
         sparser = bioparser::createParser<bioparser::FastaParser, Sequence>(
             sequences_path);
-    } else if (extension == ".fastq" || extension == ".fq") {
+    } else if (is_suffix(sequences_path, ".fastq") || is_suffix(sequences_path, ".fq") ||
+        is_suffix(sequences_path, ".fastq.gz") || is_suffix(sequences_path, ".fq.gz")) {
         sparser = bioparser::createParser<bioparser::FastqParser, Sequence>(
             sequences_path);
     } else {
         fprintf(stderr, "[racon::createPolisher] error: "
             "file %s has unsupported format extension (valid extensions: "
-            ".fasta, .fa, .fastq, .fq)!\n", sequences_path.c_str());
+            ".fasta, .fasta.gz, .fa, .fa.gz, .fastq, .fastq.gz, .fq, .fq.gz)!\n",
+            sequences_path.c_str());
         exit(1);
     }
 
-    extension = overlaps_path.substr(std::min(overlaps_path.rfind('.'),
-        overlaps_path.size()));
-    if (extension == ".mhap") {
+    if (is_suffix(overlaps_path, ".mhap") || is_suffix(overlaps_path, ".mhap.gz")) {
         oparser = bioparser::createParser<bioparser::MhapParser, Overlap>(
             overlaps_path);
-    } else if (extension == ".paf") {
+    } else if (is_suffix(overlaps_path, ".paf") || is_suffix(overlaps_path, ".paf.gz")) {
         oparser = bioparser::createParser<bioparser::PafParser, Overlap>(
             overlaps_path);
-    } else if (extension == ".sam") {
+    } else if (is_suffix(overlaps_path, ".sam") || is_suffix(overlaps_path, ".sam.gz")) {
         oparser = bioparser::createParser<bioparser::SamParser, Overlap>(
             overlaps_path);
     } else {
         fprintf(stderr, "[racon::createPolisher] error: "
             "file %s has unsupported format extension (valid extensions: "
-            ".mhap, .paf, .sam)!\n", overlaps_path.c_str());
+            ".mhap, .mhap.gz, .paf, .paf.gz, .sam, .sam.gz)!\n", overlaps_path.c_str());
         exit(1);
     }
 
-    extension = target_path.substr(std::min(target_path.rfind('.'),
-        target_path.size()));
-    if (extension == ".fasta" || extension == ".fa") {
+    if (is_suffix(target_path, ".fasta") || is_suffix(target_path, ".fa") ||
+        is_suffix(target_path, ".fasta.gz") || is_suffix(target_path, ".fa.gz")) {
         tparser = bioparser::createParser<bioparser::FastaParser, Sequence>(
             target_path);
-    } else if (extension == ".fastq" || extension == ".fq") {
+    } else if (is_suffix(target_path, ".fastq") || is_suffix(target_path, ".fq") ||
+        is_suffix(target_path, ".fastq.gz") || is_suffix(target_path, ".fq.gz")) {
         tparser = bioparser::createParser<bioparser::FastqParser, Sequence>(
             target_path);
     } else {
         fprintf(stderr, "[racon::createPolisher] error: "
             "file %s has unsupported format extension (valid extensions: "
-            ".fasta, .fa, .fastq, .fq)!\n", target_path.c_str());
+            ".fasta, .fasta.gz, .fa, .fa.gz, .fastq, .fastq.gz, .fq, .fq.gz)!\n",
+            target_path.c_str());
         exit(1);
     }
 

@@ -65,26 +65,28 @@ TEST(RaconTest, WindowLengthError) {
 TEST(RaconTest, SequencesPathExtensionError) {
     EXPECT_DEATH((createPolisher("", "", "", racon::PolisherType::kC, 500, 0,
         0, 0, 0, 0, 0)), ".racon::createPolisher. error: file  has unsupported "
-        "format extension .valid extensions: .fasta, .fa, .fastq, .fq.!");
+        "format extension .valid extensions: .fasta, .fasta.gz, .fa, .fa.gz, "
+        ".fastq, .fastq.gz, .fq, .fq.gz.!");
 }
 
 TEST(RaconTest, OverlapsPathExtensionError) {
-    EXPECT_DEATH((createPolisher(racon_test_data_path + "sample_reads.fastq", "",
+    EXPECT_DEATH((createPolisher(racon_test_data_path + "sample_reads.fastq.gz", "",
         "", racon::PolisherType::kC, 500, 0, 0, 0, 0, 0, 0)),
         ".racon::createPolisher. error: file  has unsupported format extension "
-        ".valid extensions: .mhap, .paf, .sam.!");
+        ".valid extensions: .mhap, .mhap.gz, .paf, .paf.gz, .sam, .sam.gz.!");
 }
 
 TEST(RaconTest, TargetPathExtensionError) {
-    EXPECT_DEATH((createPolisher(racon_test_data_path + "sample_reads.fastq",
-        racon_test_data_path + "sample_overlaps.paf", "", racon::PolisherType::kC,
+    EXPECT_DEATH((createPolisher(racon_test_data_path + "sample_reads.fastq.gz",
+        racon_test_data_path + "sample_overlaps.paf.gz", "", racon::PolisherType::kC,
         500, 0, 0, 0, 0, 0, 0)), ".racon::createPolisher. error: file  has "
-        "unsupported format extension .valid extensions: .fasta, .fa, .fastq, .fq.!");
+        "unsupported format extension .valid extensions: .fasta, .fasta.gz, .fa,"
+        " .fa.gz, .fastq, .fastq.gz, .fq, .fq.gz.!");
 }
 
 TEST_F(RaconPolishingTest, ConsensusWithQualities) {
-    SetUp(racon_test_data_path + "sample_reads.fastq", racon_test_data_path +
-        "sample_overlaps.paf", racon_test_data_path + "sample_layout.fasta",
+    SetUp(racon_test_data_path + "sample_reads.fastq.gz", racon_test_data_path +
+        "sample_overlaps.paf.gz", racon_test_data_path + "sample_layout.fasta.gz",
         racon::PolisherType::kC, 500, 10, 0.3, 5, -4, -8);
 
     initialize();
@@ -96,7 +98,7 @@ TEST_F(RaconPolishingTest, ConsensusWithQualities) {
     polished_sequences[0]->create_reverse_complement();
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
-        racon_test_data_path + "sample_reference.fasta");
+        racon_test_data_path + "sample_reference.fasta.gz");
     parser->parse_objects(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
@@ -105,8 +107,8 @@ TEST_F(RaconPolishingTest, ConsensusWithQualities) {
 }
 
 TEST_F(RaconPolishingTest, ConsensusWithoutQualities) {
-    SetUp(racon_test_data_path + "sample_reads.fasta", racon_test_data_path +
-        "sample_overlaps.paf", racon_test_data_path + "sample_layout.fasta",
+    SetUp(racon_test_data_path + "sample_reads.fasta.gz", racon_test_data_path +
+        "sample_overlaps.paf.gz", racon_test_data_path + "sample_layout.fasta.gz",
         racon::PolisherType::kC, 500, 10, 0.3, 5, -4, -8);
 
     initialize();
@@ -118,7 +120,7 @@ TEST_F(RaconPolishingTest, ConsensusWithoutQualities) {
     polished_sequences[0]->create_reverse_complement();
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
-        racon_test_data_path + "sample_reference.fasta");
+        racon_test_data_path + "sample_reference.fasta.gz");
     parser->parse_objects(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
@@ -127,8 +129,8 @@ TEST_F(RaconPolishingTest, ConsensusWithoutQualities) {
 }
 
 TEST_F(RaconPolishingTest, ConsensusWithQualitiesAndAlignments) {
-    SetUp(racon_test_data_path + "sample_reads.fastq", racon_test_data_path +
-        "sample_overlaps.sam", racon_test_data_path + "sample_layout.fasta",
+    SetUp(racon_test_data_path + "sample_reads.fastq.gz", racon_test_data_path +
+        "sample_overlaps.sam.gz", racon_test_data_path + "sample_layout.fasta.gz",
         racon::PolisherType::kC, 500, 10, 0.3, 5, -4, -8);
 
     initialize();
@@ -140,7 +142,7 @@ TEST_F(RaconPolishingTest, ConsensusWithQualitiesAndAlignments) {
     polished_sequences[0]->create_reverse_complement();
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
-        racon_test_data_path + "sample_reference.fasta");
+        racon_test_data_path + "sample_reference.fasta.gz");
     parser->parse_objects(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
@@ -149,8 +151,8 @@ TEST_F(RaconPolishingTest, ConsensusWithQualitiesAndAlignments) {
 }
 
 TEST_F(RaconPolishingTest, ConsensusWithoutQualitiesAndWithAlignments) {
-    SetUp(racon_test_data_path + "sample_reads.fasta", racon_test_data_path +
-        "sample_overlaps.sam", racon_test_data_path + "sample_layout.fasta",
+    SetUp(racon_test_data_path + "sample_reads.fasta.gz", racon_test_data_path +
+        "sample_overlaps.sam.gz", racon_test_data_path + "sample_layout.fasta.gz",
         racon::PolisherType::kC, 500, 10, 0.3, 5, -4, -8);
 
     initialize();
@@ -162,7 +164,7 @@ TEST_F(RaconPolishingTest, ConsensusWithoutQualitiesAndWithAlignments) {
     polished_sequences[0]->create_reverse_complement();
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
-        racon_test_data_path + "sample_reference.fasta");
+        racon_test_data_path + "sample_reference.fasta.gz");
     parser->parse_objects(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
@@ -171,8 +173,8 @@ TEST_F(RaconPolishingTest, ConsensusWithoutQualitiesAndWithAlignments) {
 }
 
 TEST_F(RaconPolishingTest, ConsensusWithQualitiesLargerWindow) {
-    SetUp(racon_test_data_path + "sample_reads.fastq", racon_test_data_path +
-        "sample_overlaps.paf", racon_test_data_path + "sample_layout.fasta",
+    SetUp(racon_test_data_path + "sample_reads.fastq.gz", racon_test_data_path +
+        "sample_overlaps.paf.gz", racon_test_data_path + "sample_layout.fasta.gz",
         racon::PolisherType::kC, 1000, 10, 0.3, 5, -4, -8);
 
     initialize();
@@ -184,7 +186,7 @@ TEST_F(RaconPolishingTest, ConsensusWithQualitiesLargerWindow) {
     polished_sequences[0]->create_reverse_complement();
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
-        racon_test_data_path + "sample_reference.fasta");
+        racon_test_data_path + "sample_reference.fasta.gz");
     parser->parse_objects(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
@@ -193,8 +195,8 @@ TEST_F(RaconPolishingTest, ConsensusWithQualitiesLargerWindow) {
 }
 
 TEST_F(RaconPolishingTest, ConsensusWithQualitiesEditDistance) {
-    SetUp(racon_test_data_path + "sample_reads.fastq", racon_test_data_path +
-        "sample_overlaps.paf", racon_test_data_path + "sample_layout.fasta",
+    SetUp(racon_test_data_path + "sample_reads.fastq.gz", racon_test_data_path +
+        "sample_overlaps.paf.gz", racon_test_data_path + "sample_layout.fasta.gz",
         racon::PolisherType::kC, 500, 10, 0.3, 1, -1, -1);
 
     initialize();
@@ -206,7 +208,7 @@ TEST_F(RaconPolishingTest, ConsensusWithQualitiesEditDistance) {
     polished_sequences[0]->create_reverse_complement();
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
-        racon_test_data_path + "sample_reference.fasta");
+        racon_test_data_path + "sample_reference.fasta.gz");
     parser->parse_objects(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
@@ -215,8 +217,8 @@ TEST_F(RaconPolishingTest, ConsensusWithQualitiesEditDistance) {
 }
 
 TEST_F(RaconPolishingTest, FragmentCorrectionWithQualities) {
-    SetUp(racon_test_data_path + "sample_reads.fastq", racon_test_data_path +
-        "sample_ava_overlaps.paf", racon_test_data_path + "sample_reads.fastq",
+    SetUp(racon_test_data_path + "sample_reads.fastq.gz", racon_test_data_path +
+        "sample_ava_overlaps.paf.gz", racon_test_data_path + "sample_reads.fastq.gz",
         racon::PolisherType::kC, 500, 10, 0.3, 1, -1, -1);
 
     initialize();
@@ -233,8 +235,8 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithQualities) {
 }
 
 TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFull) {
-    SetUp(racon_test_data_path + "sample_reads.fastq", racon_test_data_path +
-        "sample_ava_overlaps.paf", racon_test_data_path + "sample_reads.fastq",
+    SetUp(racon_test_data_path + "sample_reads.fastq.gz", racon_test_data_path +
+        "sample_ava_overlaps.paf.gz", racon_test_data_path + "sample_reads.fastq.gz",
         racon::PolisherType::kF, 500, 10, 0.3, 1, -1, -1);
 
     initialize();
@@ -251,8 +253,8 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFull) {
 }
 
 TEST_F(RaconPolishingTest, FragmentCorrectionWithoutQualitiesFull) {
-    SetUp(racon_test_data_path + "sample_reads.fasta", racon_test_data_path +
-        "sample_ava_overlaps.paf", racon_test_data_path + "sample_reads.fasta",
+    SetUp(racon_test_data_path + "sample_reads.fasta.gz", racon_test_data_path +
+        "sample_ava_overlaps.paf.gz", racon_test_data_path + "sample_reads.fasta.gz",
         racon::PolisherType::kF, 500, 10, 0.3, 1, -1, -1);
 
     initialize();
@@ -269,8 +271,8 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithoutQualitiesFull) {
 }
 
 TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFullMhap) {
-    SetUp(racon_test_data_path + "sample_reads.fastq", racon_test_data_path +
-        "sample_ava_overlaps.mhap", racon_test_data_path + "sample_reads.fastq",
+    SetUp(racon_test_data_path + "sample_reads.fastq.gz", racon_test_data_path +
+        "sample_ava_overlaps.mhap.gz", racon_test_data_path + "sample_reads.fastq.gz",
         racon::PolisherType::kF, 500, 10, 0.3, 1, -1, -1);
 
     initialize();

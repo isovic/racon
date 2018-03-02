@@ -9,7 +9,7 @@
 #include "sequence.hpp"
 #include "polisher.hpp"
 
-static const char* version = "v1.0.3";
+static const char* version = "v1.1.0";
 
 static struct option options[] = {
     {"include-unpolished", no_argument, 0, 'u'},
@@ -117,14 +117,14 @@ void help() {
         "usage: racon [options ...] <sequences> <overlaps> <target sequences>\n"
         "\n"
         "    <sequences>\n"
-        "        input file in FASTA/FASTQ format containing sequences used for\n"
-        "        correction\n"
+        "        input file in FASTA/FASTQ format (can be compressed with gzip)\n"
+        "        containing sequences used for correction\n"
         "    <overlaps>\n"
-        "        input file in MHAP/PAF/SAM format containing overlaps between\n"
-        "        sequences and target sequences\n"
+        "        input file in MHAP/PAF/SAM format (can be compressed with gzip)\n"
+        "        containing overlaps between sequences and target sequences\n"
         "    <target sequences>\n"
-        "        input file in FASTA/FASTQ format containing sequences which will\n"
-        "        be corrected\n"
+        "        input file in FASTA/FASTQ format (can be compressed with gzip)\n"
+        "        containing sequences which will be corrected\n"
         "\n"
         "    options:\n"
         "        -u, --include-unpolished\n"
