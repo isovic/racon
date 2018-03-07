@@ -49,7 +49,8 @@ public:
         return is_valid_;
     }
 
-    void transmute(const std::unordered_map<std::string, uint64_t>& name_to_id,
+    void transmute(const std::vector<std::unique_ptr<Sequence>>& sequences,
+        const std::unordered_map<std::string, uint64_t>& name_to_id,
         const std::unordered_map<uint64_t, uint64_t>& id_to_id);
 
     uint32_t length() const {

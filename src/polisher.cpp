@@ -202,15 +202,8 @@ void Polisher::initialize() {
 
             auto it = name_to_id.find(sequences_[i]->name() + "t");
             if (it != name_to_id.end()) {
-                uint64_t j = it->second;
-                if (j >= targets_size) {
-                    fprintf(stderr, "[racon::Polisher::initialize] error: "
-                        "duplicate sequence %s in file\n",
-                        sequences_[i]->name().c_str());
-                    exit(1);
-                }
-                if (sequences_[i]->data().size() != sequences_[j]->data().size() ||
-                    sequences_[i]->quality().size() != sequences_[j]->quality().size()) {
+                if (sequences_[i]->data().size() != sequences_[it->second]->data().size() ||
+                    sequences_[i]->quality().size() != sequences_[it->second]->quality().size()) {
 
                     fprintf(stderr, "[racon::Polisher::initialize] error: "
                         "duplicate sequence %s with unequal data\n",
@@ -218,10 +211,10 @@ void Polisher::initialize() {
                     exit(1);
                 }
 
-                name_to_id[sequences_[i]->name() + "q"] = j;
-                id_to_id[sequences_size << 1 | 0] = j;
+                name_to_id[sequences_[i]->name() + "q"] = it->second;
+                id_to_id[sequences_size << 1 | 0] = it->second;
 
-                duplicate_sequences.insert(j);
+                duplicate_sequences.insert(it->second);
                 sequences_[i].reset();
                 ++n;
             } else {
@@ -286,11 +279,12 @@ void Polisher::initialize() {
 
         uint64_t c = l;
         for (uint64_t i = l; i < overlaps.size(); ++i) {
+            overlaps[i]->transmute(sequences_, name_to_id, id_to_id);
+
             if (!overlaps[i]->is_valid()) {
                 overlaps[i].reset();
                 continue;
             }
-            overlaps[i]->transmute(name_to_id, id_to_id);
 
             while (overlaps[c] == nullptr) {
                 ++c;
@@ -323,8 +317,6 @@ void Polisher::initialize() {
             }
         }
 
-        fprintf(stderr, "[racon::Polisher::initialize] loaded batch of overlaps\n");
-
         uint64_t n = shrinkToFit(overlaps, l);
         l = c - n;
 
@@ -341,6 +333,7 @@ void Polisher::initialize() {
             "empty overlap set!\n");
         exit(1);
     }
+    fprintf(stderr, "[racon::Polisher::initialize] loaded overlaps\n");
 
     std::vector<std::future<void>> thread_futures;
     for (uint64_t i = 0; i < sequences_.size(); ++i) {
