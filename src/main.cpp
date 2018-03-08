@@ -9,7 +9,7 @@
 #include "sequence.hpp"
 #include "polisher.hpp"
 
-static const char* version = "v1.1.1";
+static const char* version = "v1.2.0";
 
 static struct option options[] = {
     {"include-unpolished", no_argument, 0, 'u'},
@@ -128,9 +128,7 @@ void help() {
         "\n"
         "    options:\n"
         "        -u, --include-unpolished\n"
-        "            output unpolished target sequences (each sequence contains\n"
-        "            a tag in its header (C:<float>) which represents the\n"
-        "            percentage of polished windows)\n"
+        "            output unpolished target sequences\n"
         "        -f, --fragment-correction\n"
         "            perform fragment correction instead of contig polishing\n"
         "            (overlaps file should not contain dual/self overlaps!)\n"

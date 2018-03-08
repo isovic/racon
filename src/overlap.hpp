@@ -65,14 +65,8 @@ public:
         return breaking_points_;
     }
 
-    const std::vector<std::pair<uint32_t, uint32_t>>& dual_breaking_points() const {
-        return dual_breaking_points_;
-    }
-
     void find_breaking_points(const std::vector<std::unique_ptr<Sequence>>& sequences,
         uint32_t window_length);
-
-    std::unique_ptr<Overlap> dual_overlap();
 
     friend bioparser::MhapParser<Overlap>;
     friend bioparser::PafParser<Overlap>;

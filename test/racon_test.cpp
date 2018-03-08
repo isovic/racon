@@ -225,13 +225,13 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithQualities) {
 
     std::vector<std::unique_ptr<racon::Sequence>> polished_sequences;
     polish(polished_sequences, true);
-    EXPECT_EQ(polished_sequences.size(), 34);
+    EXPECT_EQ(polished_sequences.size(), 39);
 
     uint32_t total_length = 0;
     for (const auto& it: polished_sequences) {
         total_length += it->data().size();
     }
-    EXPECT_EQ(total_length, 334619);
+    EXPECT_EQ(total_length, 389394);
 }
 
 TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFull) {
@@ -249,7 +249,7 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFull) {
     for (const auto& it: polished_sequences) {
         total_length += it->data().size();
     }
-    EXPECT_EQ(total_length, 1658339);
+    EXPECT_EQ(total_length, 1658216);
 }
 
 TEST_F(RaconPolishingTest, FragmentCorrectionWithoutQualitiesFull) {
@@ -267,7 +267,7 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithoutQualitiesFull) {
     for (const auto& it: polished_sequences) {
         total_length += it->data().size();
     }
-    EXPECT_EQ(total_length, 1664087);
+    EXPECT_EQ(total_length, 1663982);
 }
 
 TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFullMhap) {
@@ -285,5 +285,5 @@ TEST_F(RaconPolishingTest, FragmentCorrectionWithQualitiesFullMhap) {
     for (const auto& it: polished_sequences) {
         total_length += it->data().size();
     }
-    EXPECT_EQ(total_length, 1658339);
+    EXPECT_EQ(total_length, 1658216);
 }

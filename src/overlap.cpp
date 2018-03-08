@@ -19,7 +19,7 @@ Overlap::Overlap(uint64_t a_id, uint64_t b_id, double, uint32_t,
         q_length_(a_length), t_name_(), t_id_(b_id - 1), t_begin_(b_begin),
         t_end_(b_end), t_length_(b_length), strand_(a_rc ^ b_rc), length_(),
         error_(), cigar_(), is_valid_(true), is_transmuted_(false),
-        breaking_points_(), dual_breaking_points_() {
+        breaking_points_() {
 
     length_ = std::max(q_end_ - q_begin_, t_end_ - t_begin_);
     error_ = 1 - std::min(q_end_ - q_begin_, t_end_ - t_begin_) /
@@ -34,8 +34,7 @@ Overlap::Overlap(const char* q_name, uint32_t q_name_length, uint32_t q_length,
         q_end_(q_end), q_length_(q_length), t_name_(t_name, t_name_length),
         t_id_(), t_begin_(t_begin), t_end_(t_end), t_length_(t_length),
         strand_(orientation == '-'), length_(), error_(), cigar_(),
-        is_valid_(true), is_transmuted_(false), breaking_points_(),
-        dual_breaking_points_() {
+        is_valid_(true), is_transmuted_(false), breaking_points_() {
 
     length_ = std::max(q_end_ - q_begin_, t_end_ - t_begin_);
     error_ = 1 - std::min(q_end_ - q_begin_, t_end_ - t_begin_) /
@@ -51,7 +50,7 @@ Overlap::Overlap(const char* q_name, uint32_t q_name_length, uint32_t flag,
         q_length_(0), t_name_(t_name, t_name_length), t_id_(), t_begin_(t_begin - 1),
         t_end_(), t_length_(0), strand_(flag & 0x10), length_(), error_(),
         cigar_(cigar, cigar_length), is_valid_(!(flag & 0x4)),
-        is_transmuted_(false), breaking_points_(), dual_breaking_points_() {
+        is_transmuted_(false), breaking_points_() {
 
     if (cigar_.size() < 2 && is_valid_) {
         fprintf(stderr, "[Racon::Overlap::Overlap] error: "
@@ -223,27 +222,12 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
     }
     window_ends.emplace_back(t_end_ - 1);
 
-    std::vector<int32_t> dual_window_ends;
-    if (strand_) {
-        dual_window_ends.emplace_back(q_length_ - q_begin_ - 1);
-    }
-    for (uint32_t i = 0; i < q_end_; i += window_length) {
-        if (i > q_begin_) {
-            dual_window_ends.emplace_back(strand_ ? q_length_ - i - 1 : i - 1);
-        }
-    }
-    if (strand_) {
-        std::reverse(dual_window_ends.begin(), dual_window_ends.end());
-    } else {
-        dual_window_ends.emplace_back(q_end_ - 1);
-    }
+    uint32_t w = 0;
+    bool found_first_match = false;
+    std::pair<uint32_t, uint32_t> first_match = {0, 0}, last_match = {0, 0};
 
-    uint32_t w = 0, d_w = 0;
-    bool found_first_match = false, found_first_dual_match = false;
-    std::pair<uint32_t, uint32_t> first_match = {0, 0}, last_match = {0, 0},
-        first_dual_match = {0, 0}, last_dual_match = {0, 0};
-    int32_t q_ptr = (strand_ ? (q_length_ - q_end_) : q_begin_) - 1,
-        t_ptr = t_begin_ - 1;
+    int32_t q_ptr = (strand_ ? (q_length_ - q_end_) : q_begin_) - 1;
+    int32_t t_ptr = t_begin_ - 1;
 
     for (uint32_t i = 0, j = 0; i < cigar_.size(); ++i) {
         if (cigar_[i] == 'M' || cigar_[i] == '=' || cigar_[i] == 'X') {
@@ -269,38 +253,11 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
                     ++w;
                 }
 
-                if (!found_first_dual_match) {
-                    found_first_dual_match = true;
-                    first_dual_match.first = strand_ ? q_length_ - q_ptr : q_ptr;
-                    first_dual_match.second = strand_ ? t_length_ - t_ptr : t_ptr;
-                }
-                last_dual_match.first = strand_ ? q_length_ - q_ptr - 1 : q_ptr + 1;
-                last_dual_match.second = strand_ ? t_length_ - t_ptr - 1 : t_ptr + 1;
-                if (q_ptr == dual_window_ends[d_w]) {
-                    if (found_first_dual_match) {
-                        dual_breaking_points_.emplace_back(first_dual_match);
-                        dual_breaking_points_.emplace_back(last_dual_match);
-                    }
-                    found_first_dual_match = false;
-                    ++d_w;
-                }
                 ++k;
             }
         } else if (cigar_[i] == 'I') {
-            uint32_t k = 0, num_bases = atoi(&cigar_[j]);
+            q_ptr += atoi(&cigar_[j]);
             j = i + 1;
-            while (k < num_bases) {
-                ++q_ptr;
-                if (q_ptr == dual_window_ends[d_w]) {
-                    if (found_first_dual_match) {
-                        dual_breaking_points_.emplace_back(first_dual_match);
-                        dual_breaking_points_.emplace_back(last_dual_match);
-                    }
-                    found_first_dual_match = false;
-                    ++d_w;
-                }
-                ++k;
-            }
         } else if (cigar_[i] == 'D' || cigar_[i] == 'N') {
             uint32_t k = 0, num_bases = atoi(&cigar_[j]);
             j = i + 1;
@@ -320,33 +277,8 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
             j = i + 1;
         }
     }
-    if (strand_) {
-        std::reverse(dual_breaking_points_.begin(), dual_breaking_points_.end());
-    }
 
     std::string().swap(cigar_);
-}
-
-std::unique_ptr<Overlap> Overlap::dual_overlap() {
-
-    if (!is_transmuted_) {
-        fprintf(stderr, "[racon::Overlap::dual_overlap] error: "
-            "overlap is not transmuted!\n");
-        exit(1);
-    }
-    if (dual_breaking_points_.empty()) {
-        fprintf(stderr, "[racon::Overlap::dual_overlap] error: "
-            "dual breaking points unavailable!\n");
-        exit(1);
-    }
-
-    auto other = std::unique_ptr<Overlap>(new Overlap());
-    other->q_id_ = t_id_;
-    other->t_id_ = q_id_;
-    other->strand_ = strand_;
-    other->breaking_points_.swap(dual_breaking_points_);
-
-    return std::move(other);
 }
 
 }

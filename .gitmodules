@@ -13,3 +13,6 @@
 [submodule "vendor/googletest"]
 	path = vendor/googletest
 	url = https://github.com/google/googletest
+[submodule "vendor/rampler"]
+	path = vendor/rampler
+	url = https://github.com/rvaser/rampler

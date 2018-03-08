@@ -188,7 +188,6 @@ void Polisher::initialize() {
 
     fprintf(stderr, "[racon::Polisher::initialize] loaded target sequences\n");
 
-    std::unordered_set<uint64_t> duplicate_sequences;
     uint64_t sequences_size = 0, total_sequences_length = 0;
 
     sparser_->reset();
@@ -214,7 +213,6 @@ void Polisher::initialize() {
                 name_to_id[sequences_[i]->name() + "q"] = it->second;
                 id_to_id[sequences_size << 1 | 0] = it->second;
 
-                duplicate_sequences.insert(it->second);
                 sequences_[i].reset();
                 ++n;
             } else {
@@ -252,7 +250,8 @@ void Polisher::initialize() {
             if (overlaps[i] == nullptr) {
                 continue;
             }
-            if (overlaps[i]->error() > error_threshold_) {
+            if (overlaps[i]->error() > error_threshold_ ||
+                overlaps[i]->q_id() == overlaps[i]->t_id()) {
                 overlaps[i].reset();
                 continue;
             }
@@ -306,12 +305,6 @@ void Polisher::initialize() {
 
             if (overlaps[i]->strand()) {
                 has_reverse_data[overlaps[i]->q_id()] = true;
-                if (type_ == PolisherType::kF &&
-                    duplicate_sequences.find(overlaps[i]->q_id()) != duplicate_sequences.end() &&
-                    duplicate_sequences.find(overlaps[i]->t_id()) != duplicate_sequences.end()) {
-
-                    has_reverse_data[overlaps[i]->t_id()] = true;
-                }
             } else {
                 has_data[overlaps[i]->q_id()] = true;
             }
@@ -360,22 +353,6 @@ void Polisher::initialize() {
     }
     fprintf(stderr, "\n");
 
-    if (type_ == PolisherType::kF && !duplicate_sequences.empty()) {
-        uint64_t num_overlaps = overlaps.size();
-        for (uint64_t i = 0; i < num_overlaps; ++i) {
-            if (duplicate_sequences.find(overlaps[i]->q_id()) != duplicate_sequences.end() &&
-                duplicate_sequences.find(overlaps[i]->t_id()) != duplicate_sequences.end()) {
-
-                overlaps.emplace_back(overlaps[i]->dual_overlap());
-            }
-        }
-
-        std::sort(overlaps.begin(), overlaps.end(),
-            [](const std::unique_ptr<Overlap>& lhs, const std::unique_ptr<Overlap>& rhs) {
-                return lhs->q_id() < rhs->q_id();
-            });
-    }
-
     std::vector<uint64_t> id_to_first_window_id(targets_size + 1, 0);
     for (uint64_t i = 0; i < targets_size; ++i) {
         uint32_t k = 0;
@@ -393,7 +370,11 @@ void Polisher::initialize() {
         id_to_first_window_id[i + 1] = id_to_first_window_id[i] + k;
     }
 
+    targets_coverages_.resize(targets_size, 0);
+
     for (uint64_t i = 0; i < overlaps.size(); ++i) {
+
+        ++targets_coverages_[overlaps[i]->t_id()];
 
         const auto& sequence = sequences_[overlaps[i]->q_id()];
         const auto& breaking_points = overlaps[i]->breaking_points();
@@ -482,9 +463,12 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                 static_cast<double>(windows_[i]->rank() + 1);
 
             if (!drop_unpolished_sequences || polished_ratio > 0) {
-                std::string ratio_str = "_C:" + std::to_string(polished_ratio);
+                std::string tags = type_ == PolisherType::kF ? "r" : "";
+                tags += " LN:i:" + std::to_string(polished_data.size());
+                tags += " RC:i:" + std::to_string(targets_coverages_[windows_[i]->id()]);
+                tags += " XC:f:" + std::to_string(polished_ratio);
                 dst.emplace_back(createSequence(sequences_[windows_[i]->id()]->name() +
-                    ratio_str, polished_data));
+                    tags, polished_data));
             }
 
             num_polished_windows = 0;

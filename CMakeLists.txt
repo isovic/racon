@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(racon_build_tests "Build racon unit tests" OFF)
+option(racon_build_wrapper "Build racon wrapper" OFF)
 
 add_executable(racon
     src/main.cpp
@@ -46,3 +47,16 @@ if (racon_build_tests)
     target_link_libraries(racon_test bioparser spoa thread_pool pthread
         edlib_static gtest_main)
 endif(racon_build_tests)
+
+if (racon_build_wrapper)
+    set(racon_path ${PROJECT_BINARY_DIR}/bin/racon)
+    set(rampler_path ${PROJECT_BINARY_DIR}/vendor/rampler/bin/rampler)
+    configure_file(${PROJECT_SOURCE_DIR}/scripts/racon_wrapper.py
+        ${PROJECT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/racon_wrapper)
+    file(COPY ${PROJECT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/racon_wrapper
+        DESTINATION ${PROJECT_BINARY_DIR}/bin
+        FILE_PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+        WORLD_READ WORLD_EXECUTE)
+
+    add_subdirectory(vendor/rampler)
+endif(racon_build_wrapper)

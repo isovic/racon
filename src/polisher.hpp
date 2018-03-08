@@ -77,6 +77,7 @@ private:
     std::vector<std::shared_ptr<spoa::AlignmentEngine>> alignment_engines_;
 
     std::vector<std::unique_ptr<Sequence>> sequences_;
+    std::vector<uint32_t> targets_coverages_;
     std::string dummy_quality_;
 
     uint32_t window_length_;
