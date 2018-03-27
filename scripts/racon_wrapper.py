@@ -41,14 +41,14 @@ class RaconWrapper:
             os.makedirs(self.work_directory)
         except OSError:
             if (not os.path.isdir(self.work_directory)):
-                eprint('[RaconWrapper::run] error: unable to create work directory!')
+                eprint('[RaconWrapper::__init__] error: unable to create work directory!')
                 sys.exit(1)
 
     def __del__(self):
         try:
             shutil.rmtree(self.work_directory)
         except OSError:
-            eprint('[RaconWrapper::run] warning: unable to clean work directory!')
+            eprint('[RaconWrapper::__del__] warning: unable to clean work directory!')
 
     def run(self):
         # run preprocess
