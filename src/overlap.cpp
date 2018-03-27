@@ -146,7 +146,7 @@ void Overlap::transmute(const std::vector<std::unique_ptr<Sequence>>& sequences,
     }
 
     if (q_length_ != sequences[q_id_]->data().size()) {
-        fprintf(stderr, "[racon::overlap::find_breaking_points] error: "
+        fprintf(stderr, "[racon::Overlap::transmute] error: "
             "unequal lengths in sequence and overlap file for sequence %s!\n",
             sequences[q_id_]->name().c_str());
         exit(1);
@@ -164,7 +164,7 @@ void Overlap::transmute(const std::vector<std::unique_ptr<Sequence>>& sequences,
     }
 
     if (t_length_ != 0 && t_length_ != sequences[t_id_]->data().size()) {
-        fprintf(stderr, "[racon::overlap::find_breaking_points] error: "
+        fprintf(stderr, "[racon::Overlap::transmute] error: "
             "unequal lengths in target and overlap file for target %s!\n",
             sequences[t_id_]->name().c_str());
         exit(1);

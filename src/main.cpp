@@ -9,7 +9,7 @@
 #include "sequence.hpp"
 #include "polisher.hpp"
 
-static const char* version = "v1.2.0";
+static const char* version = "v1.2.1";
 
 static struct option options[] = {
     {"include-unpolished", no_argument, 0, 'u'},
