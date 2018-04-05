@@ -34,21 +34,21 @@ class RaconWrapper:
         self.mismatch = mismatch
         self.gap = gap
         self.threads = threads
-        self.work_directory = os.path.dirname(os.path.realpath(__file__)) +\
-            '/racon_work_directory_' + str(time.time())
+        self.work_directory = os.getcwd() + '/racon_work_directory_' + str(time.time())
 
+    def __enter__(self):
         try:
             os.makedirs(self.work_directory)
         except OSError:
             if (not os.path.isdir(self.work_directory)):
-                eprint('[RaconWrapper::__init__] error: unable to create work directory!')
+                eprint('[RaconWrapper::__enter__] error: unable to create work directory!')
                 sys.exit(1)
 
-    def __del__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         try:
             shutil.rmtree(self.work_directory)
         except OSError:
-            eprint('[RaconWrapper::__del__] warning: unable to clean work directory!')
+            eprint('[RaconWrapper::__exit__] warning: unable to clean work directory!')
 
     def run(self):
         # run preprocess
@@ -186,4 +186,6 @@ if __name__ == '__main__':
         args.split, args.subsample, args.include_unpolished,
         args.fragment_correction, args.window_length, args.quality_threshold,
         args.error_threshold, args.match, args.mismatch, args.gap, args.threads)
-    racon.run()
+
+    with racon:
+        racon.run()
