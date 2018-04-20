@@ -131,29 +131,6 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         } else {
             consensus_ = consensus_.substr(begin, end - begin + 1);
         }
-
-    } else if (type_ == WindowType::kNGS) {
-        uint32_t i = 0;
-        for (uint32_t j = 0; i < consensus_.size(); ++i) {
-            if (consensus_[i] != 'N') {
-                continue;
-            }
-
-            j = std::max(j, i);
-            while (j < consensus_.size() && consensus_[j] == 'N') {
-                ++j;
-            }
-
-            if (j >= consensus_.size()) {
-                break;
-            } else if (i != j) {
-                consensus_[i] = consensus_[j];
-                consensus_[j] = 'N';
-            }
-        }
-        if (i < consensus_.size()) {
-            consensus_.resize(i);
-        }
     }
 
     return true;
