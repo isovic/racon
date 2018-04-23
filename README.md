@@ -13,7 +13,7 @@ Racon can be used as a polishing tool after the assembly with **either Illumina 
 
 Racon takes as input only three files: contigs in FASTA/FASTQ format, reads in FASTA/FASTQ format and overlaps/alignments between the reads and the contigs in MHAP/PAF/SAM format. Output is a set of polished contigs in FASTA format printed to stdout. All input files **can be compressed with gzip**.
 
-Racon can also be used as a read error-correction tool. In this scenario, the MHAP/PAF/SAM file needs to contain pairwise overlaps between reads **with dual overlaps**.
+Racon can also be used as a read error-correction tool. In this scenario, the MHAP/PAF/SAM file needs to contain pairwise overlaps between reads **including dual overlaps**.
 
 A **wrapper script** is also available to enable easier usage to the end-user for large datasets. It has the same interface as racon but adds two additional features from the outside. Sequences can be **subsampled** to decrease the total execution time (accuracy might be lower) while target sequences can be **split** into smaller chunks and run sequentially to decrease memory consumption. Both features can be run at the same time as well.
 
@@ -60,18 +60,16 @@ Usage of `racon` is as following:
 
     options:
         -u, --include-unpolished
-            output unpolished target sequences (each sequence contains a tag in
-            its header (C:<float>) which represents the percentage of polished
-            windows)
+            output unpolished target sequences
         -f, --fragment-correction
             perform fragment correction instead of contig polishing (overlaps
-            file should not contain dual/self overlaps!)
+            file should contain dual/self overlaps!)
         -w, --window-length <int>
             default: 500
             size of window on which POA is performed
         -q, --quality-threshold <float>
             default: 10.0
-            threshold for average base quality of windows used in poa
+            threshold for average base quality of windows used in POA
         -e, --error-threshold <float>
             default: 0.3
             maximum allowed error rate used for filtering overlaps

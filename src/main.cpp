@@ -9,7 +9,7 @@
 #include "sequence.hpp"
 #include "polisher.hpp"
 
-static const char* version = "v1.3.0";
+static const char* version = "v1.3.1";
 
 static struct option options[] = {
     {"include-unpolished", no_argument, 0, 'u'},
@@ -131,13 +131,13 @@ void help() {
         "            output unpolished target sequences\n"
         "        -f, --fragment-correction\n"
         "            perform fragment correction instead of contig polishing\n"
-        "            (overlaps file should not contain dual/self overlaps!)\n"
+        "            (overlaps file should contain dual/self overlaps!)\n"
         "        -w, --window-length <int>\n"
         "            default: 500\n"
         "            size of window on which POA is performed\n"
         "        -q, --quality-threshold <float>\n"
         "            default: 10.0\n"
-        "            threshold for average base quality of windows used in poa\n"
+        "            threshold for average base quality of windows used in POA\n"
         "        -e, --error-threshold <float>\n"
         "            default: 0.3\n"
         "            maximum allowed error rate used for filtering overlaps\n"

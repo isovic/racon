@@ -165,11 +165,11 @@ if __name__ == '__main__':
         help='''output unpolished target sequences''')
     parser.add_argument('-f', '--fragment-correction', action='store_true',
         help='''perform fragment correction instead of contig polishing
-        (overlaps file should not contain dual/self overlaps!)''')
+        (overlaps file should contain dual/self overlaps!)''')
     parser.add_argument('-w', '--window-length', default=500, help='''size of
         window on which POA is performed''')
     parser.add_argument('-q', '--quality-threshold', default=10.0,
-        help='''threshold for average base quality of windows used in poa''')
+        help='''threshold for average base quality of windows used in POA''')
     parser.add_argument('-e', '--error-threshold', default=0.3, help='''maximum
         allowed error rate used for filtering overlaps''')
     parser.add_argument('-m', '--match', default=5, help='''score for matching
