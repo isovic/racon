@@ -4,6 +4,8 @@
  * @brief Sequence class source file
  */
 
+#include <ctype.h>
+
 #include "sequence.hpp"
 
 namespace racon {
@@ -16,23 +18,26 @@ std::unique_ptr<Sequence> createSequence(const std::string& name,
 
 Sequence::Sequence(const char* name, uint32_t name_length, const char* data,
     uint32_t data_length)
-        : name_(name, name_length), data_(data, data_length),
-        reverse_complement_(), quality_(), reverse_quality_() {
+        : name_(name, name_length), data_(), reverse_complement_(), quality_(),
+        reverse_quality_() {
+
+    data_.reserve(data_length);
+    for (uint32_t i = 0; i < data_length; ++i) {
+        data_ += toupper(data[i]);
+    }
 }
 
 Sequence::Sequence(const char* name, uint32_t name_length, const char* data,
     uint32_t data_length, const char* quality, uint32_t quality_length)
-        : name_(name, name_length), data_(data, data_length),
-        reverse_complement_(), quality_(quality, quality_length),
-        reverse_quality_() {
+        : Sequence(name, name_length, data, data_length) {
 
     uint32_t quality_sum = 0;
-    for (const auto& it: quality_) {
-        quality_sum += it - '!';
+    for (uint32_t i = 0; i < quality_length; ++i) {
+        quality_sum += quality[i] - '!';
     }
 
-    if (quality_sum == 0) {
-        std::string().swap(quality_);
+    if (quality_sum > 0) {
+        quality_.assign(quality, quality_length);
     }
 }
 
