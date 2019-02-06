@@ -31,8 +31,11 @@ endif()
 if (NOT TARGET edlib)
     add_subdirectory(vendor/edlib EXCLUDE_FROM_ALL)
 endif()
+if (NOT TARGET logger)
+    add_subdirectory(vendor/logger EXCLUDE_FROM_ALL)
+endif()
 
-target_link_libraries(racon bioparser spoa thread_pool pthread edlib_static)
+target_link_libraries(racon bioparser spoa thread_pool pthread edlib_static logger)
 
 install(TARGETS racon DESTINATION bin)
 
@@ -53,7 +56,7 @@ if (racon_build_tests)
     add_subdirectory(vendor/googletest/googletest EXCLUDE_FROM_ALL)
 
     target_link_libraries(racon_test bioparser spoa thread_pool pthread
-        edlib_static gtest_main)
+        edlib_static logger gtest_main)
 endif(racon_build_tests)
 
 if (racon_build_wrapper)

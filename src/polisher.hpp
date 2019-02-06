@@ -25,6 +25,10 @@ namespace spoa {
     class AlignmentEngine;
 }
 
+namespace logger {
+    class Logger;
+}
+
 namespace racon {
 
 class Sequence;
@@ -85,6 +89,8 @@ private:
 
     std::unique_ptr<thread_pool::ThreadPool> thread_pool_;
     std::unordered_map<std::thread::id, uint32_t> thread_to_id_;
+
+    std::unique_ptr<logger::Logger> logger_;
 };
 
 }

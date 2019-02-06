@@ -16,3 +16,6 @@
 [submodule "vendor/rampler"]
 	path = vendor/rampler
 	url = https://github.com/rvaser/rampler
+[submodule "vendor/logger"]
+	path = vendor/logger
+	url = https://github.com/rvaser/logger
