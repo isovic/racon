@@ -11,13 +11,31 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(racon_build_tests "Build racon unit tests" OFF)
 option(racon_build_wrapper "Build racon wrapper" OFF)
+option(racon_enable_cuda "Build racon with NVIDIA CUDA support" OFF)
 
-add_executable(racon
+# Check CUDA compatibility.
+if(racon_enable_cuda)
+    find_package(CUDA 9.0 QUIET REQUIRED)
+    if(NOT ${CUDA_FOUND})
+        message(FATAL_ERROR "CUDA not detected on system. Please install")
+    else()
+        message(STATUS "Using CUDA ${CUDA_VERSION} from ${CUDA_TOOLKIT_ROOT_DIR}")
+    endif()
+endif()
+
+set(racon_sources
     src/main.cpp
     src/polisher.cpp
     src/overlap.cpp
     src/sequence.cpp
     src/window.cpp)
+
+if(racon_enable_cuda)
+    cuda_add_executable(racon ${racon_sources})
+    target_compile_definitions(racon PRIVATE CUDA_ENABLED)
+else()
+    add_executable(racon ${racon_sources})
+endif()
 
 if (NOT TARGET bioparser)
     add_subdirectory(vendor/bioparser EXCLUDE_FROM_ALL)
@@ -46,12 +64,19 @@ if (racon_build_tests)
     include_directories(${PROJECT_BINARY_DIR}/config)
     include_directories(${PROJECT_SOURCE_DIR}/src)
 
-    add_executable(racon_test
+    set(racon_test_sources
         test/racon_test.cpp
         src/polisher.cpp
         src/overlap.cpp
         src/sequence.cpp
         src/window.cpp)
+
+    if (racon_enable_cuda)
+        cuda_add_executable(racon_test ${racon_test_sources})
+        target_compile_definitions(racon PRIVATE CUDA_ENABLED)
+    else()
+        add_executable(racon_test ${racon_test_sources})
+    endif()
 
     add_subdirectory(vendor/googletest/googletest EXCLUDE_FROM_ALL)
 
