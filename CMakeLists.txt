@@ -31,6 +31,7 @@ set(racon_sources
     src/window.cpp)
 
 if(racon_enable_cuda)
+    list(APPEND racon_sources src/cudapolisher.cpp)
     cuda_add_executable(racon ${racon_sources})
     target_compile_definitions(racon PRIVATE CUDA_ENABLED)
 else()
@@ -72,6 +73,7 @@ if (racon_build_tests)
         src/window.cpp)
 
     if (racon_enable_cuda)
+        list(APPEND racon_test_sources src/cudapolisher.cpp)
         cuda_add_executable(racon_test ${racon_test_sources})
         target_compile_definitions(racon PRIVATE CUDA_ENABLED)
     else()

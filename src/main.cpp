@@ -8,6 +8,9 @@
 
 #include "sequence.hpp"
 #include "polisher.hpp"
+#ifdef CUDA_ENABLED
+#include "cudapolisher.hpp"
+#endif
 
 static const char* version = "v1.3.3";
 
@@ -21,6 +24,7 @@ static struct option options[] = {
     {"mismatch", required_argument, 0, 'x'},
     {"gap", required_argument, 0, 'g'},
     {"threads", required_argument, 0, 't'},
+    {"use-cuda", no_argument, 0, 'c'},
     {"version", no_argument, 0, 'v'},
     {"help", no_argument, 0, 'h'},
     {0, 0, 0, 0}
@@ -44,8 +48,15 @@ int main(int argc, char** argv) {
     bool drop_unpolished_sequences = true;
     uint32_t num_threads = 1;
 
+    bool use_cuda = false;
+
+    std::string optstring = "ufw:q:e:m:x:g:t:h";
+#ifdef CUDA_ENABLED
+    optstring += "c";
+#endif
+
     char argument;
-    while ((argument = getopt_long(argc, argv, "ufw:q:e:m:x:g:t:h", options, nullptr)) != -1) {
+    while ((argument = getopt_long(argc, argv, optstring.c_str(), options, nullptr)) != -1) {
         switch (argument) {
             case 'u':
                 drop_unpolished_sequences = false;
@@ -80,6 +91,11 @@ int main(int argc, char** argv) {
             case 'h':
                 help();
                 exit(0);
+#ifdef CUDA_ENABLED
+            case 'c':
+                use_cuda = true;
+                break;
+#endif
             default:
                 exit(1);
         }
@@ -98,7 +114,7 @@ int main(int argc, char** argv) {
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
         input_paths[2], type == 0 ? racon::PolisherType::kC :
         racon::PolisherType::kF, window_length, quality_threshold,
-        error_threshold, match, mismatch, gap, num_threads);
+        error_threshold, match, mismatch, gap, num_threads, use_cuda);
 
     polisher->initialize();
 
@@ -156,5 +172,10 @@ void help() {
         "        --version\n"
         "            prints the version number\n"
         "        -h, --help\n"
-        "            prints the usage\n");
+        "            prints the usage\n"
+#ifdef CUDA_ENABLED
+        "        -c, --use-cuda\n"
+        "            use CUDA accelerated polishing\n"
+#endif
+    );
 }

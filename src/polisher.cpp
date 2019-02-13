@@ -11,6 +11,7 @@
 #include "sequence.hpp"
 #include "window.hpp"
 #include "polisher.hpp"
+#include "cudapolisher.hpp"
 
 #include "bioparser/bioparser.hpp"
 #include "thread_pool/thread_pool.hpp"
@@ -52,7 +53,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-    uint32_t num_threads) {
+    uint32_t num_threads, bool use_cuda) {
 
     if (type != PolisherType::kC && type != PolisherType::kF) {
         fprintf(stderr, "[racon::createPolisher] error: invalid polisher type!\n");
@@ -123,10 +124,29 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         exit(1);
     }
 
-    return std::unique_ptr<Polisher>(new Polisher(std::move(sparser),
-        std::move(oparser), std::move(tparser), type, window_length,
-        quality_threshold, error_threshold, match, mismatch, gap,
-        num_threads));
+    if (use_cuda)
+    {
+#ifdef CUDA_ENABLED
+        // If CUDA is enabled, return an instance of the CUDAPolisher object.
+        return std::unique_ptr<Polisher>(new CUDAPolisher(std::move(sparser),
+                    std::move(oparser), std::move(tparser), type, window_length,
+                    quality_threshold, error_threshold, match, mismatch, gap,
+                    num_threads));
+#else
+        fprintf(stderr, "[racon::createPolisher] error: "
+                "Attemping to use CUDA when CUDA support is not available.\n"
+                "Please check logic in %s:%s\n",
+                __FILE__, __func__);
+        exit(1);
+#endif
+    }
+    else
+    {
+        return std::unique_ptr<Polisher>(new Polisher(std::move(sparser),
+                    std::move(oparser), std::move(tparser), type, window_length,
+                    quality_threshold, error_threshold, match, mismatch, gap,
+                    num_threads));
+    }
 }
 
 Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,

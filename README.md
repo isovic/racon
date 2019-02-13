@@ -94,6 +94,10 @@ Usage of `racon` is as following:
         -h, --help
             prints the usage
 
+    only available when built with CUDA:
+        -c, --use-cuda
+            use CUDA accelerated polishing
+
 `racon_test` is run without any parameters.
 
 Usage of `racon_wrapper` equals the one of `racon` with two additional parameters:
