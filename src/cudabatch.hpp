@@ -43,13 +43,6 @@ public:
     bool hasWindows() const;
 
     /**
-     * @brief Set CUDA stream for the batch.
-     *
-     * @param[in] stream : CUDA stream to use for cuda processing.
-     */
-    void setCUDAStream(cudaStream_t stream);
-
-    /**
      * @brief Runs the core computation to generate consensus for
      *        all windows in the batch.
      *

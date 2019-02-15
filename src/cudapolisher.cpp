@@ -68,11 +68,6 @@ bool CUDAPolisher::processBatch(uint32_t batch_id)
         fillNextBatchOfWindows(batch_id);
         if (batches_.at(batch_id)->hasWindows())
         {
-            // Create new CUDA stream.
-            cudaStream_t new_stream;
-            cudaStreamCreate(&new_stream);
-            batches_.at(batch_id)->setCUDAStream(new_stream);
-
             // Launch workload.
             result = batches_.at(batch_id)->generateConsensus();
             // Stub sleep command to simulate workload.

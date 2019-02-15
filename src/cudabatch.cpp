@@ -20,11 +20,17 @@ CUDABatch::CUDABatch()
     , sequence_count_()
     , stream_()
 {
+    // Create new CUDA stream.
+    cudaStreamCreate(&stream_);
+
     // Allocate host memory and CUDA memory based on max sequence and target counts.
 }
 
 CUDABatch::~CUDABatch()
 {
+    // Destroy CUDA stream.
+    cudaStreamDestroy(stream_);
+
     // Free all the host and CUDA memory.
 }
 
@@ -52,11 +58,6 @@ bool CUDABatch::addWindow(std::shared_ptr<Window> window)
 bool CUDABatch::hasWindows() const
 {
     return (windows_.size() != 0);
-}
-
-void CUDABatch::setCUDAStream(cudaStream_t stream)
-{
-    stream_ = stream;
 }
 
 void CUDABatch::generateMemoryMap()
