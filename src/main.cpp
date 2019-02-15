@@ -9,7 +9,7 @@
 #include "sequence.hpp"
 #include "polisher.hpp"
 #ifdef CUDA_ENABLED
-#include "cudapolisher.hpp"
+#include "cuda/cudapolisher.hpp"
 #endif
 
 static const char* version = "v1.3.3";

@@ -12,7 +12,7 @@
 #include "window.hpp"
 #include "polisher.hpp"
 #ifdef CUDA_ENABLED
-#include "cudapolisher.hpp"
+#include "cuda/cudapolisher.hpp"
 #endif
 
 #include "bioparser/bioparser.hpp"
