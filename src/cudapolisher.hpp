@@ -6,7 +6,10 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "polisher.hpp"
+#include "cudabatch.hpp"
 
 namespace racon {
 
@@ -32,6 +35,21 @@ protected:
         uint32_t num_threads);
     CUDAPolisher(const CUDAPolisher&) = delete;
     const CUDAPolisher& operator=(const CUDAPolisher&) = delete;
+
+    // Insert new windows into the batch referred to by batch_id.
+    void fillNextBatchOfWindows(uint32_t batch_id);
+
+    // Generate POA for all windows in the batch.
+    bool processBatch(uint32_t batch_id);
+
+    // Vector of batches. Generated during construction time.
+    std::vector<std::unique_ptr<CUDABatch>> batches_;
+
+    // Mutex for accessing the vector of windows.
+    std::mutex mutex_windows_;
+
+    // Index of next window to be added to a batch.
+    uint32_t next_window_index_ = 0;
 };
 
 }

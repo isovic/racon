@@ -86,7 +86,7 @@ protected:
     std::string dummy_quality_;
 
     uint32_t window_length_;
-    std::vector<std::unique_ptr<Window>> windows_;
+    std::vector<std::shared_ptr<Window>> windows_;
 
     std::unique_ptr<thread_pool::ThreadPool> thread_pool_;
     std::unordered_map<std::thread::id, uint32_t> thread_to_id_;

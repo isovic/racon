@@ -12,7 +12,7 @@
 
 namespace racon {
 
-std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
+std::shared_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
     const char* backbone, uint32_t backbone_length, const char* quality,
     uint32_t quality_length) {
 
@@ -22,7 +22,7 @@ std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type
         exit(1);
     }
 
-    return std::unique_ptr<Window>(new Window(id, rank, type, backbone,
+    return std::shared_ptr<Window>(new Window(id, rank, type, backbone,
         backbone_length, quality, quality_length));
 }
 

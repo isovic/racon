@@ -11,7 +11,9 @@
 #include "sequence.hpp"
 #include "window.hpp"
 #include "polisher.hpp"
+#ifdef CUDA_ENABLED
 #include "cudapolisher.hpp"
+#endif
 
 #include "bioparser/bioparser.hpp"
 #include "thread_pool/thread_pool.hpp"
@@ -528,7 +530,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         (*logger_)("[racon::Polisher::polish] generated consensus");
     }
 
-    std::vector<std::unique_ptr<Window>>().swap(windows_);
+    std::vector<std::shared_ptr<Window>>().swap(windows_);
     std::vector<std::unique_ptr<Sequence>>().swap(sequences_);
 }
 
