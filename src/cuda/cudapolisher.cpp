@@ -7,6 +7,7 @@
 #include <future>
 #include <iostream>
 
+#include "sequence.hpp"
 #include "cudapolisher.hpp"
 
 #include "bioparser/bioparser.hpp"
@@ -27,9 +28,11 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
 {
     std::cout << "[CUDAPolisher] Constructed." << std::endl;
 
+    const uint32_t MAX_WINDOWS = 128;
+    const uint32_t MAX_DEPTH_PER_WINDOW = 1000;
     for(uint32_t i = 0; i < num_threads; i++)
     {
-        batches_.emplace_back(createCUDABatch());
+        batches_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW));
     }
 }
 
@@ -70,8 +73,6 @@ bool CUDAPolisher::processBatch(uint32_t batch_id)
         {
             // Launch workload.
             result = batches_.at(batch_id)->generateConsensus();
-            // Stub sleep command to simulate workload.
-            usleep(1000);
         }
         else
         {
@@ -107,6 +108,28 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
             std::cerr << "Batch " << i << " had issues \
                 processing its windows." << std::endl;
         }
+    }
+
+    // Collect results from all windows into final output.
+    std::string polished_data = "";
+    for (uint64_t i = 0; i < windows_.size(); ++i) {
+        polished_data += windows_[i]->consensus();
+
+        if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
+            double polished_ratio = 1.0f;
+
+            if (!drop_unpolished_sequences || polished_ratio > 0) {
+                std::string tags = type_ == PolisherType::kF ? "r" : "";
+                tags += " LN:i:" + std::to_string(polished_data.size());
+                tags += " RC:i:" + std::to_string(targets_coverages_[windows_[i]->id()]);
+                tags += " XC:f:" + std::to_string(polished_ratio);
+                dst.emplace_back(createSequence(sequences_[windows_[i]->id()]->name() +
+                    tags, polished_data));
+            }
+
+            polished_data.clear();
+        }
+        windows_[i].reset();
     }
 
     (void) dst;

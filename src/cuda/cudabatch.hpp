@@ -16,14 +16,11 @@ namespace racon {
 class Window;
 
 class CUDABatch;
-std::unique_ptr<CUDABatch> createCUDABatch();
+std::unique_ptr<CUDABatch> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth);
 
 class CUDABatch
 {
-    // Maximum number of seqeunces and targets.
-    // Used to pre-allocate host an cuda buffers.
-    const uint32_t MAX_SEQUENCES = 10000;
-    const uint32_t MAX_WINDOWS = 100;
+    const uint32_t MAX_SEQUENCE_SIZE = 2048;
 
 public:
     ~CUDABatch();
@@ -58,10 +55,16 @@ public:
     void reset();
 
     // Builder function to create a new CUDABatch object.
-    friend std::unique_ptr<CUDABatch> createCUDABatch();
+    friend std::unique_ptr<CUDABatch> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth);
 
 protected:
-    CUDABatch();
+    /**
+     * @brief Constructor for CUDABatch class.
+     *
+     * @param[in] max_windows      : Maximum number windows in batch
+     * @param[in] max_window_depth : Maximum number of sequences per window
+     */
+    CUDABatch(uint32_t max_windows, uint32_t max_window_depth);
     CUDABatch(const CUDABatch&) = delete;
     const CUDABatch& operator=(const CUDABatch&) = delete;
 
@@ -83,8 +86,19 @@ protected:
 
     /*
      * @brief Run the CUDA kernel for generating POA on the batch.
+     *        This call is asynchronous.
      */
     void generatePOA();
+
+    /*
+     * @brief Wait for execution to complete and grab the output
+     *        consensus from the device.
+     */
+    void getConsensus();
+
+    // Data limits.
+    uint32_t max_windows_;
+    uint32_t max_depth_per_window_;
 
     // Windows belonging to the batch.
     std::vector<std::shared_ptr<Window>> windows_;
@@ -95,6 +109,15 @@ protected:
     // CUDA stream for launching kernels.
     cudaStream_t stream_;
 
+    // Buffers for storing results.
+    std::unique_ptr<uint8_t[]> consensus_h_;
+    uint8_t *consensus_d_;
+    size_t consensus_pitch_;
+
+    // Buffers for input data.
+    std::unique_ptr<uint8_t[]> inputs_h_;
+    uint8_t *inputs_d_;
+    size_t input_pitch_;
 };
 
 } // namespace racon

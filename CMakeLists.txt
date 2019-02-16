@@ -53,8 +53,14 @@ endif()
 if (NOT TARGET logger)
     add_subdirectory(vendor/logger EXCLUDE_FROM_ALL)
 endif()
+if (racon_enable_cuda AND NOT TARGET cudapoa)
+    add_subdirectory(nvidia/cudapoa EXCLUDE_FROM_ALL)
+endif()
 
 target_link_libraries(racon bioparser spoa thread_pool pthread edlib_static logger)
+if (racon_enable_cuda)
+    target_link_libraries(racon cudapoa)
+endif()
 
 install(TARGETS racon DESTINATION bin)
 
@@ -84,6 +90,9 @@ if (racon_build_tests)
 
     target_link_libraries(racon_test bioparser spoa thread_pool pthread
         edlib_static logger gtest_main)
+    if (racon_enable_cuda)
+        target_link_libraries(racon_test cudapoa)
+    endif()
 endif(racon_build_tests)
 
 if (racon_build_wrapper)
