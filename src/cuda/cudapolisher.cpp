@@ -7,7 +7,7 @@
 #include <future>
 #include <iostream>
 
-#include "sequence.hpp"
+#include "../sequence.hpp"
 #include "cudapolisher.hpp"
 
 #include "bioparser/bioparser.hpp"

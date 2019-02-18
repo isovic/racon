@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.13.2)
 project(cudapoa)
 
 find_package(CUDA 9.0 QUIET REQUIRED)
