@@ -23,6 +23,8 @@ if(racon_enable_cuda)
     endif()
 endif()
 
+include_directories(${PROJECT_SOURCE_DIR}/src)
+
 set(racon_sources
     src/main.cpp
     src/polisher.cpp

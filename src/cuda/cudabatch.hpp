@@ -9,7 +9,7 @@
 #include <memory>
 #include <cuda_runtime_api.h>
 
-#include "../window.hpp"
+#include "window.hpp"
 
 namespace racon {
 

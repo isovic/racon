@@ -8,7 +8,7 @@
 
 #include <mutex>
 
-#include "../polisher.hpp"
+#include "polisher.hpp"
 #include "cudabatch.hpp"
 
 namespace racon {
