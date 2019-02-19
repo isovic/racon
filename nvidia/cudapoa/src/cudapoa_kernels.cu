@@ -1,7 +1,6 @@
 // Implementation file for CUDA POA kernels.
 
 #include "cudapoa_kernels.cuh"
-#include <stdio.h>
 
 namespace nvidia {
 
@@ -11,8 +10,8 @@ __global__
 void generatePOAKernel(uint8_t* consensus_d,
                  uint8_t* sequences_d,
                  uint32_t max_sequence_size,
-                 uint8_t * num_sequences_per_window,
-                 uint16_t * sequence_lengths,
+                 uint8_t * num_sequences_per_window_d,
+                 uint16_t * sequence_lengths_d,
                  uint32_t max_depth_per_window,
                  uint32_t total_windows)
 {
