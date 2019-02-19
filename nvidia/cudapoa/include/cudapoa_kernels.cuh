@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <cuda_runtime_api.h>
 
+#define MAX_NODE_EDGES 5
+#define MAX_NODES_PER_WINDOW 1000
+
 namespace nvidia {
 
 namespace cudapoa {
