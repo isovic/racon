@@ -13,7 +13,9 @@ namespace nvidia {
 namespace cudapoa {
 
 void generatePOA(uint8_t* consensus_d,
+                 size_t conensus_pitch,
                  uint8_t* sequences_d,
+                 size_t sequences_pitch,
                  uint32_t max_sequence_size,
                  uint8_t * num_sequences_per_window_d,
                  uint16_t * sequence_lengths_d,

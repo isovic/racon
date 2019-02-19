@@ -147,7 +147,9 @@ void CUDABatchProcessor::generatePOA()
     uint32_t NUM_THREADS = 32;
     uint32_t num_blocks = (windows_.size() / NUM_THREADS) + 1;
     nvidia::cudapoa::generatePOA(consensus_d_,
+                                 consensus_pitch_,
                                  inputs_d_,
+                                 input_pitch_,
                                  MAX_SEQUENCE_SIZE,
                                  num_sequences_per_window_d_,
                                  sequence_lengths_d_,
