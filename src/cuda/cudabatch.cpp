@@ -14,12 +14,12 @@
 
 namespace racon {
 
-std::unique_ptr<CUDABatch> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth)
+std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth)
 {
-    return std::unique_ptr<CUDABatch>(new CUDABatch(max_windows, max_window_depth));
+    return std::unique_ptr<CUDABatchProcessor>(new CUDABatchProcessor(max_windows, max_window_depth));
 }
 
-CUDABatch::CUDABatch(uint32_t max_windows, uint32_t max_window_depth)
+CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth)
     : max_windows_(max_windows)
     , max_depth_per_window_(max_window_depth)
     , windows_()
@@ -34,12 +34,21 @@ CUDABatch::CUDABatch(uint32_t max_windows, uint32_t max_window_depth)
 
     // Input buffers.
     uint32_t input_size = max_windows_ * max_depth_per_window_ * MAX_SEQUENCE_SIZE;
-    inputs_h_.reset(new uint8_t[input_size]);
+    cudaHostAlloc((void**) &inputs_h_, input_size * sizeof(uint8_t),
+                  cudaHostAllocDefault);
+    cudaHostAlloc((void**) &num_sequences_per_window_h_, max_windows * sizeof(uint8_t),
+            cudaHostAllocDefault);
+    cudaHostAlloc((void**) &sequence_lengths_h_, max_windows * max_depth_per_window_* sizeof(uint8_t),
+            cudaHostAllocDefault);
 
     cudaMallocPitch((void**) &inputs_d_,
                     &input_pitch_,
                     sizeof(uint8_t) * MAX_SEQUENCE_SIZE,
                     max_windows_ * max_depth_per_window_);
+
+    cudaMalloc((void**)&num_sequences_per_window_d_, max_windows * sizeof(uint8_t));
+    cudaMalloc((void**)&sequence_lengths_d_, max_windows * max_depth_per_window_ * sizeof(uint8_t));
+
     cudaCheckError();
     std::cout << "Allocated input buffers of size " << input_size << std::endl;
 
@@ -55,7 +64,7 @@ CUDABatch::CUDABatch(uint32_t max_windows, uint32_t max_window_depth)
     std::cout << "Allocated output buffers of size " << input_size << std::endl;
 }
 
-CUDABatch::~CUDABatch()
+CUDABatchProcessor::~CUDABatchProcessor()
 {
     // Destroy CUDA stream.
     cudaStreamDestroy(stream_);
@@ -68,7 +77,7 @@ CUDABatch::~CUDABatch()
     std::cout << "Destroyed buffers." << std::endl;
 }
 
-bool CUDABatch::doesWindowFit(std::shared_ptr<Window> window) const
+bool CUDABatchProcessor::doesWindowFit(std::shared_ptr<Window> window) const
 {
     // Checks if adding new window will go over either the MAX_SEQUENCES
     // or max_windows_ count of the batch.
@@ -76,7 +85,7 @@ bool CUDABatch::doesWindowFit(std::shared_ptr<Window> window) const
         (windows_.size() + 1 < max_windows_);
 }
 
-bool CUDABatch::addWindow(std::shared_ptr<Window> window)
+bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
 {
     if (doesWindowFit(window))
     {
@@ -89,18 +98,19 @@ bool CUDABatch::addWindow(std::shared_ptr<Window> window)
     }
 }
 
-bool CUDABatch::hasWindows() const
+bool CUDABatchProcessor::hasWindows() const
 {
     return (windows_.size() != 0);
 }
 
-void CUDABatch::generateMemoryMap()
+void CUDABatchProcessor::generateMemoryMap()
 {
     // Fill host/cuda memory with sequence information.
     for(uint32_t i = 0; i < windows_.size(); i++)
     {
         auto window = windows_.at(i);
         uint32_t input_window_offset = i * max_depth_per_window_;
+        int num_seqs = 0;
         for(uint32_t j = 0; j < window->sequences_.size(); j++)
         {
             uint32_t input_sequence_offset = input_window_offset + j;
@@ -109,17 +119,29 @@ void CUDABatch::generateMemoryMap()
             memcpy(&(inputs_h_[input_sequence_offset * MAX_SEQUENCE_SIZE]),
                    seq.first,
                    seq.second);
+
+            num_seqs++;
+            sequence_lengths_h_[i * max_depth_per_window_ + j] = seq.second;
         }
+        num_sequences_per_window_h_[i] = num_seqs;
     }
 
     cudaMemcpy2DAsync(inputs_d_, input_pitch_,
                       inputs_h_.get(), MAX_SEQUENCE_SIZE,
                       MAX_SEQUENCE_SIZE, max_windows_ * max_depth_per_window_,
                       cudaMemcpyHostToDevice, stream_);
+
+    cudaMemcpyAsync(num_sequences_per_window_d_, num_sequences_per_window_h_,
+                    max_windows_ * sizeof(uint8_t), cudaMemcpyHostToDevice, stream_);
+
+    cudaMemcpyAsync(sequence_lengths_d_, sequence_lengths_h_,
+                    max_depth_per_window_ * max_windows_ * sizeof(uint8_t), cudaMemcpyHostToDevice, stream_);
+
+
     cudaCheckError();
 }
 
-void CUDABatch::generatePOA()
+void CUDABatchProcessor::generatePOA()
 {
     // Launch kernel to run 1 POA per thread in thread block.
     uint32_t NUM_THREADS = 32;
@@ -127,6 +149,8 @@ void CUDABatch::generatePOA()
     nvidia::cudapoa::generatePOA(consensus_d_,
                                  inputs_d_,
                                  MAX_SEQUENCE_SIZE,
+                                 num_sequences_per_window_d_,
+                                 sequence_lengths_d_,
                                  max_depth_per_window_,
                                  windows_.size(),
                                  NUM_THREADS,
@@ -135,7 +159,7 @@ void CUDABatch::generatePOA()
     cudaCheckError();
 }
 
-void CUDABatch::getConsensus()
+void CUDABatchProcessor::getConsensus()
 {
     cudaMemcpy2DAsync(consensus_h_.get(),
                       MAX_SEQUENCE_SIZE,
@@ -157,7 +181,7 @@ void CUDABatch::getConsensus()
     }
 }
 
-bool CUDABatch::generateConsensus()
+bool CUDABatchProcessor::generateConsensus()
 {
     // Generate consensus for all windows in the batch
     generateMemoryMap();
@@ -167,7 +191,7 @@ bool CUDABatch::generateConsensus()
     return true;
 }
 
-void CUDABatch::reset()
+void CUDABatchProcessor::reset()
 {
     windows_.clear();
     sequence_count_ = 0;

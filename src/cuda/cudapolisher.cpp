@@ -32,7 +32,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     const uint32_t MAX_DEPTH_PER_WINDOW = 32;
     for(uint32_t i = 0; i < num_threads; i++)
     {
-        batches_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW));
+        batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW));
     }
 }
 
@@ -43,17 +43,15 @@ CUDAPolisher::~CUDAPolisher()
 
 void CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
 {
-    batches_.at(batch_id)->reset();
+    batch_processors_.at(batch_id)->reset();
 
     // Use mutex to read the vector containing windows in a threadsafe manner.
     std::lock_guard<std::mutex> guard(mutex_windows_);
 
-    std::cout << "Processing batches for " << batch_id << std::endl;
     while(next_window_index_ < windows_.size())
     {
-        if (batches_.at(batch_id)->addWindow(windows_.at(next_window_index_)))
+        if (batch_processors_.at(batch_id)->addWindow(windows_.at(next_window_index_)))
         {
-            std::cout << "    Added window " << next_window_index_ << std::endl;
             next_window_index_++;
         }
         else
@@ -69,10 +67,10 @@ bool CUDAPolisher::processBatch(uint32_t batch_id)
     while(result)
     {
         fillNextBatchOfWindows(batch_id);
-        if (batches_.at(batch_id)->hasWindows())
+        if (batch_processors_.at(batch_id)->hasWindows())
         {
             // Launch workload.
-            result = batches_.at(batch_id)->generateConsensus();
+            result = batch_processors_.at(batch_id)->generateConsensus();
         }
         else
         {
@@ -90,7 +88,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
     // Process each of the batches in a separate thread.
     std::vector<std::future<bool>> thread_futures;
-    for(uint32_t i = 0; i < batches_.size(); i++)
+    for(uint32_t i = 0; i < batch_processors_.size(); i++)
     {
         thread_futures.emplace_back(std::async(std::launch::async,
                                                &CUDAPolisher::processBatch,

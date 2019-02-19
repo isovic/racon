@@ -55,7 +55,7 @@ public:
         const char* quality, uint32_t quality_length);
 
 #ifdef CUDA_ENABLED
-    friend class CUDABatch;
+    friend class CUDABatchProcessor;
 #endif
 private:
     Window(uint64_t id, uint32_t rank, WindowType type, const char* backbone,

@@ -15,15 +15,15 @@ namespace racon {
 
 class Window;
 
-class CUDABatch;
-std::unique_ptr<CUDABatch> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth);
+class CUDABatchProcessor;
+std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth);
 
-class CUDABatch
+class CUDABatchProcessor
 {
     const uint32_t MAX_SEQUENCE_SIZE = 2048;
 
 public:
-    ~CUDABatch();
+    ~CUDABatchProcessor();
 
     /**
      * @brief Add a new window to the batch.
@@ -54,8 +54,8 @@ public:
      */
     void reset();
 
-    // Builder function to create a new CUDABatch object.
-    friend std::unique_ptr<CUDABatch> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth);
+    // Builder function to create a new CUDABatchProcessor object.
+    friend std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth);
 
 protected:
     /**
@@ -64,9 +64,9 @@ protected:
      * @param[in] max_windows      : Maximum number windows in batch
      * @param[in] max_window_depth : Maximum number of sequences per window
      */
-    CUDABatch(uint32_t max_windows, uint32_t max_window_depth);
-    CUDABatch(const CUDABatch&) = delete;
-    const CUDABatch& operator=(const CUDABatch&) = delete;
+    CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth);
+    CUDABatchProcessor(const CUDABatchProcessor&) = delete;
+    const CUDABatchProcessor& operator=(const CUDABatchProcessor&) = delete;
 
     /*
      * @brief Checks if a new window can fit into the batch.
@@ -118,6 +118,11 @@ protected:
     std::unique_ptr<uint8_t[]> inputs_h_;
     uint8_t *inputs_d_;
     size_t input_pitch_;
+    uint8_t * num_sequences_per_window_h_;
+    uint16_t * sequence_lengths_h_;
+    uint8_t * num_sequences_per_window_d_;
+    uint16_t * sequence_lengths_d_;
+
 };
 
 } // namespace racon

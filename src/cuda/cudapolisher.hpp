@@ -43,7 +43,7 @@ protected:
     bool processBatch(uint32_t batch_id);
 
     // Vector of batches. Generated during construction time.
-    std::vector<std::unique_ptr<CUDABatch>> batches_;
+    std::vector<std::unique_ptr<CUDABatchProcessor>> batch_processors_;
 
     // Mutex for accessing the vector of windows.
     std::mutex mutex_windows_;
