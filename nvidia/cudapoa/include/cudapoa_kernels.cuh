@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <cuda_runtime_api.h>
 
-#define MAX_NODE_EDGES 5
-#define MAX_NODES_PER_WINDOW 1000
+#define CUDAPOA_MAX_NODE_EDGES 5
+#define CUDAPOA_MAX_NODES_PER_WINDOW 1000
 
 namespace nvidia {
 
@@ -22,6 +22,13 @@ void generatePOA(uint8_t* consensus_d,
                  uint32_t max_depth_per_window,
                  uint32_t total_windows,
                  uint32_t num_threads, uint32_t num_blocks, cudaStream_t stream);
+
+void topologicalSort(uint8_t* sorted_poa_d,
+                     uint16_t node_count,
+                     uint16_t* incoming_edge_count_d,
+                     uint16_t* outoing_edges_d,
+                     uint16_t* outgoing_edge_count_d,
+                     uint32_t num_threads, uint32_t num_blocks, cudaStream_t stream);
 
 }
 

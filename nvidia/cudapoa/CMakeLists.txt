@@ -14,3 +14,6 @@ set(sources
 cuda_add_library(cudapoa STATIC ${sources})
 
 target_include_directories(cudapoa PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# Add tests folder
+add_subdirectory(tests)

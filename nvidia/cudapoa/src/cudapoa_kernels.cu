@@ -6,6 +6,54 @@ namespace nvidia {
 
 namespace cudapoa {
 
+// Device function for running topoligical sort on graph.
+__device__
+void topologicalSortDeviceUtil(uint8_t* sorted_poa,
+                               uint16_t node_count,
+                               uint16_t* incoming_edge_count,
+                               uint16_t* outgoing_edges,
+                               uint16_t* outgoing_edge_count)
+{
+    // Clear the incoming edge count for each node.
+    __shared__ uint16_t local_incoming_edge_count[CUDAPOA_MAX_NODES_PER_WINDOW];
+    memset(local_incoming_edge_count, -1, 1000);
+    uint16_t sorted_poa_position = 0;
+
+    // Iterate through node IDs (since nodes are from 0
+    // through node_count -1, a simple loop works) and fill 
+    // out the incoming edge count.
+    for(uint16_t n = 0; n < node_count; n++)
+    {
+        local_incoming_edge_count[n] = incoming_edge_count[n];
+        // If we find a node ID has 0 incoming edges, add it to sorted nodes list.
+        if (local_incoming_edge_count[n] == 0)
+        {
+            sorted_poa[sorted_poa_position++] = n;
+        }
+    }
+
+    // Loop through set of node IDs with no incoming edges,
+    // then iterate through their children. For each child decrement their 
+    // incoming edge count. If incoming edge count of child == 0, 
+    // add its node ID to the sorted order list.
+    for(uint16_t n = 0; n < sorted_poa_position; n++)
+    {
+        uint8_t node = sorted_poa[n];
+        for(uint16_t edge = 0; edge < outgoing_edge_count[node]; edge++)
+        {
+            uint8_t out_node = outgoing_edges[node * CUDAPOA_MAX_NODE_EDGES + edge];
+            local_incoming_edge_count[out_node]--;
+            if (local_incoming_edge_count[out_node] == 0)
+            {
+                sorted_poa[sorted_poa_position++] = out_node;
+            }
+        }
+    }
+
+    // sorted_poa will have final ordering of node IDs.
+}
+
+// Kernel for running POA.
 __global__
 void generatePOAKernel(uint8_t* consensus_d,
                        size_t consensus_pitch,
@@ -17,6 +65,29 @@ void generatePOAKernel(uint8_t* consensus_d,
                        uint32_t max_depth_per_window,
                        uint32_t total_windows)
 {
+    // Memory layout for graph in adjacency list format.
+    __shared__ uint8_t nodes[CUDAPOA_MAX_NODES_PER_WINDOW];
+    __shared__ uint16_t incoming_edges[CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
+    __shared__ uint16_t incoming_edge_count[CUDAPOA_MAX_NODES_PER_WINDOW];
+    __shared__ uint16_t outoing_edges[CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
+    __shared__ uint16_t outgoing_edge_count[CUDAPOA_MAX_NODES_PER_WINDOW];
+    __shared__ uint16_t incoming_edges_weights[CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
+    __shared__ uint16_t outoing_edges_weights[CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
+    __shared__ uint8_t sorted_poa[CUDAPOA_MAX_NODES_PER_WINDOW];
+
+    // Initial node count is size of backbone (i.e. first sequence).
+    uint16_t node_count = sequence_lengths_d[0];
+
+    // Run topological sort on graph and store output in sorted_poa.
+    if (threadIdx.x == 0)
+    {
+        topologicalSortDeviceUtil(sorted_poa,
+                                  node_count,
+                                  incoming_edge_count,
+                                  outoing_edges, outgoing_edge_count);
+    }
+
+    // Dummy kernel code to copy first sequence as output.
     uint32_t window_id = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (window_id >= total_windows)
@@ -32,6 +103,7 @@ void generatePOAKernel(uint8_t* consensus_d,
     }
 }
 
+// Host function call for POA kernel.
 void generatePOA(uint8_t* consensus_d,
                  size_t consensus_pitch,
                  uint8_t* sequences_d,
@@ -54,6 +126,40 @@ void generatePOA(uint8_t* consensus_d,
                                                               total_windows);
 }
 
+
+// Kernel for running topological independently.
+__global__
+void topologicalSortKernel(uint8_t* sorted_poa_d,
+                           uint16_t node_count,
+                           uint16_t* incoming_edge_count_d,
+                           uint16_t* outgoing_edges_d,
+                           uint16_t* outgoing_edge_count_d)
+{
+    if (blockIdx.x == 0 && threadIdx.x == 0)
+    {
+        topologicalSortDeviceUtil(sorted_poa_d,
+                                  node_count,
+                                  incoming_edge_count_d,
+                                  outgoing_edges_d,
+                                  outgoing_edge_count_d);
+    }
 }
 
+// Host function for running topological sort kernel.
+void topologicalSort(uint8_t* sorted_poa_d,
+                     uint16_t node_count,
+                     uint16_t* incoming_edge_count_d,
+                     uint16_t* outgoing_edges_d,
+                     uint16_t* outgoing_edge_count_d,
+                     uint32_t num_threads, uint32_t num_blocks, cudaStream_t stream)
+{
+    topologicalSortKernel<<<num_blocks, num_threads, 0, stream>>>(sorted_poa_d,
+                                                                  node_count,
+                                                                  incoming_edge_count_d,
+                                                                  outgoing_edges_d,
+                                                                  outgoing_edge_count_d);
 }
+
+} // namespace cudapoa
+
+} // namespace nvidia
