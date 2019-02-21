@@ -145,7 +145,7 @@ void CUDABatchProcessor::generatePOA()
 {
     // Launch kernel to run 1 POA per thread in thread block.
     uint32_t NUM_THREADS = 32;
-    uint32_t num_blocks = (windows_.size() / NUM_THREADS) + 1;
+    uint32_t num_blocks = 1;
     nvidia::cudapoa::generatePOA(consensus_d_,
                                  consensus_pitch_,
                                  inputs_d_,

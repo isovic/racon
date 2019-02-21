@@ -1,6 +1,7 @@
 // Implementation file for CUDA POA kernels.
 
 #include "cudapoa_kernels.cuh"
+#include <stdio.h>
 
 namespace nvidia {
 
@@ -75,28 +76,44 @@ void generatePOAKernel(uint8_t* consensus_d,
     __shared__ uint16_t outoing_edges_weights[CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
     __shared__ uint8_t sorted_poa[CUDAPOA_MAX_NODES_PER_WINDOW];
 
-    // Initial node count is size of backbone (i.e. first sequence).
-    uint16_t node_count = sequence_lengths_d[0];
+    uint16_t band_idx = blockIdx.x * blockDim.x + threadIdx.x; // The ID of the thread within the band
 
-    // Run topological sort on graph and store output in sorted_poa.
-    if (threadIdx.x == 0)
-    {
-        topologicalSortDeviceUtil(sorted_poa,
-                                  node_count,
-                                  incoming_edge_count,
-                                  outoing_edges, outgoing_edge_count);
+    for (uint16_t window_idx = 0; window_idx<total_windows; window_idx++){
+        uint16_t node_count = 0;
+        if (threadIdx.x == 0){
+            uint16_t sequence_0_length = sequence_lengths_d[0];
+            uint16_t sequence_idx = 0;
+            uint32_t input_row_idx = window_idx * max_depth_per_window + sequence_idx * max_sequence_size;
+            nodes[0] = sequences_d[input_row_idx];
+            node_count++;
+            sorted_poa[0] = 0;
+            //Build the rest of the graphs
+            for (int nucleotide_idx=1; nucleotide_idx<sequence_0_length; nucleotide_idx++){
+                    nodes[nucleotide_idx] = sequences_d[input_row_idx] + nucleotide_idx;
+                    node_count++;
+                    sorted_poa[nucleotide_idx] = nucleotide_idx;
+                    outoing_edges[nucleotide_idx-1] = nucleotide_idx;
+                    outgoing_edge_count[nucleotide_idx-1] = 1;
+                    incoming_edges[nucleotide_idx] = nucleotide_idx - 1;
+                    incoming_edge_count[nucleotide_idx] = 1;
+            }
+
+            //Run a topsort on the graph. Not strictly necessary at this point
+            topologicalSortDeviceUtil(sorted_poa,
+                                      node_count,
+                                      incoming_edge_count,
+                                      outoing_edges, outgoing_edge_count);
+        }
     }
+
 
     // Dummy kernel code to copy first sequence as output.
     uint32_t window_id = blockIdx.x * blockDim.x + threadIdx.x;
-
     if (window_id >= total_windows)
         return;
-
     uint32_t input_row_idx = window_id * max_depth_per_window;
     uint8_t *input_row = &sequences_d[input_row_idx * sequences_pitch];
     uint8_t *output_row = &consensus_d[window_id * consensus_pitch];
-
     for(uint32_t c = 0; c < max_sequence_size; c++)
     {
         output_row[c] = input_row[c];
