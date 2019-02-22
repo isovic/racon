@@ -83,13 +83,13 @@ void generatePOAKernel(uint8_t* consensus_d,
         if (threadIdx.x == 0){
             uint16_t sequence_0_length = sequence_lengths_d[0];
             uint16_t sequence_idx = 0;
-            uint32_t input_row_idx = window_idx * max_depth_per_window + sequence_idx * max_sequence_size;
+            uint32_t input_row_idx = window_idx * max_depth_per_window;
             nodes[0] = sequences_d[input_row_idx];
             node_count++;
             sorted_poa[0] = 0;
             //Build the rest of the graphs
             for (int nucleotide_idx=1; nucleotide_idx<sequence_0_length; nucleotide_idx++){
-                    nodes[nucleotide_idx] = sequences_d[input_row_idx] + nucleotide_idx;
+                    nodes[nucleotide_idx] = sequences_d[input_row_idx + nucleotide_idx];
                     node_count++;
                     sorted_poa[nucleotide_idx] = nucleotide_idx;
                     outoing_edges[nucleotide_idx-1] = nucleotide_idx;
