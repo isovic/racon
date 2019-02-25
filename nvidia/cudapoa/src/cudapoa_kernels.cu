@@ -81,7 +81,6 @@ void generatePOAKernel(uint8_t* consensus_d,
         uint16_t node_count = 0;
         if (threadIdx.x == 0){
             uint16_t sequence_0_length = sequence_lengths_d[0];
-            uint16_t sequence_idx = 0;
             uint32_t input_row_idx = window_idx * max_depth_per_window;
             nodes[0] = sequences_d[input_row_idx];
             node_count++;
