@@ -1,7 +1,6 @@
 // Implementation file for CUDA POA kernels.
 
 #include "cudapoa_kernels.cuh"
-#include <stdio.h>
 
 namespace nvidia {
 
