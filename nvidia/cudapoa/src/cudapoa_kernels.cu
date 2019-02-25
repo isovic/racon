@@ -87,13 +87,13 @@ void generatePOAKernel(uint8_t* consensus_d,
             sorted_poa[0] = 0;
             //Build the rest of the graphs
             for (int nucleotide_idx=1; nucleotide_idx<sequence_0_length; nucleotide_idx++){
-                    nodes[nucleotide_idx] = sequences_d[input_row_idx + nucleotide_idx];
-                    node_count++;
-                    sorted_poa[nucleotide_idx] = nucleotide_idx;
-                    outoing_edges[nucleotide_idx-1] = nucleotide_idx;
-                    outgoing_edge_count[nucleotide_idx-1] = 1;
-                    incoming_edges[nucleotide_idx] = nucleotide_idx - 1;
-                    incoming_edge_count[nucleotide_idx] = 1;
+                nodes[nucleotide_idx] = sequences_d[input_row_idx + nucleotide_idx];
+                node_count++;
+                sorted_poa[nucleotide_idx] = nucleotide_idx;
+                outoing_edges[(nucleotide_idx-1) * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx;
+                outgoing_edge_count[nucleotide_idx-1] = 1;
+                incoming_edges[nucleotide_idx * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx - 1;
+                incoming_edge_count[nucleotide_idx] = 1;
             }
 
             //Run a topsort on the graph. Not strictly necessary at this point
