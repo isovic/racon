@@ -54,7 +54,8 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
 
     // Output buffers.
     input_size = max_windows_ * MAX_SEQUENCE_SIZE;
-    consensus_h_.reset(new uint8_t[input_size]);
+    cudaHostAlloc((void**) &consensus_h_, input_size * sizeof(uint8_t),
+                  cudaHostAllocDefault);
 
     cudaMallocPitch((void**) &consensus_d_,
                     &consensus_pitch_,
