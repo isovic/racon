@@ -28,9 +28,11 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
 {
     std::cout << "[CUDAPolisher] Constructed." << std::endl;
 
-    const uint32_t MAX_WINDOWS = 1024;
-    const uint32_t MAX_DEPTH_PER_WINDOW = 32;
+    const uint32_t MAX_WINDOWS = 256;
+    const uint32_t MAX_DEPTH_PER_WINDOW = 256;
+
     for(uint32_t i = 0; i < num_threads; i++)
+    //for(uint32_t i = 0; i < 1; i++)
     {
         batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW));
     }
@@ -48,7 +50,9 @@ void CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
     // Use mutex to read the vector containing windows in a threadsafe manner.
     std::lock_guard<std::mutex> guard(mutex_windows_);
 
-    while(next_window_index_ < windows_.size())
+    // TODO: Reducing window wize by 10 for debugging.
+    uint32_t count = windows_.size();
+    while(next_window_index_ < count)
     {
         if (batch_processors_.at(batch_id)->addWindow(windows_.at(next_window_index_)))
         {
@@ -59,6 +63,7 @@ void CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
             break;
         }
     }
+    fprintf(stderr, "Processing windows %d / %d\n", next_window_index_ , count);
 }
 
 bool CUDAPolisher::processBatch(uint32_t batch_id)

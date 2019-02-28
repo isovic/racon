@@ -20,7 +20,9 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32
 
 class CUDABatchProcessor
 {
-    const uint32_t MAX_SEQUENCE_SIZE = 2048;
+    const uint32_t MAX_SEQUENCE_SIZE = 512;
+    const uint32_t NUM_THREADS = 256;
+    const uint32_t NUM_BLOCKS = 1;
 
 public:
     ~CUDABatchProcessor();
@@ -118,10 +120,29 @@ protected:
     std::unique_ptr<uint8_t[]> inputs_h_;
     uint8_t *inputs_d_;
     size_t input_pitch_;
-    uint8_t * num_sequences_per_window_h_;
+    uint16_t * num_sequences_per_window_h_;
     uint16_t * sequence_lengths_h_;
-    uint8_t * num_sequences_per_window_d_;
+    uint16_t * num_sequences_per_window_d_;
     uint16_t * sequence_lengths_d_;
+
+    // Buffers for temp data.
+    int32_t* scores_d_;
+    int16_t* traceback_i_d_;
+    int16_t* traceback_j_d_;
+
+    // Buffer for temp graph data.
+    uint8_t* nodes_d_;
+    uint16_t* incoming_edges_d_;
+    uint16_t* incoming_edge_count_d_;
+    uint16_t* outgoing_edges_d_;
+    uint16_t* outgoing_edge_count_d_;
+    uint16_t* incoming_edges_weights_d_;
+    uint16_t* outoing_edges_weights_d_;
+    uint16_t* sorted_poa_d_;
+
+
+    static uint32_t batches;
+    uint32_t bid_ = 0;
 
 };
 
