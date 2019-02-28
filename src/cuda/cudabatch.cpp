@@ -254,7 +254,6 @@ void CUDABatchProcessor::generatePOA()
 
 void CUDABatchProcessor::getConsensus()
 {
-    cudaStreamSynchronize(stream_);
     cudaCheckError();
     std::cout << TABS << bid_ << " Kernel execution done" << std::endl;
 
