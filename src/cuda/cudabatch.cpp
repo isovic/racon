@@ -107,6 +107,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     cudaMalloc((void**) &incoming_edges_weights_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS);
     cudaMalloc((void**) &outoing_edges_weights_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS);
     cudaMalloc((void**) &sorted_poa_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
+    cudaMalloc((void**) &sorted_poa_node_map_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
 
     cudaMemset(nodes_d_, 0, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
     cudaMemset(incoming_edges_d_,0,  sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS);
@@ -247,7 +248,8 @@ void CUDABatchProcessor::generatePOA()
                                  outgoing_edge_count_d_,
                                  incoming_edges_weights_d_,
                                  outoing_edges_weights_d_,
-                                 sorted_poa_d_);
+                                 sorted_poa_d_,
+                                 sorted_poa_node_map_d_);
     cudaCheckError();
     std::cout << TABS << bid_ << " Launched kernel" << std::endl;
 }
