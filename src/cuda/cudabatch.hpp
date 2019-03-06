@@ -132,7 +132,6 @@ protected:
 
     // Buffers for temp data.
     int32_t* scores_d_;
-    int32_t* scores_h_;
     int16_t* traceback_i_d_;
     int16_t* traceback_j_d_;
 

@@ -34,9 +34,10 @@ void generatePOAKernel(uint8_t* consensus_d,
     if (thread_idx > total_windows)
         return;
 
+    // Loop over all the windows that are assigned to a particular thread.
     for(uint32_t window_idx = thread_idx; window_idx < total_windows; window_idx += blockDim.x)
     {
-        // Memory layout for graph in adjacency list format.
+        // Find the buffer offsets for each thread within the global memory buffers.
         uint8_t* nodes = &nodes_d[CUDAPOA_MAX_NODES_PER_WINDOW * thread_idx];
         uint16_t* incoming_edges = &incoming_edges_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
         uint16_t* incoming_edge_count = &incoming_edge_count_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
@@ -94,8 +95,9 @@ void generatePOAKernel(uint8_t* consensus_d,
         //    printf("%c ", nodes[i]);
         //}
 
-        // Align each subsequent read, add alignment to graph, run topoligical sort.
         //printf("window id %d, sequences %d\n", window_idx, num_sequences_in_window - 1);
+
+        // Align each subsequent read, add alignment to graph, run topoligical sort.
         for(uint16_t s = 1; s < num_sequences_in_window; s++)
         {
             //printf("running window %d seq %d / %d\n", window_idx, s, num_sequences_in_window);
@@ -145,7 +147,7 @@ void generatePOAKernel(uint8_t* consensus_d,
                 return;
             }
 
-
+            // Run Needleman-Wunsch alignment between graph and new sequence.
             //printf("running nw\n");
             uint16_t alignment_length = runNeedlemanWunsch(nodes,
                                sorted_poa,
@@ -175,9 +177,8 @@ void generatePOAKernel(uint8_t* consensus_d,
             //    return;
             //}
 
-
-            //printf("running add\n");
             // Add alignment to graph.
+            //printf("running add\n");
             node_count = addAlignmentToGraph(nodes, node_count,
                     node_alignments, node_alignment_count,
                     incoming_edges, incoming_edge_count,

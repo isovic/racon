@@ -22,10 +22,21 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
     //printf("Running addition for alignment %d\n", alignment_length);
     int16_t head_node_id = -1;
     int16_t curr_node_id = -1;
+
+    // Basic algorithm is to iterate through the alignment of the read.
+    // For each position in that alignment -
+    //     if it's an insert in the read
+    //         add a new node
+    //     if it is aligned
+    //         check if node base matches read base. if so, move on.
+    //         if node base doesn't match, check other aligned nodes
+    //             if none of the other aligned nodes match, add new node
+    //             else use one of aligned nodes and move on.
     for(int16_t pos = alignment_length - 1; pos >= 0; pos--)
     {
         bool new_node = false;
         int16_t read_pos = alignment_read[pos];
+        // Case where base in read in an insert.
         if (read_pos != -1)
         {
             //printf("%c ", read[read_pos]);
@@ -46,7 +57,6 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
             else
             {
                 // Get base information for aligned node in graph.
-                //uint16_t graph_node_id = graph[graph_pos];
                 uint8_t graph_base = nodes[graph_node_id];
                 //printf("graph base %c\n", graph_base);
 
@@ -120,6 +130,7 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
             //{
             //    printf("new node %d\n", curr_node_id);
             //}
+
             // Create new edges if necessary.
             if (head_node_id != -1)
             {

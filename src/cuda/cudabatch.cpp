@@ -87,19 +87,19 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not allocate output memory.")));
     std::cout << TABS << bid_ << " Allocated output buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
 
-    // Temp buffers.
+    // Buffers for storing NW scores and backtrace.
     cudaMalloc((void**) &scores_d_, sizeof(int32_t) * MAX_DIMENSION * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
-    scores_h_ = new int32_t[MAX_DIMENSION * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS];
     cudaMalloc((void**) &traceback_i_d_, sizeof(int16_t) * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
     cudaMalloc((void**) &traceback_j_d_, sizeof(int16_t) * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
 
     cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not allocate temp memory.")));
 
+    // Debug print for size allocated.
     uint32_t temp_size = (sizeof(int32_t) * MAX_DIMENSION * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
     temp_size += 2 * (sizeof(int16_t) * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
     std::cout << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
 
-    // Allocate graph temp buffers.
+    // Allocate graph buffers.
     cudaMalloc((void**) &nodes_d_, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
     cudaMalloc((void**) &node_alignments_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS * NUM_BLOCKS * NUM_THREADS);
     cudaMalloc((void**) &node_alignment_count_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
@@ -125,6 +125,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
 
     cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not allocate temp memory2.")));
 
+    // Debug print for size allocated.
     temp_size = sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS;
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS;
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS;
@@ -147,7 +148,6 @@ CUDABatchProcessor::~CUDABatchProcessor()
     // Free all the host and CUDA memory.
     cudaFree(consensus_d_);
 
-    delete scores_h_;
     cudaFree(scores_d_);
     cudaFree(traceback_i_d_);
     cudaFree(traceback_j_d_);
@@ -228,6 +228,7 @@ void CUDABatchProcessor::generateMemoryMap()
             max_windows_ * sizeof(uint16_t), cudaMemcpyHostToDevice, stream_);
     cudaMemcpyAsync(sequence_lengths_d_, sequence_lengths_h_,
             max_depth_per_window_ * max_windows_ * sizeof(uint16_t), cudaMemcpyHostToDevice, stream_);
+
     cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not copy window data to device.")));
     std::cout << TABS << bid_ << " Launched data copy" << std::endl;
 }

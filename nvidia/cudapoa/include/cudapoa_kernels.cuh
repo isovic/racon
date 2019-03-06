@@ -26,8 +26,11 @@ void generatePOA(uint8_t* consensus_d,
                  uint32_t num_threads, uint32_t num_blocks, cudaStream_t stream,
                  int32_t* scores, int16_t* ti, int16_t* tj,
                  uint8_t* nodes,
-                 uint16_t*,  uint16_t*, uint16_t*, uint16_t*, uint16_t*, uint16_t*, uint16_t*, uint16_t*,
-                 uint16_t*, uint16_t*);
+                 uint16_t* incoming_edges, uint16_t* incoming_edge_count,
+                 uint16_t* outgoing_edges, uint16_t* outgoing_edge_count,
+                 uint16_t* incoming_edge_w, uint16_t* outgoing_edge_w,
+                 uint16_t* sorted_poa, uint16_t* node_id_to_pos,
+                 uint16_t* node_alignments, uint16_t* node_alignment_count);
 
 void topologicalSort(uint16_t* sorted_poa_d,
                      uint16_t* sorted_poa_node_map_d,

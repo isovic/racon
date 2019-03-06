@@ -23,14 +23,15 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                         int16_t* traceback_j)
 {
     //printf("Running NW\n");
-    // Assuming gap/mismatch penalty of 1, match rewards of -1.
+    // Set gap/mismatch penalty. Currently acquired from default racon settings.
+    // TODO: Pass scores from arguments.
     const int32_t GAP = -8;
     const int32_t MISMATCH = -6;
     const int32_t MATCH = 8;
 
     //printf("graph len %d, read len %d\n", graph_count, read_count);
 
-    // Init boundary conditions (vertical - graph).
+    // Init vertical boundary (graph).
     for(uint16_t graph_pos = 0; graph_pos < graph_count; graph_pos++)
     {
         uint16_t node_id = graph[graph_pos];
@@ -57,7 +58,8 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         }
         //printf("node %c, score %d\n", nodes[node_id], scores[(graph_pos+1) * MAX_DIMENSION]);
     }
-    // Init boundary conditions (horizontal - read).
+
+    // Init horizonal boundary conditions (read).
     for(uint16_t j = 1; j < read_count + 1; j++)
     {
         scores[j] = j * GAP;
@@ -84,7 +86,8 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES]] + 1);
         int32_t* scores_pred_i = &scores[pred_i * MAX_DIMENSION];
 
-        // Iterate through bases in sequence.
+        // Iterate through bases in sequence and fill out score for diagonal move
+        // and vertical move.
         for(uint16_t read_pos = 0; read_pos < read_count; read_pos++)
         {
             int32_t char_profile = (nodes[node_id] == read[read_pos] ? MATCH : MISMATCH);
@@ -97,6 +100,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         }
         //printf("\n");
 
+        // Perform same score updates as above, but for rest of predecessors.
         for (uint16_t p = 1; p < pred_count; p++)
         {
             uint16_t pred_i = node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + p]] + 1;
@@ -111,6 +115,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             }
         }
 
+        // Perform score updates for horizontal moves.
         for(uint16_t read_pos = 0; read_pos < read_count; read_pos++)
         {
             // Index into score matrix.
@@ -127,6 +132,8 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             //            i, node_id);
             //}
 
+            // Once last column of read is reached, update max score
+            // and positions.
             if (j == read_count && outgoing_edge_count[node_id] == 0)
             {
                 if (max_score < scores_i[j])
@@ -158,6 +165,11 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
     //printf("maxi %d maxj %d\n", i, j);
 
+    // Trace back from maximum score position to generate alignment.
+    // Trace back is done by re-calculating the score at each cell
+    // along the path to see which preceding cell the move could have
+    // come from. This seems computaitonally more expensive, but doesn't
+    // require storing any traceback buffer during alignment.
     uint16_t aligned_nodes = 0;
     while(!(i == 0 && j == 0))
     {
@@ -165,6 +177,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         int32_t scores_ij = scores[i * MAX_DIMENSION + j];
         bool pred_found = false;
 
+        // Check if move is diagonal.
         if (i != 0 && j != 0)
         {
             uint16_t node_id = graph[i - 1];
@@ -199,6 +212,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             }
         }
 
+        // Check if move is vertical.
         if (!pred_found && i != 0)
         {
             uint16_t node_id = graph[i - 1];
@@ -230,6 +244,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             }
         }
 
+        // Check if move is horizontal.
         if (!pred_found && scores_ij == scores[i * MAX_DIMENSION + (j - 1)] + GAP)
         {
             prev_i = i;
