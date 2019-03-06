@@ -20,8 +20,8 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32
 
 class CUDABatchProcessor
 {
-    const uint32_t MAX_SEQUENCE_SIZE = 512;
-    const uint32_t NUM_THREADS = 256;
+    const uint32_t MAX_SEQUENCE_SIZE = 1024;
+    const uint32_t NUM_THREADS = 128;
     const uint32_t NUM_BLOCKS = 1;
 
 public:
@@ -55,6 +55,11 @@ public:
      *        resetting buffer states and counters.
      */
     void reset();
+
+    /**
+     * @brief Get batch ID.
+     */
+    uint32_t getBatchID() const { return bid_; }
 
     // Builder function to create a new CUDABatchProcessor object.
     friend std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth);
@@ -127,11 +132,14 @@ protected:
 
     // Buffers for temp data.
     int32_t* scores_d_;
+    int32_t* scores_h_;
     int16_t* traceback_i_d_;
     int16_t* traceback_j_d_;
 
     // Buffer for temp graph data.
     uint8_t* nodes_d_;
+    uint16_t* node_alignments_d_;
+    uint16_t* node_alignment_count_d_;
     uint16_t* incoming_edges_d_;
     uint16_t* incoming_edge_count_d_;
     uint16_t* outgoing_edges_d_;

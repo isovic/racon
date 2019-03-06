@@ -7,12 +7,12 @@
 
 namespace racon {
 
-void cudaCheckError()
+void cudaCheckError(std::string &msg)
 {
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess)
     {
-        fprintf(stderr, "Encountered CUDA error ; %s\n", cudaGetErrorString(error));
+        fprintf(stderr, "%s (CUDA error %s)\n", msg.c_str(), cudaGetErrorString(error));
         exit(-1);
     }
 }

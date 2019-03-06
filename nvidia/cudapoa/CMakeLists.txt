@@ -6,10 +6,14 @@ if(NOT ${CUDA_FOUND})
     message(FATAL_ERROR "CUDA not detected on system. Please install")
 else()
     message(STATUS "Using CUDA ${CUDA_VERSION} from ${CUDA_TOOLKIT_ROOT_DIR}")
+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -lineinfo")
 endif()
 
 set(sources
-    src/cudapoa_kernels.cu)
+    src/cudapoa_kernels.cu
+    src/cudapoa_topsort.cu
+    src/cudapoa_add_alignment.cu
+    src/cudapoa_nw.cu)
 
 cuda_add_library(cudapoa STATIC ${sources})
 

@@ -20,6 +20,7 @@ if(racon_enable_cuda)
         message(FATAL_ERROR "CUDA not detected on system. Please install")
     else()
         message(STATUS "Using CUDA ${CUDA_VERSION} from ${CUDA_TOOLKIT_ROOT_DIR}")
+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -lineinfo")
     endif()
 endif()
 

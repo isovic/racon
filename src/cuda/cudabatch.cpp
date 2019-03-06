@@ -71,7 +71,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     cudaMalloc((void**)&sequence_lengths_d_, max_windows * max_depth_per_window_ * sizeof(uint16_t));
     input_size += max_windows * max_depth_per_window_ * sizeof(uint16_t);
 
-    cudaCheckError();
+    cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not allocate input memory.")));
     std::cout << TABS << bid_ << " Allocated input buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
 
     // Output buffers.
@@ -84,22 +84,25 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
                     &consensus_pitch_,
                     sizeof(uint8_t) * MAX_SEQUENCE_SIZE,
                     max_windows_);
-    cudaCheckError();
+    cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not allocate output memory.")));
     std::cout << TABS << bid_ << " Allocated output buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
 
     // Temp buffers.
-    cudaMalloc((void**) &scores_d_, sizeof(int32_t) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * NUM_BLOCKS * NUM_THREADS);
-    cudaMalloc((void**) &traceback_i_d_, sizeof(int16_t) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * NUM_BLOCKS * NUM_THREADS);
-    cudaMalloc((void**) &traceback_j_d_, sizeof(int16_t) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * NUM_BLOCKS * NUM_THREADS);
+    cudaMalloc((void**) &scores_d_, sizeof(int32_t) * MAX_DIMENSION * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
+    scores_h_ = new int32_t[MAX_DIMENSION * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS];
+    cudaMalloc((void**) &traceback_i_d_, sizeof(int16_t) * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
+    cudaMalloc((void**) &traceback_j_d_, sizeof(int16_t) * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
 
-    cudaCheckError();
+    cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not allocate temp memory.")));
 
-    uint32_t temp_size = (sizeof(int32_t) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * NUM_BLOCKS * NUM_THREADS);
-    temp_size += 2 * (sizeof(int16_t) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * (CUDAPOA_MAX_NODES_PER_WINDOW + 1) * NUM_BLOCKS * NUM_THREADS);
+    uint32_t temp_size = (sizeof(int32_t) * MAX_DIMENSION * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
+    temp_size += 2 * (sizeof(int16_t) * MAX_DIMENSION * NUM_BLOCKS * NUM_THREADS);
     std::cout << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
 
     // Allocate graph temp buffers.
     cudaMalloc((void**) &nodes_d_, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
+    cudaMalloc((void**) &node_alignments_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS * NUM_BLOCKS * NUM_THREADS);
+    cudaMalloc((void**) &node_alignment_count_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
     cudaMalloc((void**) &incoming_edges_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS);
     cudaMalloc((void**) &incoming_edge_count_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
     cudaMalloc((void**) &outgoing_edges_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS);
@@ -110,6 +113,8 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     cudaMalloc((void**) &sorted_poa_node_map_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
 
     cudaMemset(nodes_d_, 0, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
+    cudaMemset(node_alignments_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS * NUM_BLOCKS * NUM_THREADS);
+    cudaMemset(node_alignment_count_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
     cudaMemset(incoming_edges_d_,0,  sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS);
     cudaMemset(incoming_edge_count_d_,0,  sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
     cudaMemset(outgoing_edges_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS);
@@ -118,9 +123,11 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     cudaMemset(outoing_edges_weights_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS);
     cudaMemset(sorted_poa_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS);
 
-    cudaCheckError();
+    cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not allocate temp memory2.")));
 
     temp_size = sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS;
+    temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS;
+    temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS;
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS;
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS * NUM_THREADS;
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS * NUM_THREADS;
@@ -135,12 +142,12 @@ CUDABatchProcessor::~CUDABatchProcessor()
 {
     // Destroy CUDA stream.
     cudaStreamDestroy(stream_);
-    cudaCheckError();
+    cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not destroy stream.")));
 
     // Free all the host and CUDA memory.
     cudaFree(consensus_d_);
-    cudaCheckError();
 
+    delete scores_h_;
     cudaFree(scores_d_);
     cudaFree(traceback_i_d_);
     cudaFree(traceback_j_d_);
@@ -148,6 +155,8 @@ CUDABatchProcessor::~CUDABatchProcessor()
     std::cout << TABS << "Destroyed buffers." << std::endl;
 
     cudaFree(nodes_d_);
+    cudaFree(node_alignments_d_);
+    cudaFree(node_alignment_count_d_);
     cudaFree(incoming_edges_d_);
     cudaFree(incoming_edge_count_d_);
     cudaFree(outgoing_edges_d_);
@@ -176,7 +185,8 @@ bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
         sequence_count_ += std::min(max_depth_per_window_, (uint32_t) window->sequences_.size());
         return true;
     }
-    else{
+    else
+    {
         return false;
     }
 }
@@ -193,7 +203,7 @@ void CUDABatchProcessor::generateMemoryMap()
     {
         auto window = windows_.at(i);
         uint32_t input_window_offset = i * max_depth_per_window_;
-        int num_seqs = 0;
+        uint16_t num_seqs = 0;
         for(uint32_t j = 0; j < std::min(max_depth_per_window_, (uint32_t) window->sequences_.size()); j++)
         {
             uint32_t input_sequence_offset = input_window_offset + j;
@@ -215,17 +225,17 @@ void CUDABatchProcessor::generateMemoryMap()
             MAX_SEQUENCE_SIZE, max_windows_ * max_depth_per_window_,
             cudaMemcpyHostToDevice, stream_);
     cudaMemcpyAsync(num_sequences_per_window_d_, num_sequences_per_window_h_,
-            max_windows_ * sizeof(uint8_t), cudaMemcpyHostToDevice, stream_);
+            max_windows_ * sizeof(uint16_t), cudaMemcpyHostToDevice, stream_);
     cudaMemcpyAsync(sequence_lengths_d_, sequence_lengths_h_,
-            max_depth_per_window_ * max_windows_ * sizeof(uint8_t), cudaMemcpyHostToDevice, stream_);
-    cudaCheckError();
+            max_depth_per_window_ * max_windows_ * sizeof(uint16_t), cudaMemcpyHostToDevice, stream_);
+    cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not copy window data to device.")));
     std::cout << TABS << bid_ << " Launched data copy" << std::endl;
 }
 
 void CUDABatchProcessor::generatePOA()
 {
     // Launch kernel to run 1 POA per thread in thread block.
-    std::cout << TABS << bid_ << " Launching kernel" << std::endl;
+    std::cout << TABS << bid_ << " Launching kernel for " << windows_.size() << std::endl;
     nvidia::cudapoa::generatePOA(consensus_d_,
                                  consensus_pitch_,
                                  inputs_d_,
@@ -249,16 +259,15 @@ void CUDABatchProcessor::generatePOA()
                                  incoming_edges_weights_d_,
                                  outoing_edges_weights_d_,
                                  sorted_poa_d_,
-                                 sorted_poa_node_map_d_);
-    cudaCheckError();
+                                 sorted_poa_node_map_d_,
+                                 node_alignments_d_,
+                                 node_alignment_count_d_);
+    cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not launch kernel properly.")));
     std::cout << TABS << bid_ << " Launched kernel" << std::endl;
 }
 
 void CUDABatchProcessor::getConsensus()
 {
-    cudaCheckError();
-    std::cout << TABS << bid_ << " Kernel execution done" << std::endl;
-
     std::cout << TABS << bid_ << " Launching memcpy D2H" << std::endl;
     cudaMemcpy2DAsync(consensus_h_.get(),
                       MAX_SEQUENCE_SIZE,
@@ -269,9 +278,9 @@ void CUDABatchProcessor::getConsensus()
                       cudaMemcpyDeviceToHost,
                       stream_);
     cudaStreamSynchronize(stream_);
-    cudaCheckError();
-    std::cout << TABS << bid_ << " Finished memcpy D2H" << std::endl;
 
+    cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not copy over output from device.")));
+    std::cout << TABS << bid_ << " Finished memcpy D2H" << std::endl;
 
     for(uint32_t i = 0; i < windows_.size(); i++)
     {
@@ -298,7 +307,7 @@ void CUDABatchProcessor::reset()
     // Clear host and device memory.
     memset(&inputs_h_[0], 0, max_windows_ * max_depth_per_window_ * MAX_SEQUENCE_SIZE);
     cudaMemsetAsync(inputs_d_, 0, max_windows_ * max_depth_per_window_ * input_pitch_, stream_);
-    cudaCheckError();
+    cudaCheckError(TABS.append(std::to_string(bid_)).append( std::string(" Could not reset memory.")));
 }
 
 } // namespace racon

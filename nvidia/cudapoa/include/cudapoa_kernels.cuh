@@ -5,8 +5,10 @@
 #include <stdint.h>
 #include <cuda_runtime_api.h>
 
-#define CUDAPOA_MAX_NODE_EDGES 5
-#define CUDAPOA_MAX_NODES_PER_WINDOW 499
+#define CUDAPOA_MAX_NODE_EDGES 50
+#define CUDAPOA_MAX_NODE_ALIGNMENTS 50
+#define CUDAPOA_MAX_NODES_PER_WINDOW 1024
+#define MAX_DIMENSION (CUDAPOA_MAX_NODES_PER_WINDOW + 1)
 
 namespace nvidia {
 
@@ -24,7 +26,8 @@ void generatePOA(uint8_t* consensus_d,
                  uint32_t num_threads, uint32_t num_blocks, cudaStream_t stream,
                  int32_t* scores, int16_t* ti, int16_t* tj,
                  uint8_t* nodes,
-                 uint16_t*,  uint16_t*, uint16_t*, uint16_t*, uint16_t*, uint16_t*, uint16_t*, uint16_t*);
+                 uint16_t*,  uint16_t*, uint16_t*, uint16_t*, uint16_t*, uint16_t*, uint16_t*, uint16_t*,
+                 uint16_t*, uint16_t*);
 
 void topologicalSort(uint16_t* sorted_poa_d,
                      uint16_t* sorted_poa_node_map_d,
@@ -48,6 +51,18 @@ void needlemanWunsch(uint8_t* nodes,
                     int16_t* traceback_i,
                     int16_t* traceback_j,
                     uint32_t num_threads, uint32_t num_blocks, cudaStream_t stream);
+
+void addAlignmentToGraphHost(uint8_t* nodes,
+                         uint16_t node_count,
+                         uint16_t* node_alignments, uint16_t* node_alignment_count,
+                         uint16_t* incoming_edges, uint16_t* incoming_edge_count,
+                         uint16_t* outgoing_edges, uint16_t* outgoing_edge_count,
+                         uint16_t* incoming_edge_w, uint16_t* outgoing_edge_w,
+                         uint16_t alignment_length,
+                         uint16_t* graph,
+                         int16_t* alignment_graph,
+                         uint8_t* read,
+                         int16_t* alignment_read, cudaStream_t stream);
 
 }
 
