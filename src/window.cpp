@@ -80,22 +80,22 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         return positions_[lhs].first < positions_[rhs].first; });
 
     uint32_t offset = 0.01 * sequences_.front().second;
-    for (uint32_t j = 1; j < sequences_.size(); ++j) {
-        uint32_t i = rank[j];
+    for (uint32_t i = 1; i < sequences_.size(); ++i) {
+        //uint32_t i = rank[j];
 
         spoa::Alignment alignment;
-        if (positions_[i].first < offset && positions_[i].second >
-            sequences_.front().second - offset) {
+        //if (positions_[i].first < offset && positions_[i].second >
+        //    sequences_.front().second - offset) {
             alignment = alignment_engine->align_sequence_with_graph(
                 sequences_[i].first, sequences_[i].second, graph);
-        } else {
-            std::vector<int32_t> mapping;
-            auto subgraph = graph->subgraph(positions_[i].first,
-                positions_[i].second, mapping);
-            alignment = alignment_engine->align_sequence_with_graph(
-                sequences_[i].first, sequences_[i].second, subgraph);
-            subgraph->update_alignment(alignment, mapping);
-        }
+        //} else {
+        //    std::vector<int32_t> mapping;
+        //    auto subgraph = graph->subgraph(positions_[i].first,
+        //        positions_[i].second, mapping);
+        //    alignment = alignment_engine->align_sequence_with_graph(
+        //        sequences_[i].first, sequences_[i].second, subgraph);
+        //    subgraph->update_alignment(alignment, mapping);
+        //}
 
         if (qualities_[i].first == nullptr) {
             graph->add_alignment(alignment, sequences_[i].first,

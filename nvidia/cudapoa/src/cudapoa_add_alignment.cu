@@ -87,7 +87,7 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
 
                     if (aligned_node_id != -1)
                     {
-                        //printf("found aligned node\n");
+                        //printf("found aligned node %d\n", aligned_node_id);
                         curr_node_id = aligned_node_id;
                     }
                     else
@@ -126,10 +126,10 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
                 }
             }
 
-            //if (new_node)
-            //{
-            //    printf("new node %d\n", curr_node_id);
-            //}
+            if (new_node)
+            {
+                //printf("new node %d\n", curr_node_id);
+            }
 
             // Create new edges if necessary.
             if (head_node_id != -1)
@@ -151,6 +151,11 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
                     incoming_edges[curr_node_id * CUDAPOA_MAX_NODE_EDGES + in_count] = head_node_id;
                     incoming_edge_count[curr_node_id] = in_count + 1;
                     //printf("Created new edge %d to %d\n", head_node_id, curr_node_id);
+
+                    if (out_count + 1 >= CUDAPOA_MAX_NODE_EDGES || in_count + 1 >= CUDAPOA_MAX_NODE_EDGES)
+                    {
+                        printf("exceeded max edge count\n");
+                    }
                 }
             }
 

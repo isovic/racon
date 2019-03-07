@@ -29,7 +29,13 @@ void generatePOAKernel(uint8_t* consensus_d,
                        uint16_t* sorted_poa_d, uint16_t* node_id_to_pos_d,
                        uint16_t* node_alignments_d, uint16_t* node_alignment_count_d)
 {
+
     uint32_t thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    long long int back_time = 0;
+    long long int nw_time = 0;
+    long long int add_time = 0;
+    long long int top_time = 0;
 
     if (thread_idx > total_windows)
         return;
@@ -50,9 +56,9 @@ void generatePOAKernel(uint8_t* consensus_d,
         uint16_t* node_alignments = &node_alignments_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS];
         uint16_t* node_alignment_count = &node_alignment_count_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
 
-        int32_t* scores = &scores_d[MAX_DIMENSION * MAX_DIMENSION * thread_idx];
-        int16_t* traceback_i = &traceback_i_d[MAX_DIMENSION * thread_idx];
-        int16_t* traceback_j = &traceback_j_d[MAX_DIMENSION * thread_idx];
+        int32_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_MATRIX_DIMENSION * thread_idx];
+        int16_t* traceback_i = &traceback_i_d[CUDAPOA_MAX_MATRIX_DIMENSION * thread_idx];
+        int16_t* traceback_j = &traceback_j_d[CUDAPOA_MAX_MATRIX_DIMENSION * thread_idx];
 
         // Fetch the sequence data and sequence length sub-arrays for specific window ID.
         uint32_t input_row_idx = window_idx * max_depth_per_window;
@@ -67,6 +73,7 @@ void generatePOAKernel(uint8_t* consensus_d,
             continue;
         }
 
+        //long long int t0 = clock64();
         // Create backbone for window based on first sequence in window.
         uint16_t node_count = 0;
         uint16_t sequence_0_length = sequence_length_data[0];
@@ -89,6 +96,8 @@ void generatePOAKernel(uint8_t* consensus_d,
             node_alignment_count[nucleotide_idx] = 0;
             node_id_to_pos[nucleotide_idx] = nucleotide_idx;
         }
+
+        //back_time += (clock64() - t0);
 
         //for(uint16_t i = 0; i < sequence_0_length; i++)
         //{
@@ -147,6 +156,8 @@ void generatePOAKernel(uint8_t* consensus_d,
                 return;
             }
 
+            //long long int start = clock64();
+
             // Run Needleman-Wunsch alignment between graph and new sequence.
             //printf("running nw\n");
             uint16_t alignment_length = runNeedlemanWunsch(nodes,
@@ -162,6 +173,9 @@ void generatePOAKernel(uint8_t* consensus_d,
                                scores,
                                traceback_i,
                                traceback_j);
+
+            //long long int nw_end = clock64();
+            //nw_time += (nw_end - start);
             //found_node = false;
             //for(uint16_t i = 0; i < node_count; i++)
             //{
@@ -188,6 +202,9 @@ void generatePOAKernel(uint8_t* consensus_d,
                     sorted_poa, traceback_i, 
                     seq, traceback_j);
 
+            //long long int add_end = clock64();
+            //add_time += (add_end - nw_end);
+
             // Verify that each graph has at least one node with no outgoing edges.
             //bool found_node = false;
             //for(uint16_t i = 0; i < node_count; i++)
@@ -211,8 +228,9 @@ void generatePOAKernel(uint8_t* consensus_d,
                                       incoming_edge_count,
                                       outoing_edges, outgoing_edge_count);
 
+            //long long int top_end = clock64();
+            //top_time += (top_end - add_end);
             //printf("done loop\n");
-
         }
 
         // Dummy kernel code to copy first sequence as output.
@@ -223,6 +241,12 @@ void generatePOAKernel(uint8_t* consensus_d,
         //    output_row[c] = input_row[c];
         //}
     }
+
+    //long long int total = back_time + nw_time + add_time + top_time;
+    //printf("Total time of backbone generation is %lf %\n", ((double)back_time / total) * 100.f);
+    //printf("Total time of nw is %lf %\n", ((double)nw_time / total) * 100.f);
+    //printf("Total time of addition is %lf %\n", ((double)add_time / total) * 100.f);
+    //printf("Total time of topsort is %lf %\n", ((double)top_time / total) * 100.f);
 
 }
 

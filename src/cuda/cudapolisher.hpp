@@ -49,7 +49,7 @@ protected:
     std::mutex mutex_windows_;
 
     // Index of next window to be added to a batch.
-    uint32_t next_window_index_ = 0;
+    uint32_t next_window_index_ = 5000;
 };
 
 }
