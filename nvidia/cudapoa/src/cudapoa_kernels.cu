@@ -30,35 +30,36 @@ void generatePOAKernel(uint8_t* consensus_d,
                        uint16_t* node_alignments_d, uint16_t* node_alignment_count_d)
 {
 
-    uint32_t thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t block_idx = blockIdx.x;
+    uint32_t thread_idx = threadIdx.x;
 
     long long int back_time = 0;
     long long int nw_time = 0;
     long long int add_time = 0;
     long long int top_time = 0;
 
-    if (thread_idx > total_windows)
+    if (block_idx > total_windows)
         return;
 
     // Loop over all the windows that are assigned to a particular thread.
-    for(uint32_t window_idx = thread_idx; window_idx < total_windows; window_idx += blockDim.x)
+    for(uint32_t window_idx = block_idx; window_idx < total_windows; window_idx += gridDim.x)
     {
         // Find the buffer offsets for each thread within the global memory buffers.
-        uint8_t* nodes = &nodes_d[CUDAPOA_MAX_NODES_PER_WINDOW * thread_idx];
-        uint16_t* incoming_edges = &incoming_edges_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
-        uint16_t* incoming_edge_count = &incoming_edge_count_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
-        uint16_t* outoing_edges = &outgoing_edges_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
-        uint16_t* outgoing_edge_count = &outgoing_edge_count_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
-        uint16_t* incoming_edge_weights = &incoming_edge_w_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
-        uint16_t* outgoing_edge_weights = &outgoing_edge_w_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
-        uint16_t* sorted_poa = &sorted_poa_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
-        uint16_t* node_id_to_pos = &node_id_to_pos_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
-        uint16_t* node_alignments = &node_alignments_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS];
-        uint16_t* node_alignment_count = &node_alignment_count_d[thread_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+        uint8_t* nodes = &nodes_d[CUDAPOA_MAX_NODES_PER_WINDOW * block_idx];
+        uint16_t* incoming_edges = &incoming_edges_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
+        uint16_t* incoming_edge_count = &incoming_edge_count_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+        uint16_t* outoing_edges = &outgoing_edges_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
+        uint16_t* outgoing_edge_count = &outgoing_edge_count_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+        uint16_t* incoming_edge_weights = &incoming_edge_w_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
+        uint16_t* outgoing_edge_weights = &outgoing_edge_w_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES];
+        uint16_t* sorted_poa = &sorted_poa_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+        uint16_t* node_id_to_pos = &node_id_to_pos_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+        uint16_t* node_alignments = &node_alignments_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS];
+        uint16_t* node_alignment_count = &node_alignment_count_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
 
-        int32_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_MATRIX_DIMENSION * thread_idx];
-        int16_t* traceback_i = &traceback_i_d[CUDAPOA_MAX_MATRIX_DIMENSION * thread_idx];
-        int16_t* traceback_j = &traceback_j_d[CUDAPOA_MAX_MATRIX_DIMENSION * thread_idx];
+        int32_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
+        int16_t* traceback_i = &traceback_i_d[CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
+        int16_t* traceback_j = &traceback_j_d[CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
 
         // Fetch the sequence data and sequence length sub-arrays for specific window ID.
         uint32_t input_row_idx = window_idx * max_depth_per_window;
@@ -67,35 +68,39 @@ void generatePOAKernel(uint8_t* consensus_d,
         uint16_t num_sequences_in_window = num_sequences_per_window_d[window_idx];
         uint16_t* sequence_length_data = &sequence_lengths_d[window_idx * max_depth_per_window];
 
-        if (num_sequences_in_window == 0)
+        if (thread_idx == 0)
         {
-            printf("num sequences in window %d\n", num_sequences_in_window);
-            continue;
+
+            if (num_sequences_in_window == 0)
+            {
+                printf("num sequences in window %d\n", num_sequences_in_window);
+                continue;
+            }
+
+            //long long int t0 = clock64();
+            // Create backbone for window based on first sequence in window.
+            uint16_t sequence_0_length = sequence_length_data[0];
+            nodes[0] = window_data[0];
+            sorted_poa[0] = 0;
+            incoming_edge_count[0] = 0;
+            node_alignment_count[0] = 0;
+            node_id_to_pos[0] = 0;
+            outgoing_edge_count[sequence_0_length - 1] = 0;
+            //Build the rest of the graphs
+            for (int nucleotide_idx=1; nucleotide_idx<sequence_0_length; nucleotide_idx++){
+                nodes[nucleotide_idx] = window_data[nucleotide_idx];
+                sorted_poa[nucleotide_idx] = nucleotide_idx;
+                outoing_edges[(nucleotide_idx-1) * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx;
+                outgoing_edge_count[nucleotide_idx-1] = 1;
+                incoming_edges[nucleotide_idx * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx - 1;
+                incoming_edge_count[nucleotide_idx] = 1;
+                node_alignment_count[nucleotide_idx] = 0;
+                node_id_to_pos[nucleotide_idx] = nucleotide_idx;
+            }
+
         }
 
-        //long long int t0 = clock64();
-        // Create backbone for window based on first sequence in window.
-        uint16_t node_count = 0;
-        uint16_t sequence_0_length = sequence_length_data[0];
-        nodes[0] = window_data[0];
-        sorted_poa[0] = 0;
-        incoming_edge_count[0] = 0;
-        node_alignment_count[0] = 0;
-        node_id_to_pos[0] = 0;
-        outgoing_edge_count[sequence_0_length - 1] = 0;
-        node_count++;
-        //Build the rest of the graphs
-        for (int nucleotide_idx=1; nucleotide_idx<sequence_0_length; nucleotide_idx++){
-            nodes[nucleotide_idx] = window_data[nucleotide_idx];
-            node_count++;
-            sorted_poa[nucleotide_idx] = nucleotide_idx;
-            outoing_edges[(nucleotide_idx-1) * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx;
-            outgoing_edge_count[nucleotide_idx-1] = 1;
-            incoming_edges[nucleotide_idx * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx - 1;
-            incoming_edge_count[nucleotide_idx] = 1;
-            node_alignment_count[nucleotide_idx] = 0;
-            node_id_to_pos[nucleotide_idx] = nucleotide_idx;
-        }
+        __syncthreads();
 
         //back_time += (clock64() - t0);
 
@@ -113,9 +118,6 @@ void generatePOAKernel(uint8_t* consensus_d,
             uint8_t* seq = &window_data[s * max_sequence_size];
             uint16_t seq_len = sequence_length_data[s];
 
-            if (seq_len == 0)
-                continue;
-
             //for(uint16_t i = 0; i < seq_len; i++)
             //{
             //    printf("%c ", seq[i]);
@@ -124,7 +126,7 @@ void generatePOAKernel(uint8_t* consensus_d,
             //return;
             // Run DP step and fetch traceback.
             //bool found_node = false;
-            //for(uint16_t i = 0; i < node_count; i++)
+            //for(uint16_t i = 0; i < sequence_length_data[0]; i++)
             //{
             //    if (outgoing_edge_count[i] == 0)
             //    {
@@ -139,23 +141,27 @@ void generatePOAKernel(uint8_t* consensus_d,
             //}
 
             // print sorted graph
-            //for(uint16_t i = 0; i < node_count; i++)
+            //for(uint16_t i = 0; i < sequence_length_data[0]; i++)
             //{
             //    printf("%d ", sorted_poa[i]);
             //}
             //printf("\n");
 
-            if (node_count >= CUDAPOA_MAX_NODES_PER_WINDOW)
+            if (thread_idx == 0)
             {
-                printf("Node count %d is greater than max matrix size %d\n", node_count, CUDAPOA_MAX_NODES_PER_WINDOW);
-                return;
-            }
-            if (seq_len >= CUDAPOA_MAX_NODES_PER_WINDOW)
-            {
-                printf("Sequence len %d is greater than max matrix size %d\n", seq_len, CUDAPOA_MAX_NODES_PER_WINDOW);
-                return;
-            }
 
+                if (sequence_length_data[0] >= CUDAPOA_MAX_NODES_PER_WINDOW)
+                {
+                    printf("Node count %d is greater than max matrix size %d\n", sequence_length_data[0], CUDAPOA_MAX_NODES_PER_WINDOW);
+                    return;
+                }
+                if (seq_len >= CUDAPOA_MAX_NODES_PER_WINDOW)
+                {
+                    printf("Sequence len %d is greater than max matrix size %d\n", seq_len, CUDAPOA_MAX_NODES_PER_WINDOW);
+                    return;
+                }
+
+            }
             //long long int start = clock64();
 
             // Run Needleman-Wunsch alignment between graph and new sequence.
@@ -163,7 +169,7 @@ void generatePOAKernel(uint8_t* consensus_d,
             uint16_t alignment_length = runNeedlemanWunsch(nodes,
                                sorted_poa,
                                node_id_to_pos,
-                               node_count,
+                               sequence_length_data[0],
                                incoming_edge_count,
                                incoming_edges,
                                outgoing_edge_count,
@@ -174,10 +180,12 @@ void generatePOAKernel(uint8_t* consensus_d,
                                traceback_i,
                                traceback_j);
 
+            __syncthreads();
+
             //long long int nw_end = clock64();
             //nw_time += (nw_end - start);
             //found_node = false;
-            //for(uint16_t i = 0; i < node_count; i++)
+            //for(uint16_t i = 0; i < sequence_length_data[0]; i++)
             //{
             //    if (outgoing_edge_count[i] == 0)
             //    {
@@ -191,46 +199,52 @@ void generatePOAKernel(uint8_t* consensus_d,
             //    return;
             //}
 
-            // Add alignment to graph.
-            //printf("running add\n");
-            node_count = addAlignmentToGraph(nodes, node_count,
-                    node_alignments, node_alignment_count,
-                    incoming_edges, incoming_edge_count,
-                    outoing_edges, outgoing_edge_count,
-                    incoming_edge_weights, outgoing_edge_weights,
-                    alignment_length,
-                    sorted_poa, traceback_i, 
-                    seq, traceback_j);
+            if (thread_idx == 0)
+            {
 
-            //long long int add_end = clock64();
-            //add_time += (add_end - nw_end);
+                // Add alignment to graph.
+                //printf("running add\n");
+                sequence_length_data[0] = addAlignmentToGraph(nodes, sequence_length_data[0],
+                        node_alignments, node_alignment_count,
+                        incoming_edges, incoming_edge_count,
+                        outoing_edges, outgoing_edge_count,
+                        incoming_edge_weights, outgoing_edge_weights,
+                        alignment_length,
+                        sorted_poa, traceback_i, 
+                        seq, traceback_j);
 
-            // Verify that each graph has at least one node with no outgoing edges.
-            //bool found_node = false;
-            //for(uint16_t i = 0; i < node_count; i++)
-            //{
-            //    //printf("node id %d ie %d oe %d\n ", i, incoming_edge_count[i], outgoing_edge_count[i]);
-            //    if (outgoing_edge_count[i] == 0)
-            //        found_node = true;
-            //}
-            //if (!found_node)
-            //{
-            //    printf("DID NOT FIND A NODE WITH NO OUTGOING EDGE after addition!!!!\n");
-            //    return;
-            //}
+                //long long int add_end = clock64();
+                //add_time += (add_end - nw_end);
+
+                // Verify that each graph has at least one node with no outgoing edges.
+                //bool found_node = false;
+                //for(uint16_t i = 0; i < sequence_length_data[0]; i++)
+                //{
+                //    //printf("node id %d ie %d oe %d\n ", i, incoming_edge_count[i], outgoing_edge_count[i]);
+                //    if (outgoing_edge_count[i] == 0)
+                //        found_node = true;
+                //}
+                //if (!found_node)
+                //{
+                //    printf("DID NOT FIND A NODE WITH NO OUTGOING EDGE after addition!!!!\n");
+                //    return;
+                //}
 
 
-            // Run a topsort on the graph. Not strictly necessary at this point
-            //printf("running topsort\n");
-            topologicalSortDeviceUtil(sorted_poa,
-                                      node_id_to_pos,
-                                      node_count,
-                                      incoming_edge_count,
-                                      outoing_edges, outgoing_edge_count);
+                // Run a topsort on the graph. Not strictly necessary at this point
+                //printf("running topsort\n");
+                topologicalSortDeviceUtil(sorted_poa,
+                        node_id_to_pos,
+                        sequence_length_data[0],
+                        incoming_edge_count,
+                        outoing_edges, outgoing_edge_count);
 
-            //long long int top_end = clock64();
-            //top_time += (top_end - add_end);
-            //printf("done loop\n");
+                //long long int top_end = clock64();
+                //top_time += (top_end - add_end);
+                //printf("done loop\n");
+            }
+
+            __syncthreads();
         }
 
         // Dummy kernel code to copy first sequence as output.

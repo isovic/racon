@@ -52,7 +52,7 @@ void CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
 
     // TODO: Reducing window wize by 10 for debugging.
     uint32_t initial_count = next_window_index_;
-    uint32_t count = 5001;//windows_.size();
+    uint32_t count = 5128;
     while(next_window_index_ < count)
     {
         if (batch_processors_.at(batch_id)->addWindow(windows_.at(next_window_index_)))
