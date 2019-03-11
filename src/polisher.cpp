@@ -476,7 +476,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     (*logger_)();
 
     std::vector<std::future<bool>> thread_futures;
-    for (uint64_t i = 5000; i < 5001/*windows_.size()*/; ++i) {
+    for (uint64_t i = 000; i < windows_.size(); ++i) {
         thread_futures.emplace_back(thread_pool_->submit_task(
             [&](uint64_t j) -> bool {
                 auto it = thread_to_id_.find(std::this_thread::get_id());

@@ -22,7 +22,7 @@ void generatePOAKernel(uint8_t* consensus_d,
                        uint16_t * sequence_lengths_d,
                        uint32_t max_depth_per_window,
                        uint32_t total_windows,
-                       int32_t* scores_d, int16_t* traceback_i_d, int16_t* traceback_j_d,
+                       int16_t* scores_d, int16_t* traceback_i_d, int16_t* traceback_j_d,
                        uint8_t* nodes_d,  uint16_t* incoming_edges_d, uint16_t* incoming_edge_count_d,
                        uint16_t* outgoing_edges_d, uint16_t* outgoing_edge_count_d,
                        uint16_t* incoming_edge_w_d, uint16_t* outgoing_edge_w_d,
@@ -57,7 +57,7 @@ void generatePOAKernel(uint8_t* consensus_d,
         uint16_t* node_alignments = &node_alignments_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS];
         uint16_t* node_alignment_count = &node_alignment_count_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
 
-        int32_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
+        int16_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
         int16_t* traceback_i = &traceback_i_d[CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
         int16_t* traceback_j = &traceback_j_d[CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
 
@@ -68,6 +68,8 @@ void generatePOAKernel(uint8_t* consensus_d,
         uint16_t num_sequences_in_window = num_sequences_per_window_d[window_idx];
         uint16_t* sequence_length_data = &sequence_lengths_d[window_idx * max_depth_per_window];
 
+        long long int t0 = clock64();
+
         if (thread_idx == 0)
         {
 
@@ -77,7 +79,6 @@ void generatePOAKernel(uint8_t* consensus_d,
                 continue;
             }
 
-            //long long int t0 = clock64();
             // Create backbone for window based on first sequence in window.
             uint16_t sequence_0_length = sequence_length_data[0];
             nodes[0] = window_data[0];
@@ -102,7 +103,7 @@ void generatePOAKernel(uint8_t* consensus_d,
 
         __syncthreads();
 
-        //back_time += (clock64() - t0);
+        back_time += (clock64() - t0);
 
         //for(uint16_t i = 0; i < sequence_0_length; i++)
         //{
@@ -162,7 +163,7 @@ void generatePOAKernel(uint8_t* consensus_d,
                 }
 
             }
-            //long long int start = clock64();
+            long long int start = clock64();
 
             // Run Needleman-Wunsch alignment between graph and new sequence.
             //printf("running nw\n");
@@ -180,10 +181,10 @@ void generatePOAKernel(uint8_t* consensus_d,
                                traceback_i,
                                traceback_j);
 
+            long long int nw_end = clock64();
+            nw_time += (nw_end - start);
             __syncthreads();
 
-            //long long int nw_end = clock64();
-            //nw_time += (nw_end - start);
             //found_node = false;
             //for(uint16_t i = 0; i < sequence_length_data[0]; i++)
             //{
@@ -199,6 +200,8 @@ void generatePOAKernel(uint8_t* consensus_d,
             //    return;
             //}
 
+            start = clock64();
+
             if (thread_idx == 0)
             {
 
@@ -213,8 +216,8 @@ void generatePOAKernel(uint8_t* consensus_d,
                         sorted_poa, traceback_i, 
                         seq, traceback_j);
 
-                //long long int add_end = clock64();
-                //add_time += (add_end - nw_end);
+                long long int add_end = clock64();
+                add_time += (add_end - start);
 
                 // Verify that each graph has at least one node with no outgoing edges.
                 //bool found_node = false;
@@ -239,8 +242,8 @@ void generatePOAKernel(uint8_t* consensus_d,
                         incoming_edge_count,
                         outoing_edges, outgoing_edge_count);
 
-                //long long int top_end = clock64();
-                //top_time += (top_end - add_end);
+                long long int top_end = clock64();
+                top_time += (top_end - add_end);
                 //printf("done loop\n");
             }
 
@@ -256,11 +259,14 @@ void generatePOAKernel(uint8_t* consensus_d,
         //}
     }
 
+    //if (thread_idx == 0)
+    //{
     //long long int total = back_time + nw_time + add_time + top_time;
     //printf("Total time of backbone generation is %lf %\n", ((double)back_time / total) * 100.f);
     //printf("Total time of nw is %lf %\n", ((double)nw_time / total) * 100.f);
     //printf("Total time of addition is %lf %\n", ((double)add_time / total) * 100.f);
     //printf("Total time of topsort is %lf %\n", ((double)top_time / total) * 100.f);
+    //}
 
 }
 
@@ -275,7 +281,7 @@ void generatePOA(uint8_t* consensus_d,
                  uint32_t max_depth_per_window,
                  uint32_t total_windows,
                  uint32_t num_threads, uint32_t num_blocks, cudaStream_t stream,
-                 int32_t* scores, int16_t* traceback_i, int16_t* traceback_j,
+                 int16_t* scores, int16_t* traceback_i, int16_t* traceback_j,
                  uint8_t* nodes,  uint16_t* incoming_edges, uint16_t* incoming_edge_count,
                  uint16_t* outgoing_edges, uint16_t* outgoing_edge_count,
                  uint16_t* incoming_edge_w, uint16_t* outgoing_edge_w,
