@@ -248,6 +248,7 @@ void generatePOAKernel(uint8_t* consensus_d,
             }
 
             __syncthreads();
+
         }
 
         // Dummy kernel code to copy first sequence as output.

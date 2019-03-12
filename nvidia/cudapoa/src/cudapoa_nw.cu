@@ -109,6 +109,8 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 }
                 scores[i * CUDAPOA_MAX_MATRIX_DIMENSION] = penalty + GAP;
             }
+
+            //printf("%d \n", scores[i * CUDAPOA_MAX_MATRIX_DIMENSION]);
             //printf("node %c, score %d\n", nodes[node_id], scores[(graph_pos+1) * CUDAPOA_MAX_MATRIX_DIMENSION]);
         }
 
@@ -118,14 +120,10 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         {
             //score_prev_i[j] = j * GAP;
             scores[j] = j * GAP;
+            //printf("%d ", scores[j]);
         }
-        //for(uint16_t j = 0; j < read_count + 1; j++)
-        //{
-        //    if (score_prev_i[j] != scores[j])
-        //    {
-        //        printf("score not same for %d\n", j);
-        //    }
-        //}
+        //printf("\n");
+
         init = clock64() - start;
 
     }
@@ -162,68 +160,77 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     int16_t max_score = SHRT_MIN;
     int16_t max_i = -1;
     int16_t max_j = -1;
-    // Run DP loop for calculating scores.
+
+    // Run DP loop for calculating scores. Process each row at a time, and
+    // compute vertical and diagonal values in parallel.
     for(uint16_t graph_pos = 0; graph_pos < graph_count; graph_pos++)
     {
         uint16_t node_id = graph[graph_pos];
         uint16_t i = graph_pos + 1;
         //int32_t* scores_i = &scores[i * CUDAPOA_MAX_MATRIX_DIMENSION];
-        //printf("%c%03d ", nodes[node_id], node_id);
 
         uint16_t pred_count = incoming_edge_count[node_id];
 
-        //__syncthreads();
-
-        uint16_t pred_i = (pred_count == 0 ? 0 :
+        uint16_t pred_i_1 = (pred_count == 0 ? 0 :
                 node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES]] + 1);
                 //node_id_to_pos[local_incoming_edges[0]] + 1);
-        int16_t* scores_pred_i;
-        //if (pred_i == i - 1)
+        int16_t* scores_pred_i_1 = &scores[pred_i_1 * CUDAPOA_MAX_MATRIX_DIMENSION];
+
+        //if (pred_i_1 == i - 1)
         //{
         //    //printf("using optim 1\n");
-        //    scores_pred_i = &score_prev_i[0];
+        //    scores_pred_i_1 = &score_prev_i[0];
         //}
         //else
         //{
-            scores_pred_i = &scores[pred_i * CUDAPOA_MAX_MATRIX_DIMENSION];
+        //    scores_pred_i_1 = &scores[pred_i * CUDAPOA_MAX_MATRIX_DIMENSION];
         //}
+
+        uint8_t n = nodes[node_id];
 
         for(uint32_t read_pos = thread_idx; read_pos < read_count; read_pos += blockDim.x)
         {
             //int32_t char_profile = (nodes[node_id] == read[read_pos] ? MATCH : MISMATCH);
-            int32_t char_profile = profile[nodes[node_id] + read[read_pos] - 130];//(nodes[node_id] == read[read_pos] ? MATCH : MISMATCH);
+            int32_t char_profile = profile[n + read[read_pos] - 130];//(nodes[node_id] == read[read_pos] ? MATCH : MISMATCH);
             // Index into score matrix.
             uint16_t j = read_pos + 1;
-            int16_t score = max(scores_pred_i[j-1] + char_profile,
-                    scores_pred_i[j] + GAP);
+            int16_t score = max(scores_pred_i_1[j-1] + char_profile,
+                    scores_pred_i_1[j] + GAP);
 
             // Perform same score updates as above, but for rest of predecessors.
             for (uint16_t p = 1; p < pred_count; p++)
             {
-                int16_t pred_i = node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + p]] + 1;
-                //int16_t pred_i = node_id_to_pos[local_incoming_edges[p]] + 1;
-                //if (pred_i == i - 1)
+                int16_t pred_i_2 = node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + p]] + 1;
+                int16_t* scores_pred_i_2 = &scores[pred_i_2 * CUDAPOA_MAX_MATRIX_DIMENSION];
+
+                //int16_t pred_i_2 = node_id_to_pos[local_incoming_edges[p]] + 1;
+                //if (pred_i_2 == i - 1)
                 //{
-                //    scores_pred_i = score_prev_i;
+                //    scores_pred_i_2 = score_prev_i;
                 //}
                 //else
                 //{
-                    scores_pred_i = &scores[pred_i * CUDAPOA_MAX_MATRIX_DIMENSION];
+                //    scores_pred_i_2 = &scores[pred_i * CUDAPOA_MAX_MATRIX_DIMENSION];
                 //}
                 //scores_pred_i = &scores[pred_i * CUDAPOA_MAX_MATRIX_DIMENSION];
 
-                score = max(scores_pred_i[j - 1] + char_profile,
-                        max(score, scores_pred_i[j] + GAP));
+                score = max(scores_pred_i_2[j - 1] + char_profile,
+                        max(score, scores_pred_i_2[j] + GAP));
             }
 
+            //printf("%d \n", j);
+
             score_i[j] = score;
+            //scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j] = score;
+
         }
 
         __syncthreads();
 
+        // Calculate horizontal max scores in single thread, using data in shared memory only.
         if (thread_idx == 0)
         {
-            int16_t init_score = scores[(graph_pos + 1) * CUDAPOA_MAX_MATRIX_DIMENSION];
+            int16_t init_score = scores[i * CUDAPOA_MAX_MATRIX_DIMENSION];
             score_i[0] = init_score;
             //score_prev_i[0] = init_score;
 
@@ -233,8 +240,10 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 // Index into score matrix.
                 uint16_t j = read_pos + 1;
                 int16_t score = score_i[j];
+                //int16_t score = scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j];
 
                 score = max(score_i[j-1] + GAP, score);
+                //score = max(scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j - 1] + GAP, score);
                 //printf("%d ", scores_i[j]);
 
                 //if (j == read_count)
@@ -254,11 +263,12 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                         max_score = score;
                         max_i = i;
                         max_j = j;
+                        //printf("updating max score %d for pos %d %d\n", score, max_i , max_j);
                     }
                 }
                 score_i[j] = score;
                 //score_prev_i[j] = score;
-                scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j] = score;
+                //scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j] = score;
             }
             //printf("\n");
             //uint16_t next_id = graph[min(graph_pos + 1, graph_count - 1)];
@@ -268,7 +278,27 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             //}
         }
         __syncthreads();
+
+        // Write scores back to global memory.
+        for(uint32_t read_pos = thread_idx; read_pos < read_count; read_pos += blockDim.x)
+        {
+            uint16_t j = read_pos + 1;
+            scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j] = score_i[j];
+        }
+        __syncthreads();
+
     }
+
+//    if (thread_idx == 0)
+//    {
+//        for(uint32_t i = 0; i < graph_count + 1; i++)
+//        {
+//            for(uint32_t j = 0; j < read_count + 1; j++)
+//            {
+//                printf("%05d\n", scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j]);
+//            }
+//        }
+//    }
 
     long long int nw = clock64() - start;
     long long int tb = 0;
@@ -286,7 +316,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         int16_t prev_i = 0;
         int16_t prev_j = 0;
 
-        //printf("maxi %d maxj %d\n", i, j);
+        //printf("maxi %d maxj %d score %d\n", i, j, scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j]);
 
         // Trace back from maximum score position to generate alignment.
         // Trace back is done by re-calculating the score at each cell
