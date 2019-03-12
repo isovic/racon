@@ -20,7 +20,7 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32
 
 class CUDABatchProcessor
 {
-    const uint32_t NUM_THREADS = 32;
+    const uint32_t NUM_THREADS = 128;
 
 public:
     ~CUDABatchProcessor();

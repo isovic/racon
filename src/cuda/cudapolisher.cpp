@@ -29,11 +29,11 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
 {
     std::cout << "[CUDAPolisher] Constructed." << std::endl;
 
-    const uint32_t MAX_WINDOWS = 256;
+    const uint32_t MAX_WINDOWS = 128;
     const uint32_t MAX_DEPTH_PER_WINDOW = 500;
 
     //for(uint32_t i = 0; i < num_threads; i++)
-    for(uint32_t i = 0; i < 2; i++)
+    for(uint32_t i = 0; i < 16; i++)
     {
         batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW));
     }
