@@ -261,11 +261,11 @@ void generatePOAKernel(uint8_t* consensus_d,
 
     //if (thread_idx == 0)
     //{
-    //long long int total = back_time + nw_time + add_time + top_time;
-    //printf("Total time of backbone generation is %lf %\n", ((double)back_time / total) * 100.f);
-    //printf("Total time of nw is %lf %\n", ((double)nw_time / total) * 100.f);
-    //printf("Total time of addition is %lf %\n", ((double)add_time / total) * 100.f);
-    //printf("Total time of topsort is %lf %\n", ((double)top_time / total) * 100.f);
+    //    long long int total = back_time + nw_time + add_time + top_time;
+    //    printf("Total time of backbone generation is %lf %\n", ((double)back_time / total) * 100.f);
+    //    printf("Total time of nw is %lf %\n", ((double)nw_time / total) * 100.f);
+    //    printf("Total time of addition is %lf %\n", ((double)add_time / total) * 100.f);
+    //    printf("Total time of topsort is %lf %\n", ((double)top_time / total) * 100.f);
     //}
 
 }

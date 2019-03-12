@@ -33,7 +33,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     const uint32_t MAX_DEPTH_PER_WINDOW = 500;
 
     //for(uint32_t i = 0; i < num_threads; i++)
-    for(uint32_t i = 0; i < 5; i++)
+    for(uint32_t i = 0; i < 4; i++)
     {
         batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW));
     }
@@ -53,7 +53,7 @@ void CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
 
     // TODO: Reducing window wize by 10 for debugging.
     uint32_t initial_count = next_window_index_;
-    uint32_t count = 5001;//windows_.size();
+    uint32_t count = windows_.size();
     while(next_window_index_ < count)
     {
         if (batch_processors_.at(batch_id)->addWindow(windows_.at(next_window_index_)))
