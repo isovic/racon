@@ -11,8 +11,8 @@ __device__
 uint16_t runNeedlemanWunsch(uint8_t* nodes,
         //uint8_t* nodes_global,
                         uint16_t* graph,
-                        uint16_t* node_id_to_pos_global,
-                        //uint16_t* node_id_to_pos,
+                        //uint16_t* node_id_to_pos_global,
+                        uint16_t* node_id_to_pos,
                         uint16_t graph_count,
                         //uint16_t* incoming_edge_count_global,
                         uint16_t* incoming_edge_count,
@@ -35,7 +35,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     const int16_t MATCH = 8;
 
     //__shared__ uint16_t local_incoming_edges[CUDAPOA_MAX_NODE_EDGES];
-    __shared__ uint16_t node_id_to_pos[1024];
+    //__shared__ uint16_t node_id_to_pos[2048];
     //__shared__ uint16_t incoming_edge_count[1024];
     //__shared__ uint16_t outgoing_edge_count[1024];
 
@@ -47,11 +47,11 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     long long int start = clock64();
     long long int init = 0;
 
-    for(uint16_t graph_pos = thread_idx; graph_pos < graph_count; graph_pos += blockDim.x)
-    {
-        node_id_to_pos[graph_pos] = node_id_to_pos_global[graph_pos];
-        //incoming_edge_count[graph_pos] = incoming_edge_count_global[graph_pos];
-    }
+    //for(uint16_t graph_pos = thread_idx; graph_pos < graph_count; graph_pos += blockDim.x)
+    //{
+    //    //node_id_to_pos[graph_pos] = node_id_to_pos_global[graph_pos];
+    //    //incoming_edge_count[graph_pos] = incoming_edge_count_global[graph_pos];
+    //}
 
     // Init horizonal boundary conditions (read).
     for(uint16_t j = thread_idx + 1; j < read_count + 1; j += blockDim.x)
@@ -115,7 +115,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
     }
 
-    __syncthreads();
+    //__syncthreads();
 
     //for(uint32_t i = 0; i < graph_count; i++)
     //{
@@ -226,6 +226,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             // So loop will only run the number of time there are corrections in the matrix.
             // The any_sync warp primitive lets us easily check if any of the threads had an update.
             bool loop = true;
+            uint8_t count = 0;
             while(__any_sync(0xffffffff, loop))
             {
                 loop = false;
@@ -236,6 +237,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     loop = true;
                     score = new_score;
                 }
+                count++;
             }
 
             //printf("score after shuffle operations for thread %d location %d is %d\n", thread_idx, j, score);
@@ -275,11 +277,11 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             serial += (clock64() - temp);
         }
 
-        __syncthreads();
+        //__syncthreads();
 
     }
 
-    __syncthreads();
+    //__syncthreads();
 
 //    if (thread_idx == 0)
 //    {

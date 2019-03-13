@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <unordered_set>
+#include <iostream>
 
 #include "overlap.hpp"
 #include "sequence.hpp"
@@ -475,6 +476,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
     (*logger_)();
 
+    std::cout << "Total windows " <<  windows_.size() << std::endl;
     std::vector<std::future<bool>> thread_futures;
     for (uint64_t i = 000; i < windows_.size(); ++i) {
         thread_futures.emplace_back(thread_pool_->submit_task(
