@@ -53,6 +53,13 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         //incoming_edge_count[graph_pos] = incoming_edge_count_global[graph_pos];
     }
 
+    // Init horizonal boundary conditions (read).
+    for(uint16_t j = thread_idx + 1; j < read_count + 1; j += blockDim.x)
+    {
+        //score_prev_i[j] = j * GAP;
+        scores[j] = j * GAP;
+    }
+
     __syncthreads();
 
     if (thread_idx == 0)
@@ -98,13 +105,10 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         }
 
         //score_prev_i[0] = 0;
-        // Init horizonal boundary conditions (read).
-        for(uint16_t j = 1; j < read_count + 1; j++)
-        {
-            //score_prev_i[j] = j * GAP;
-            scores[j] = j * GAP;
-            //printf("%d ", scores[j]);
-        }
+        //for(uint16_t j = 1; j < read_count + 1; j++)
+        //{
+        //    //printf("%d ", scores[j]);
+        //}
         //printf("\n");
 
         init = clock64() - start;
