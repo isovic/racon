@@ -39,7 +39,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     //__shared__ uint16_t incoming_edge_count[1024];
     //__shared__ uint16_t outgoing_edge_count[1024];
 
-    __shared__ int16_t score_i[1024];
+    //__shared__ int16_t score_i[1024];
     //__shared__ int16_t score_prev_i[1024];
 
     uint32_t thread_idx = threadIdx.x;
@@ -154,8 +154,9 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         uint16_t node_id = graph[graph_pos];
         uint16_t i = graph_pos + 1;
         //int32_t* scores_i = &scores[i * CUDAPOA_MAX_MATRIX_DIMENSION];
-                int16_t init_score = scores[i * CUDAPOA_MAX_MATRIX_DIMENSION];
-                uint16_t out_edge_count = outgoing_edge_count_global[node_id];
+
+        int16_t init_score = scores[i * CUDAPOA_MAX_MATRIX_DIMENSION];
+        uint16_t out_edge_count = outgoing_edge_count_global[node_id];
 
         uint16_t pred_count = incoming_edge_count[node_id];
 
@@ -180,120 +181,87 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         uint16_t max_cols = max(read_count, (((read_count - 1) / blockDim.x) + 1) * blockDim.x);
         for(uint16_t read_pos = thread_idx; read_pos < max_cols; read_pos += blockDim.x)
         {
-            if (read_pos < read_count)
+            int16_t score;
+            //printf("updating vertical for pos %d thread %d\n", read_pos, thread_idx);
+            int32_t char_profile = (n == read[read_pos] ? MATCH : MISMATCH);
+            // Index into score matrix.
+            uint16_t j = read_pos + 1;
+            score = max(scores_pred_i_1[j-1] + char_profile,
+                    scores_pred_i_1[j] + GAP);
+
+            // Perform same score updates as above, but for rest of predecessors.
+            for (uint16_t p = 1; p < pred_count; p++)
             {
-                //printf("updating vertical for pos %d thread %d\n", read_pos, thread_idx);
-                int32_t char_profile = (n == read[read_pos] ? MATCH : MISMATCH);
-                // Index into score matrix.
-                uint16_t j = read_pos + 1;
-                int16_t score = max(scores_pred_i_1[j-1] + char_profile,
-                        scores_pred_i_1[j] + GAP);
+                int16_t pred_i_2 = node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + p]] + 1;
+                int16_t* scores_pred_i_2 = &scores[pred_i_2 * CUDAPOA_MAX_MATRIX_DIMENSION];
 
-                // Perform same score updates as above, but for rest of predecessors.
-                for (uint16_t p = 1; p < pred_count; p++)
-                {
-                    int16_t pred_i_2 = node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + p]] + 1;
-                    int16_t* scores_pred_i_2 = &scores[pred_i_2 * CUDAPOA_MAX_MATRIX_DIMENSION];
+                //int16_t pred_i_2 = node_id_to_pos[local_incoming_edges[p]] + 1;
+                //if (pred_i_2 == i - 1)
+                //{
+                //    scores_pred_i_2 = score_prev_i;
+                //}
+                //else
+                //{
+                //    scores_pred_i_2 = &scores[pred_i * CUDAPOA_MAX_MATRIX_DIMENSION];
+                //}
+                //scores_pred_i = &scores[pred_i * CUDAPOA_MAX_MATRIX_DIMENSION];
 
-                    //int16_t pred_i_2 = node_id_to_pos[local_incoming_edges[p]] + 1;
-                    //if (pred_i_2 == i - 1)
-                    //{
-                    //    scores_pred_i_2 = score_prev_i;
-                    //}
-                    //else
-                    //{
-                    //    scores_pred_i_2 = &scores[pred_i * CUDAPOA_MAX_MATRIX_DIMENSION];
-                    //}
-                    //scores_pred_i = &scores[pred_i * CUDAPOA_MAX_MATRIX_DIMENSION];
-
-                    score = max(scores_pred_i_2[j - 1] + char_profile,
-                            max(score, scores_pred_i_2[j] + GAP));
-                }
-
-                score_i[j] = score;
+                score = max(scores_pred_i_2[j - 1] + char_profile,
+                        max(score, scores_pred_i_2[j] + GAP));
             }
-            //printf("%d \n", j);
 
-            __syncthreads();
-
-            // Calculate horizontal max scores in single thread, using data in shared memory only.
+            long long int temp = clock64();
+            //score_i[j] = score;
             if (thread_idx == 0)
             {
-                long long int temp = clock64();
-                //int16_t init_score = scores[i * CUDAPOA_MAX_MATRIX_DIMENSION];
-                //score_i[0] = init_score;
-                //int16_t prev_score = init_score;
-                //score_prev_i[0] = init_score;
-
-                // Perform score updates for horizontal moves.
-                //printf("horizontal update for %d to %d\n", read_pos, min(read_pos + blockDim.x, read_count));
-                uint16_t pos;
-                for(pos = read_pos; pos < min(read_pos + blockDim.x, read_count); pos++)
-                {
-                    // Index into score matrix.
-                    uint16_t jpos = pos + 1;
-                    int16_t score = score_i[jpos];
-
-                    //score = max(score_i[j-1] + GAP, score);
-                    score = max(prev_score + GAP, score);
-
-                    //if (j == read_count)
-                    //{
-                    //    printf("oe %d ie %d for pos %d id %d\n", 
-                    //            outgoing_edge_count[node_id], 
-                    //            incoming_edge_count[node_id], 
-                    //            i, node_id);
-                    //}
-
-                    prev_score = score;
-                    score_i[jpos] = score;
-                    //score_prev_i[j] = score;
-                }
-
-                // Once last column of read is reached, update max score
-                // and positions. So process last column data separately.
-                //uint16_t out_edge_count = outgoing_edge_count_global[node_id];
-                //uint16_t j = read_count;
-                //int16_t score = score_i[j];
-                ////score = max(score_i[j-1] + GAP, score);
-                //score = max(prev_score + GAP, score);
-                if (pos == read_count && out_edge_count == 0)
-                {
-                    if (max_score < prev_score)
-                    {
-                        max_score = prev_score;
-                        max_i = i;
-                        max_j = pos;
-                        //printf("updating max\n");
-                    }
-                }
-                //score_i[j] = score;
-                //printf("\n");
-
-                //uint16_t next_id = graph[min(graph_pos + 1, graph_count - 1)];
-                //for(uint16_t e = 0; e < incoming_edge_count[next_id]; e++)
-                //{
-                //    local_incoming_edges[e] = incoming_edges[next_id * CUDAPOA_MAX_NODE_EDGES + e];
-                //}
-                serial += (clock64() - temp);
-                //printf("horizontal done\n");
+                score = max(prev_score + GAP, score);
+                //printf("score for thread %d location %d is %d with prev_score %d\n", thread_idx, j, score, prev_score);
             }
-            //__syncthreads();
+
+
+            for(uint8_t loop = 1; loop < 32; loop++)
+            {
+                score = max(__shfl_up_sync(0xffffffff << loop, score, 1) + GAP, score);
+            }
+
+            //printf("score after shuffle operations for thread %d location %d is %d\n", thread_idx, j, score);
+
+            prev_score = __shfl_down_sync(0x1, score, 31);//score;
+
+            //if (thread_idx == 0)
+            //{
+            //    printf("previous score for thread %d is %d\n", thread_idx, prev_score);
+            //}
+
+            bool update = false;
+            if (j == read_count && out_edge_count == 0)
+            {
+                if (max_score < score)
+                {
+                    update = true;
+                    //printf("thread_idx %d i %d j %d\n", thread_idx,i, j);
+                }
+            }
+
+            if (__any_sync(0xffffffff, update))
+            {
+                uint32_t val_thread = (read_count - 1) % 32;
+                max_score = __shfl_sync(0xffffffff, score, val_thread);
+                //printf("issued max score update from %d\n", val_thread);
+                max_i = __shfl_sync(0xffffffff, i, val_thread);
+                max_j = __shfl_sync(0xffffffff, j, val_thread);
+            }
+
+            // Index into score matrix.
+            scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j] = score;
+            serial += (clock64() - temp);
         }
 
-        __syncthreads();
-
-        //printf("writing scores\n");
-
-        // Write scores back to global memory.
-        for(uint32_t read_pos = thread_idx; read_pos < read_count; read_pos += blockDim.x)
-        {
-            uint16_t j = read_pos + 1;
-            scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j] = score_i[j];
-        }
         __syncthreads();
 
     }
+
+    __syncthreads();
 
 //    if (thread_idx == 0)
 //    {
