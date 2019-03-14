@@ -7,6 +7,7 @@
 #include <future>
 #include <iostream>
 #include <chrono>
+#include <cuda_profiler_api.h>
 
 #include "sequence.hpp"
 #include "cudapolisher.hpp"
@@ -41,7 +42,8 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
 
 CUDAPolisher::~CUDAPolisher()
 {
-    // Empty destructor for now.
+    cudaDeviceSynchronize();
+    cudaProfilerStop();
 }
 
 void CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
