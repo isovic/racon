@@ -120,6 +120,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     cudaMalloc((void**) &outoing_edges_weights_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS );
     cudaMalloc((void**) &sorted_poa_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS );
     cudaMalloc((void**) &sorted_poa_node_map_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS );
+    cudaMalloc((void**) &sorted_poa_local_edge_count_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS );
 
     cudaMemset(nodes_d_, 0, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS );
     cudaMemset(node_alignments_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS * NUM_BLOCKS );
@@ -131,6 +132,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     cudaMemset(incoming_edges_weights_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS );
     cudaMemset(outoing_edges_weights_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS );
     cudaMemset(sorted_poa_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS );
+    cudaMemset(sorted_poa_local_edge_count_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS );
 
     cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not allocate temp memory2.")));
 
@@ -144,6 +146,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS ;
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_EDGES * NUM_BLOCKS ;
+    temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
     std::cout << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
 }
@@ -281,7 +284,8 @@ void CUDABatchProcessor::generatePOA()
                                  sorted_poa_d_,
                                  sorted_poa_node_map_d_,
                                  node_alignments_d_,
-                                 node_alignment_count_d_);
+                                 node_alignment_count_d_,
+                                 sorted_poa_local_edge_count_d_);
     cudaCheckError(TABS.append(std::to_string(bid_)).append(std::string(" Could not launch kernel properly.")));
     std::cout << TABS << bid_ << " Launched kernel" << std::endl;
 }

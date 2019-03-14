@@ -146,6 +146,7 @@ protected:
     uint16_t* outoing_edges_weights_d_;
     uint16_t* sorted_poa_d_;
     uint16_t* sorted_poa_node_map_d_;
+    uint16_t* sorted_poa_local_edge_count_d_;
 
 
     static uint32_t batches;

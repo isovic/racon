@@ -12,11 +12,12 @@ void topologicalSortDeviceUtil(uint16_t* sorted_poa,
                                uint16_t node_count,
                                uint16_t* incoming_edge_count,
                                uint16_t* outgoing_edges,
-                               uint16_t* outgoing_edge_count)
+                               uint16_t* outgoing_edge_count,
+                               uint16_t* local_incoming_edge_count)
 {
     //printf("Running top sort\n");
     // Clear the incoming edge count for each node.
-    __shared__ int16_t local_incoming_edge_count[CUDAPOA_MAX_NODES_PER_WINDOW];
+    //__shared__ int16_t local_incoming_edge_count[CUDAPOA_MAX_NODES_PER_WINDOW];
     //memset(local_incoming_edge_count, -1, CUDAPOA_MAX_NODES_PER_WINDOW);
     uint16_t sorted_poa_position = 0;
 
@@ -73,7 +74,8 @@ void topologicalSortKernel(uint16_t* sorted_poa_d,
                                   node_count,
                                   incoming_edge_count_d,
                                   outgoing_edges_d,
-                                  outgoing_edge_count_d);
+                                  outgoing_edge_count_d,
+                                  NULL);
     }
 }
 

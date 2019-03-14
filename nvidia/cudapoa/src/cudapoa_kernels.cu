@@ -27,7 +27,8 @@ void generatePOAKernel(uint8_t* consensus_d,
                        uint16_t* outgoing_edges_d, uint16_t* outgoing_edge_count_d,
                        uint16_t* incoming_edge_w_d, uint16_t* outgoing_edge_w_d,
                        uint16_t* sorted_poa_d, uint16_t* node_id_to_pos_d,
-                       uint16_t* node_alignments_d, uint16_t* node_alignment_count_d)
+                       uint16_t* node_alignments_d, uint16_t* node_alignment_count_d,
+                       uint16_t* sorted_poa_local_edge_count_d)
 {
 
     uint32_t block_idx = blockIdx.x;
@@ -56,6 +57,7 @@ void generatePOAKernel(uint8_t* consensus_d,
         uint16_t* node_id_to_pos = &node_id_to_pos_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
         uint16_t* node_alignments = &node_alignments_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS];
         uint16_t* node_alignment_count = &node_alignment_count_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+        uint16_t* sorted_poa_local_edge_count = &sorted_poa_local_edge_count_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
 
         int16_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
         int16_t* traceback_i = &traceback_i_d[CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
@@ -240,7 +242,8 @@ void generatePOAKernel(uint8_t* consensus_d,
                         node_id_to_pos,
                         sequence_length_data[0],
                         incoming_edge_count,
-                        outoing_edges, outgoing_edge_count);
+                        outoing_edges, outgoing_edge_count,
+                        sorted_poa_local_edge_count);
 
                 long long int top_end = clock64();
                 top_time += (top_end - add_end);
@@ -287,7 +290,8 @@ void generatePOA(uint8_t* consensus_d,
                  uint16_t* outgoing_edges, uint16_t* outgoing_edge_count,
                  uint16_t* incoming_edge_w, uint16_t* outgoing_edge_w,
                  uint16_t* sorted_poa, uint16_t* node_id_to_pos,
-                 uint16_t* node_alignments, uint16_t* node_alignment_count)
+                 uint16_t* node_alignments, uint16_t* node_alignment_count,
+                 uint16_t* sorted_poa_local_edge_count)
 {
     generatePOAKernel<<<num_blocks, num_threads, 0, stream>>>(consensus_d,
                                                               consensus_pitch,
@@ -303,7 +307,8 @@ void generatePOA(uint8_t* consensus_d,
                                                               outgoing_edges, outgoing_edge_count,
                                                               incoming_edge_w, outgoing_edge_w,
                                                               sorted_poa, node_id_to_pos,
-                                                              node_alignments, node_alignment_count);
+                                                              node_alignments, node_alignment_count,
+                                                              sorted_poa_local_edge_count);
 }
 
 } // namespace cudapoa
