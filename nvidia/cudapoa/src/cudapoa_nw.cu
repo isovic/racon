@@ -65,7 +65,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     __shared__ int16_t maxi[1];
     __shared__ int16_t maxj[1];
 
-    __syncthreads();
+    //__syncthreads();
 
     if (thread_idx == 0)
     {
@@ -196,7 +196,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             prev_score[0] = init_score;
         }
 
-        __syncthreads();
+        //__syncthreads();
 
         // max_cols is the first warp boundary multiple beyond read_count. This is done
         // so all threads in the warp enter the loop.
@@ -235,7 +235,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                         max(score, scores_pred_i_2[j] + GAP));
             }
 
-            __syncthreads();
+            //__syncthreads();
 
             long long int temp = clock64();
 
@@ -411,7 +411,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
     }
 
-    __syncthreads();
+    //__syncthreads();
 
 //    if (thread_idx == 0)
 //    {
