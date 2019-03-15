@@ -59,7 +59,7 @@ void generatePOAKernel(uint8_t* consensus_d,
         uint16_t* node_alignment_count = &node_alignment_count_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
         uint16_t* sorted_poa_local_edge_count = &sorted_poa_local_edge_count_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
 
-        int16_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
+        int16_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_SEQUENCE_SIZE * block_idx];
         int16_t* traceback_i = &traceback_i_d[CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
         int16_t* traceback_j = &traceback_j_d[CUDAPOA_MAX_MATRIX_DIMENSION * block_idx];
 
