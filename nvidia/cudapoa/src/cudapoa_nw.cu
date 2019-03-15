@@ -61,19 +61,28 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     }
 
     __shared__ int16_t prev_score[1];
-    __shared__ int16_t maxscore[1];
-    __shared__ int16_t maxi[1];
-    __shared__ int16_t maxj[1];
 
-    //__syncthreads();
+    // Storing max score, i and j for every thread.
+    // The values will be replicated across threads to
+    // minimize bank confliects when reading the values.
+    __shared__ int16_t maxscore[32];
+    __shared__ int16_t maxi[32];
+    __shared__ int16_t maxj[32];
+
+
+    // Initialize the values to default.
+    if (thread_idx < 32)
+    {
+        maxscore[thread_idx % 32] = SHRT_MIN;
+        maxi[thread_idx % 32] = -1;
+        maxj[thread_idx % 32] = -1;
+    }
+
+    __syncthreads();
 
     if (thread_idx == 0)
     {
         //printf("graph %d, read %d\n", graph_count, read_count);
-
-        maxscore[0] = SHRT_MIN;
-        maxi[0] = -1;
-        maxj[0] = -1;
 
         // Init vertical boundary (graph).
         for(uint16_t graph_pos = 0; graph_pos < graph_count; graph_pos++)
@@ -124,7 +133,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
     }
 
-    //__syncthreads();
 
     //for(uint32_t i = 0; i < graph_count; i++)
     //{
@@ -151,12 +159,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
     start = clock64();
 
-    //int16_t max_score = SHRT_MIN;
-    //int16_t max_i = -1;
-    //int16_t max_j = -1;
-    int16_t max_score = maxscore[0];
-    int16_t max_i = maxi[0];
-    int16_t max_j = maxj[0];
+    int16_t max_score;
 
     long long int serial = 0;
 
@@ -258,7 +261,8 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     //printf("score for thread %d location %d is %d with prev_score %d\n", thread_idx, j, score, prev_score);
                 }
 
-                max_score = maxscore[0];
+                // Load current max score from shared memory.
+                max_score = maxscore[thread_idx % 32];
 
                 // While there are changes to the horizontal score values, keep updating the matrix.
                 // So loop will only run the number of time there are corrections in the matrix.
@@ -306,25 +310,25 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     }
                 }
 
+                // If max score is updated in any of the threads, then write
+                // out that max score into all banks of the smem
+                // so that each thread can access it in parallel. Otherwise
+                // if they are written to the same location, there will be
+                // bank conflicts and it will serialize the access
+                // to the variable.
                 if (__any_sync(0xffffffff, update))
                 {
                     uint32_t val_thread = (read_count - 1) % 32;
                     max_score = __shfl_sync(0xffffffff, score, val_thread);
-                    //printf("issued max score update from %d\n", val_thread);
-                    max_i = __shfl_sync(0xffffffff, i, val_thread);
-                    max_j = __shfl_sync(0xffffffff, j, val_thread);
+                    maxscore[thread_idx % 32] = max_score;
+                    maxi[thread_idx % 32] = __shfl_sync(0xffffffff, i, val_thread);
+                    maxj[thread_idx % 32] = __shfl_sync(0xffffffff, j, val_thread);
 
-                    if (thread_idx == 0)
-                    {
-                        maxscore[0] = max_score;
-                        maxi[0] = max_i;
-                        maxj[0] = max_j;
-                    }
                 }
             }
 
             __syncthreads();
-            //}
+
             if (thread_idx >= 32)
             {
 
@@ -334,7 +338,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     //printf("score for thread %d location %d is %d with prev_score %d\n", thread_idx, j, score, prev_score);
                 }
 
-                max_score = maxscore[0];
+                max_score = maxscore[thread_idx % 32];
 
                 // While there are changes to the horizontal score values, keep updating the matrix.
                 // So loop will only run the number of time there are corrections in the matrix.
@@ -386,16 +390,10 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 {
                     uint32_t val_thread = (read_count - 1) % 32;
                     max_score = __shfl_sync(0xffffffff, score, val_thread);
-                    //printf("issued max score update from %d\n", val_thread);
-                    max_i = __shfl_sync(0xffffffff, i, val_thread);
-                    max_j = __shfl_sync(0xffffffff, j, val_thread);
+                    maxscore[thread_idx % 32] = max_score;
+                    maxi[thread_idx % 32] = __shfl_sync(0xffffffff, i, val_thread);
+                    maxj[thread_idx % 32] = __shfl_sync(0xffffffff, j, val_thread);
 
-                    if (thread_idx == 32)
-                    {
-                        maxscore[0] = max_score;
-                        maxi[0] = max_i;
-                        maxj[0] = max_j;
-                    }
                 }
             }
 
