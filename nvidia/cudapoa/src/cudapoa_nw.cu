@@ -2,6 +2,8 @@
 #include "cudapoa_kernels.cuh"
 #include <stdio.h>
 
+#define WARP_SIZE 32
+
 namespace nvidia {
 
 namespace cudapoa {
@@ -42,6 +44,15 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     //__shared__ int16_t score_i[1024];
     //__shared__ int16_t score_prev_i[1024];
 
+    __shared__ int16_t prev_score[1];
+
+    // Storing max score, i and j for every thread.
+    // The values will be replicated across threads to
+    // minimize bank confliects when reading the values.
+    __shared__ int16_t maxscore[WARP_SIZE];
+    __shared__ int16_t maxi[WARP_SIZE];
+    __shared__ int16_t maxj[WARP_SIZE];
+
     uint32_t thread_idx = threadIdx.x;
 
     long long int start = clock64();
@@ -60,22 +71,13 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         scores[j] = j * GAP;
     }
 
-    __shared__ int16_t prev_score[1];
-
-    // Storing max score, i and j for every thread.
-    // The values will be replicated across threads to
-    // minimize bank confliects when reading the values.
-    __shared__ int16_t maxscore[32];
-    __shared__ int16_t maxi[32];
-    __shared__ int16_t maxj[32];
-
 
     // Initialize the values to default.
-    if (thread_idx < 32)
+    if (thread_idx < WARP_SIZE)
     {
-        maxscore[thread_idx % 32] = SHRT_MIN;
-        maxi[thread_idx % 32] = -1;
-        maxj[thread_idx % 32] = -1;
+        maxscore[thread_idx % WARP_SIZE] = SHRT_MIN;
+        maxi[thread_idx % WARP_SIZE] = -1;
+        maxj[thread_idx % WARP_SIZE] = -1;
     }
 
     __syncthreads();
@@ -211,7 +213,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         for(uint16_t read_pos = thread_idx; read_pos < max_cols; read_pos += blockDim.x)
         {
             //printf("updating vertical for pos %d thread %d\n", read_pos, thread_idx);
-            int32_t char_profile = (n == read[read_pos] ? MATCH : MISMATCH);
+            int16_t char_profile = (n == read[read_pos] ? MATCH : MISMATCH);
             // Index into score matrix.
             uint16_t j = read_pos + 1;
             int16_t score = max(scores_pred_i_1[j-1] + char_profile,
@@ -252,7 +254,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 //uint32_t first_warp_thread_idx = warp * WARP_SIZE;
                 //uint32_t last_warp_thread_idx = (warp + 1) * WARP_SIZE - 1;
 
-            if (thread_idx < 32)
+            if (thread_idx < WARP_SIZE)
             {
 
                 if (thread_idx == 0)
@@ -262,7 +264,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 }
 
                 // Load current max score from shared memory.
-                max_score = maxscore[thread_idx % 32];
+                max_score = maxscore[thread_idx % WARP_SIZE];
 
                 // While there are changes to the horizontal score values, keep updating the matrix.
                 // So loop will only run the number of time there are corrections in the matrix.
@@ -289,7 +291,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 // prev value.
                 //prev_score = __shfl_down_sync(0x1, score, 31);//score;
 
-                if (thread_idx == 31)
+                if (thread_idx == (WARP_SIZE - 1))
                 {
                     prev_score[0] = score;
                 }
@@ -318,27 +320,27 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 // to the variable.
                 if (__any_sync(0xffffffff, update))
                 {
-                    uint32_t val_thread = (read_count - 1) % 32;
+                    uint32_t val_thread = (read_count - 1) % WARP_SIZE;
                     max_score = __shfl_sync(0xffffffff, score, val_thread);
-                    maxscore[thread_idx % 32] = max_score;
-                    maxi[thread_idx % 32] = __shfl_sync(0xffffffff, i, val_thread);
-                    maxj[thread_idx % 32] = __shfl_sync(0xffffffff, j, val_thread);
+                    maxscore[thread_idx % WARP_SIZE] = max_score;
+                    maxi[thread_idx % WARP_SIZE] = __shfl_sync(0xffffffff, i, val_thread);
+                    maxj[thread_idx % WARP_SIZE] = __shfl_sync(0xffffffff, j, val_thread);
 
                 }
             }
 
             __syncthreads();
 
-            if (thread_idx >= 32)
+            if (thread_idx >= WARP_SIZE)
             {
 
-                if (thread_idx == 32)
+                if (thread_idx == WARP_SIZE)
                 {
                     score = max(prev_score[0] + GAP, score);
                     //printf("score for thread %d location %d is %d with prev_score %d\n", thread_idx, j, score, prev_score);
                 }
 
-                max_score = maxscore[thread_idx % 32];
+                max_score = maxscore[thread_idx % WARP_SIZE];
 
                 // While there are changes to the horizontal score values, keep updating the matrix.
                 // So loop will only run the number of time there are corrections in the matrix.
@@ -365,7 +367,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 // prev value.
                 //prev_score = __shfl_down_sync(0x1, score, 31);//score;
 
-                if (thread_idx == 63)
+                if (thread_idx == (2 * WARP_SIZE - 1))
                 {
                     prev_score[0] = score;
                 }
@@ -388,11 +390,11 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
                 if (__any_sync(0xffffffff, update))
                 {
-                    uint32_t val_thread = (read_count - 1) % 32;
+                    uint32_t val_thread = (read_count - 1) % WARP_SIZE;
                     max_score = __shfl_sync(0xffffffff, score, val_thread);
-                    maxscore[thread_idx % 32] = max_score;
-                    maxi[thread_idx % 32] = __shfl_sync(0xffffffff, i, val_thread);
-                    maxj[thread_idx % 32] = __shfl_sync(0xffffffff, j, val_thread);
+                    maxscore[thread_idx % WARP_SIZE] = max_score;
+                    maxi[thread_idx % WARP_SIZE] = __shfl_sync(0xffffffff, i, val_thread);
+                    maxj[thread_idx % WARP_SIZE] = __shfl_sync(0xffffffff, j, val_thread);
 
                 }
             }
