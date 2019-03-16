@@ -1,0 +1,323 @@
+[CUDAPolisher] Constructed.
+0 Allocated input buffers of size 125.245MB
+0 Allocated output buffers of size 0MB
+0 Allocated temp buffers of size 1026.5MB
+0 Allocated temp buffers of size 255.5MB
+Starting CUDA polish
+0 Launching data copy
+0 Launched data copy
+0 Launching kernel for 1
+0 Launched kernel
+0 Launching memcpy D2H
+graph 200, read 86
+aligned nodes 200
+graph 202, read 198
+aligned nodes 204
+graph 212, read 187
+aligned nodes 196
+graph 216, read 195
+aligned nodes 201
+graph 225, read 169
+aligned nodes 198
+graph 235, read 193
+aligned nodes 194
+graph 235, read 203
+aligned nodes 208
+graph 261, read 201
+aligned nodes 201
+graph 265, read 199
+aligned nodes 200
+graph 271, read 204
+aligned nodes 204
+graph 278, read 196
+aligned nodes 199
+graph 282, read 198
+aligned nodes 200
+graph 291, read 202
+aligned nodes 205
+graph 300, read 195
+aligned nodes 198
+graph 300, read 203
+aligned nodes 206
+graph 308, read 198
+aligned nodes 199
+graph 313, read 206
+aligned nodes 207
+graph 319, read 188
+aligned nodes 195
+graph 331, read 199
+aligned nodes 201
+graph 336, read 198
+aligned nodes 198
+graph 338, read 196
+aligned nodes 198
+graph 338, read 203
+aligned nodes 204
+graph 348, read 195
+aligned nodes 197
+graph 351, read 200
+aligned nodes 203
+graph 357, read 200
+aligned nodes 202
+graph 365, read 197
+aligned nodes 201
+graph 380, read 199
+aligned nodes 201
+graph 386, read 202
+aligned nodes 204
+graph 397, read 199
+aligned nodes 200
+graph 406, read 199
+aligned nodes 206
+graph 412, read 196
+aligned nodes 199
+graph 417, read 199
+aligned nodes 200
+graph 420, read 187
+aligned nodes 196
+graph 423, read 198
+aligned nodes 198
+graph 430, read 198
+aligned nodes 202
+graph 438, read 110
+aligned nodes 130
+graph 439, read 199
+aligned nodes 200
+graph 440, read 210
+aligned nodes 215
+graph 461, read 182
+aligned nodes 187
+graph 464, read 189
+aligned nodes 199
+graph 469, read 196
+aligned nodes 196
+graph 470, read 201
+aligned nodes 204
+graph 475, read 196
+aligned nodes 197
+graph 476, read 201
+aligned nodes 205
+graph 479, read 13
+aligned nodes 59
+graph 479, read 200
+aligned nodes 201
+graph 479, read 198
+aligned nodes 199
+graph 483, read 198
+aligned nodes 199
+graph 483, read 194
+aligned nodes 195
+graph 485, read 198
+aligned nodes 199
+graph 487, read 193
+aligned nodes 194
+graph 487, read 194
+aligned nodes 195
+graph 490, read 190
+aligned nodes 192
+graph 497, read 213
+aligned nodes 217
+graph 508, read 198
+aligned nodes 199
+graph 514, read 200
+aligned nodes 200
+graph 515, read 196
+aligned nodes 198
+graph 515, read 199
+aligned nodes 202
+graph 519, read 191
+aligned nodes 193
+graph 521, read 194
+aligned nodes 201
+graph 523, read 180
+aligned nodes 190
+graph 527, read 190
+aligned nodes 192
+graph 528, read 193
+aligned nodes 197
+graph 535, read 199
+aligned nodes 199
+graph 536, read 199
+aligned nodes 199
+graph 537, read 198
+aligned nodes 199
+graph 538, read 196
+aligned nodes 197
+graph 539, read 191
+aligned nodes 193
+graph 539, read 196
+aligned nodes 198
+graph 539, read 73
+aligned nodes 78
+graph 540, read 73
+aligned nodes 76
+graph 540, read 207
+aligned nodes 207
+graph 542, read 201
+aligned nodes 202
+graph 546, read 190
+aligned nodes 199
+graph 552, read 196
+aligned nodes 197
+graph 556, read 203
+aligned nodes 206
+graph 558, read 198
+aligned nodes 203
+graph 560, read 199
+aligned nodes 199
+graph 560, read 148
+aligned nodes 156
+graph 561, read 201
+aligned nodes 201
+graph 563, read 199
+aligned nodes 200
+graph 565, read 196
+aligned nodes 197
+graph 566, read 198
+aligned nodes 200
+graph 568, read 191
+aligned nodes 194
+graph 569, read 192
+aligned nodes 192
+graph 570, read 205
+aligned nodes 210
+graph 576, read 198
+aligned nodes 204
+graph 581, read 201
+aligned nodes 201
+graph 581, read 199
+aligned nodes 201
+graph 583, read 202
+aligned nodes 203
+graph 583, read 198
+aligned nodes 198
+graph 584, read 203
+aligned nodes 204
+graph 586, read 195
+aligned nodes 196
+graph 587, read 197
+aligned nodes 197
+graph 587, read 204
+aligned nodes 207
+graph 589, read 200
+aligned nodes 201
+graph 590, read 194
+aligned nodes 198
+graph 591, read 202
+aligned nodes 203
+graph 594, read 196
+aligned nodes 198
+graph 595, read 195
+aligned nodes 196
+graph 598, read 200
+aligned nodes 200
+graph 601, read 199
+aligned nodes 200
+graph 601, read 199
+aligned nodes 201
+graph 601, read 197
+aligned nodes 197
+graph 601, read 202
+aligned nodes 203
+graph 604, read 199
+aligned nodes 200
+graph 606, read 199
+aligned nodes 202
+graph 609, read 189
+aligned nodes 192
+graph 609, read 199
+aligned nodes 205
+graph 612, read 200
+aligned nodes 201
+graph 612, read 198
+aligned nodes 198
+graph 612, read 206
+aligned nodes 207
+graph 614, read 193
+aligned nodes 193
+graph 614, read 198
+aligned nodes 201
+graph 618, read 197
+aligned nodes 198
+graph 619, read 204
+aligned nodes 206
+graph 621, read 200
+aligned nodes 202
+graph 624, read 197
+aligned nodes 197
+graph 624, read 197
+aligned nodes 198
+graph 625, read 197
+aligned nodes 197
+graph 628, read 192
+aligned nodes 193
+graph 632, read 193
+aligned nodes 194
+graph 634, read 203
+aligned nodes 205
+graph 634, read 200
+aligned nodes 201
+graph 634, read 202
+aligned nodes 203
+graph 635, read 178
+aligned nodes 182
+graph 638, read 194
+aligned nodes 194
+graph 638, read 198
+aligned nodes 198
+graph 638, read 198
+aligned nodes 199
+graph 639, read 102
+aligned nodes 105
+graph 639, read 197
+aligned nodes 197
+graph 641, read 196
+aligned nodes 197
+graph 642, read 200
+aligned nodes 201
+graph 645, read 196
+aligned nodes 196
+graph 645, read 199
+aligned nodes 200
+graph 646, read 197
+aligned nodes 197
+graph 647, read 195
+aligned nodes 195
+graph 651, read 199
+aligned nodes 200
+graph 653, read 186
+aligned nodes 194
+graph 658, read 202
+aligned nodes 203
+graph 658, read 200
+aligned nodes 202
+graph 659, read 182
+aligned nodes 183
+graph 662, read 196
+aligned nodes 197
+graph 662, read 200
+aligned nodes 200
+graph 662, read 178
+aligned nodes 182
+graph 663, read 173
+aligned nodes 179
+graph 663, read 101
+aligned nodes 107
+graph 663, read 97
+aligned nodes 100
+graph 663, read 80
+aligned nodes 84
+graph 663, read 79
+aligned nodes 80
+graph 664, read 79
+aligned nodes 80
+graph 664, read 50
+aligned nodes 55
+graph 665, read 24
+aligned nodes 27
+graph 665, read 32
+aligned nodes 34
+graph 665, read 135
+aligned nodes 148
+0 Finished memcpy D2H
+[CUDAPolisher] Polished in 0.557 s.

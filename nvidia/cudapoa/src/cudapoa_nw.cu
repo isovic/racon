@@ -84,7 +84,9 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
     if (thread_idx == 0)
     {
-        //printf("graph %d, read %d\n", graph_count, read_count);
+#ifdef DEBUG
+        printf("graph %d, read %d\n", graph_count, read_count);
+#endif
 
         // Init vertical boundary (graph).
         for(uint16_t graph_pos = 0; graph_pos < graph_count; graph_pos++)
@@ -544,7 +546,9 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
             //printf("loop %d %d\n",i, j);
         }
-        //printf("aligned nodes %d\n", aligned_nodes);
+#ifdef DEBUG
+        printf("aligned nodes %d\n", aligned_nodes);
+#endif
 
         tb = clock64() - start;
     }
