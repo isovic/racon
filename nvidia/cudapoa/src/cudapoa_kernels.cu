@@ -92,7 +92,6 @@ void generatePOAKernel(uint8_t* consensus_d,
     }
 
     __syncthreads();
-    sequence += sequence_lengths[0]; // increment the pointer so it is pointing to correct sequence data
 
     back_time += (clock64() - t0);
 
@@ -108,6 +107,7 @@ void generatePOAKernel(uint8_t* consensus_d,
     {
         //printf("running window %d seq %d / %d\n", block_idx, s, num_sequences_in_window);
         uint16_t seq_len = sequence_lengths[s];
+        sequence += sequence_lengths[s - 1]; // increment the pointer so it is pointing to correct sequence data
 /*
         if (thread_idx == 0)
             printf("seq len is %i for sequence %i\n", seq_len, s);
@@ -155,6 +155,7 @@ void generatePOAKernel(uint8_t* consensus_d,
                 printf("Sequence len %d is greater than max matrix size %d\n", seq_len, CUDAPOA_MAX_NODES_PER_WINDOW);
                 return;
             }
+
 
         }
         long long int start = clock64();
