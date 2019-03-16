@@ -14,7 +14,6 @@ namespace cudapoa {
 // Kernel for running POA.
 __global__
 void generatePOAKernel(uint8_t* consensus_d,
-                       size_t consensus_pitch,
                        uint8_t* sequences_d,
                        size_t sequences_pitch,
                        uint32_t max_sequence_size,
@@ -285,7 +284,6 @@ void generatePOA(uint8_t* consensus_d,
                  uint16_t* sorted_poa_local_edge_count)
 {
     generatePOAKernel<<<num_blocks, num_threads, 0, stream>>>(consensus_d,
-                                                              consensus_pitch,
                                                               sequences_d,
                                                               sequences_pitch,
                                                               max_sequence_size,

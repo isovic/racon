@@ -27,6 +27,12 @@ namespace nvidia {
 
 namespace cudapoa {
 
+typedef struct WindowDetails{
+        uint8_t num_seqs;
+        uint32_t seq_len_buffer_offset;
+        uint32_t seq_starts;
+        } WindowDetails;
+
 void generatePOA(uint8_t* consensus_d,
                  size_t conensus_pitch,
                  uint8_t* sequences_d,
