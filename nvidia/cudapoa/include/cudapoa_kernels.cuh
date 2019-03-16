@@ -4,12 +4,24 @@
 
 #include <stdint.h>
 #include <cuda_runtime_api.h>
+#include <stdio.h>
 
 #define CUDAPOA_MAX_NODE_EDGES 50
 #define CUDAPOA_MAX_NODE_ALIGNMENTS 50
 #define CUDAPOA_MAX_NODES_PER_WINDOW 2048
 #define CUDAPOA_MAX_SEQUENCE_SIZE 1024
 #define CUDAPOA_MAX_MATRIX_DIMENSION (CUDAPOA_MAX_NODES_PER_WINDOW + 1)
+
+#define CU_CHECK_ERR(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+    if (code != cudaSuccess)
+    {
+        fprintf(stderr,"GPU Error:: %s %s %d\n", cudaGetErrorString(code), file, line);
+        if (abort) exit(code);
+    }
+}
 
 namespace nvidia {
 
