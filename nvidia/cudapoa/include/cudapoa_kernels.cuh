@@ -28,7 +28,7 @@ namespace nvidia {
 namespace cudapoa {
 
 typedef struct WindowDetails{
-        uint8_t num_seqs;
+        uint16_t num_seqs;
         uint32_t seq_len_buffer_offset;
         uint32_t seq_starts;
         } WindowDetails;

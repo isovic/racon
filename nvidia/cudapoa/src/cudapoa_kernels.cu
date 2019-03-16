@@ -58,9 +58,11 @@ void generatePOAKernel(uint8_t* consensus_d,
 
     //get Block-specific variables
     uint32_t window_idx = blockIdx.x;
+
     uint16_t * sequence_lengths = &sequence_lengths_d[window_details_d[window_idx].seq_len_buffer_offset];
-    uint32_t num_sequences = window_details_d[window_idx].seq_len_buffer_offset;
-    uint8_t * sequences = &sequences_d[window_details_d[window_idx].seq_starts];
+
+    uint32_t num_sequences = window_details_d[window_idx].num_seqs;
+    uint8_t * sequence = &sequences_d[window_details_d[window_idx].seq_starts];
 
     long long int t0 = clock64();
 
@@ -68,21 +70,20 @@ void generatePOAKernel(uint8_t* consensus_d,
     {
 
         // Create backbone for window based on first sequence in window.
-        uint16_t sequence_0_length = sequence_lengths[0];
-        nodes[0] = sequences[0];
+        nodes[0] = sequence[0];
         sorted_poa[0] = 0;
         incoming_edge_count[0] = 0;
         node_alignment_count[0] = 0;
         node_id_to_pos[0] = 0;
-        outgoing_edge_count[sequence_0_length - 1] = 0;
+        outgoing_edge_count[sequence_lengths[0] - 1] = 0;
 
         //Build the rest of the graphs
-        for (int nucleotide_idx=1; nucleotide_idx<sequence_0_length; nucleotide_idx++){
-            nodes[nucleotide_idx] = sequences[nucleotide_idx];
+        for (uint16_t nucleotide_idx=1; nucleotide_idx<sequence_lengths[0]; nucleotide_idx++){
+            nodes[nucleotide_idx] = sequence[nucleotide_idx];
             sorted_poa[nucleotide_idx] = nucleotide_idx;
             outoing_edges[(nucleotide_idx-1) * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx;
             outgoing_edge_count[nucleotide_idx-1] = 1;
-            incoming_edges[nucleotide_idx * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx - 1;
+            incoming_edges[nucleotide_idx * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx - uint16_t(1);
             incoming_edge_count[nucleotide_idx] = 1;
             node_alignment_count[nucleotide_idx] = 0;
             node_id_to_pos[nucleotide_idx] = nucleotide_idx;
@@ -91,22 +92,26 @@ void generatePOAKernel(uint8_t* consensus_d,
     }
 
     __syncthreads();
-    sequences += sequence_lengths[0];
+    sequence += sequence_lengths[0]; // increment the pointer so it is pointing to correct sequence data
 
     back_time += (clock64() - t0);
 
-    //for(uint16_t i = 0; i < sequence_0_length; i++)
+    //for(uint16_t i = 0; i < sequence_lengths[0]; i++)
     //{
     //    printf("%c ", nodes[i]);
     //}
 
-    //printf("window id %d, sequences %d\n", block_idx, num_sequences_in_window - 1);
+    //printf("window id %d, sequence %d\n", block_idx, num_sequences_in_window - 1);
 
     // Align each subsequent read, add alignment to graph, run topoligical sort.
     for(uint16_t s = 1; s < num_sequences; s++)
     {
         //printf("running window %d seq %d / %d\n", block_idx, s, num_sequences_in_window);
         uint16_t seq_len = sequence_lengths[s];
+/*
+        if (thread_idx == 0)
+            printf("seq len is %i for sequence %i\n", seq_len, s);
+*/
 
         //for(uint16_t i = 0; i < seq_len; i++)
         //{
@@ -155,7 +160,11 @@ void generatePOAKernel(uint8_t* consensus_d,
         long long int start = clock64();
 
         // Run Needleman-Wunsch alignment between graph and new sequence.
-        //printf("running nw\n");
+/*
+        if (thread_idx ==0)
+            printf("running nw with sequence length of %i and sequence of %c %c %c %c %c\n", seq_len, sequence[0], sequence[1], sequence[2], sequence[3], sequence[4]);
+*/
+
         uint16_t alignment_length = runNeedlemanWunsch(nodes,
                 sorted_poa,
                 node_id_to_pos,
@@ -164,7 +173,7 @@ void generatePOAKernel(uint8_t* consensus_d,
                 incoming_edges,
                 outgoing_edge_count,
                 outoing_edges,
-                sequences,
+                sequence,
                 seq_len,
                 scores,
                 traceback_i,
@@ -204,7 +213,7 @@ void generatePOAKernel(uint8_t* consensus_d,
                     incoming_edge_weights, outgoing_edge_weights,
                     alignment_length,
                     sorted_poa, traceback_i, 
-                    sequences, traceback_j);
+                    sequence, traceback_j);
 
             long long int add_end = clock64();
             add_time += (add_end - start);

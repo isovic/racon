@@ -202,16 +202,18 @@ bool CUDABatchProcessor::hasWindows() const
 void CUDABatchProcessor::generateMemoryMap()
 {
     // Fill host/cuda memory with sequence information.
-    uint32_t global_sequence_idx = 0;
-    uint32_t num_nucleotides_copied = 0;
-    nvidia::cudapoa::WindowDetails window_details;
+    uint32_t global_sequence_idx = 0; // count total number of sequences across all windows
+    uint32_t num_nucleotides_copied = 0; // count total number of bases across all windows
+
     auto num_windows = windows_.size();
     for(uint32_t i = 0; i < num_windows; i++)
     {
+        nvidia::cudapoa::WindowDetails window_details;
         window_details.seq_starts = num_nucleotides_copied;
         window_details.seq_len_buffer_offset = global_sequence_idx;
+
         auto window = windows_.at(i);
-        uint32_t num_seqs = window->sequences_.size();
+        auto num_seqs = (uint16_t) window->sequences_.size();
         for(uint32_t j = 0; j < num_seqs; j++){
             auto seq = window->sequences_.at(j);
 
@@ -219,12 +221,13 @@ void CUDABatchProcessor::generateMemoryMap()
                    seq.first,
                    seq.second);
 
-            auto seq_len = seq.second;
+            auto seq_len = (uint16_t) seq.second;
             num_nucleotides_copied += seq_len;
 
             sequence_lengths_h_[global_sequence_idx] = seq_len;
             global_sequence_idx++;
         }
+
         window_details.num_seqs = num_seqs;
         window_details_h_ [i] = window_details;
     }
@@ -235,7 +238,7 @@ void CUDABatchProcessor::generateMemoryMap()
     CU_CHECK_ERR(cudaMemcpyAsync(window_details_d_, window_details_h_,
                                  num_windows * sizeof(nvidia::cudapoa::WindowDetails), cudaMemcpyHostToDevice, stream_));
     CU_CHECK_ERR(cudaMemcpyAsync(sequence_lengths_d_, sequence_lengths_h_,
-                                 num_windows * sizeof(uint16_t), cudaMemcpyHostToDevice, stream_));
+                                 global_sequence_idx * sizeof(uint16_t), cudaMemcpyHostToDevice, stream_));
 
 }
 
