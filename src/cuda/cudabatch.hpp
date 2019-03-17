@@ -10,6 +10,7 @@
 #include <cuda_runtime_api.h>
 
 #include "window.hpp"
+#include "cudapoa_kernels.cuh"
 
 namespace racon {
 
@@ -121,13 +122,13 @@ protected:
     size_t consensus_pitch_;
 
     // Buffers for input data.
-    std::unique_ptr<uint8_t[]> inputs_h_;
+    uint8_t *inputs_h_;
     uint8_t *inputs_d_;
-    size_t input_pitch_;
-    uint16_t * num_sequences_per_window_h_;
+    uint8_t * num_sequences_per_window_h_;
     uint16_t * sequence_lengths_h_;
-    uint16_t * num_sequences_per_window_d_;
     uint16_t * sequence_lengths_d_;
+    nvidia::cudapoa::WindowDetails * window_details_d_;
+    nvidia::cudapoa::WindowDetails * window_details_h_;
 
     // Buffers for temp data.
     int16_t* scores_d_;

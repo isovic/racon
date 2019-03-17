@@ -38,8 +38,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     window_length_ = 200;
     for(uint32_t i = 0; i < 1; i++)
 #else
-    //for(uint32_t i = 0; i < num_threads; i++)
-    for(uint32_t i = 0; i < 6; i++)
+      for(uint32_t i = 0; i < 6; i++) //TODO: Make the number of batch processors a CLI arg
 #endif
     {
         batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW));

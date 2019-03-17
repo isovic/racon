@@ -11,12 +11,9 @@ namespace cudapoa {
 // Device function for running Needleman-Wunsch dynamic programming loop.
 __device__
 uint16_t runNeedlemanWunsch(uint8_t* nodes,
-        //uint8_t* nodes_global,
                         uint16_t* graph,
-                        //uint16_t* node_id_to_pos_global,
                         uint16_t* node_id_to_pos,
                         uint16_t graph_count,
-                        //uint16_t* incoming_edge_count_global,
                         uint16_t* incoming_edge_count,
                         uint16_t* incoming_edges,
                         //uint16_t* incoming_edges_global,
