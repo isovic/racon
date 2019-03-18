@@ -43,13 +43,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
     __shared__ int16_t prev_score[1];
 
-    // Storing max score, i and j for every thread.
-    // The values will be replicated across threads to
-    // minimize bank confliects when reading the values.
-    __shared__ int16_t maxscore[WARP_SIZE];
-    __shared__ int16_t maxi[WARP_SIZE];
-    __shared__ int16_t maxj[WARP_SIZE];
-
     uint32_t thread_idx = threadIdx.x;
 
     long long int start = clock64();
@@ -68,16 +61,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         scores[j] = j * GAP;
     }
 
-
-    // Initialize the values to default.
-    if (thread_idx < WARP_SIZE)
-    {
-        maxscore[thread_idx % WARP_SIZE] = SHRT_MIN;
-        maxi[thread_idx % WARP_SIZE] = -1;
-        maxj[thread_idx % WARP_SIZE] = -1;
-    }
-
-    __syncthreads();
 
     if (thread_idx == 0)
     {
@@ -159,8 +142,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
 
     start = clock64();
-
-    int16_t max_score;
 
     long long int serial = 0;
 
@@ -262,14 +243,10 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     //printf("score for thread %d location %d is %d with prev_score %d\n", thread_idx, j, score, prev_score);
                 }
 
-                // Load current max score from shared memory.
-                max_score = maxscore[thread_idx % WARP_SIZE];
-
                 // While there are changes to the horizontal score values, keep updating the matrix.
                 // So loop will only run the number of time there are corrections in the matrix.
                 // The any_sync warp primitive lets us easily check if any of the threads had an update.
                 bool loop = true;
-                uint8_t count = 0;
                 while(__any_sync(0xffffffff, loop))
                 {
                     loop = false;
@@ -280,7 +257,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                         loop = true;
                         score = new_score;
                     }
-                    count++;
                 }
 
                 //printf("score after shuffle operations for thread %d location %d is %d\n", thread_idx, j, score);
@@ -299,33 +275,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 //{
                 //    printf("previous score for thread %d is %d\n", thread_idx, prev_score);
                 //}
-
-                // Only update max score if we reach the end of the read.
-                bool update = false;
-                if (j == read_count && out_edge_count == 0)
-                {
-                    if (max_score < score)
-                    {
-                        update = true;
-                        //printf("thread_idx %d i %d j %d\n", thread_idx,i, j);
-                    }
-                }
-
-                // If max score is updated in any of the threads, then write
-                // out that max score into all banks of the smem
-                // so that each thread can access it in parallel. Otherwise
-                // if they are written to the same location, there will be
-                // bank conflicts and it will serialize the access
-                // to the variable.
-                if (__any_sync(0xffffffff, update))
-                {
-                    uint32_t val_thread = (read_count - 1) % WARP_SIZE;
-                    max_score = __shfl_sync(0xffffffff, score, val_thread);
-                    maxscore[thread_idx % WARP_SIZE] = max_score;
-                    maxi[thread_idx % WARP_SIZE] = __shfl_sync(0xffffffff, i, val_thread);
-                    maxj[thread_idx % WARP_SIZE] = __shfl_sync(0xffffffff, j, val_thread);
-
-                }
             }
 
             __syncthreads();
@@ -338,8 +287,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     score = max(prev_score[0] + GAP, score);
                     //printf("score for thread %d location %d is %d with prev_score %d\n", thread_idx, j, score, prev_score);
                 }
-
-                max_score = maxscore[thread_idx % WARP_SIZE];
 
                 // While there are changes to the horizontal score values, keep updating the matrix.
                 // So loop will only run the number of time there are corrections in the matrix.
@@ -375,27 +322,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 //{
                 //    printf("previous score for thread %d is %d\n", thread_idx, prev_score);
                 //}
-
-                // Only update max score if we reach the end of the read.
-                bool update = false;
-                if (j == read_count && out_edge_count == 0)
-                {
-                    if (max_score < score)
-                    {
-                        update = true;
-                        //printf("thread_idx %d i %d j %d\n", thread_idx,i, j);
-                    }
-                }
-
-                if (__any_sync(0xffffffff, update))
-                {
-                    uint32_t val_thread = (read_count - 1) % WARP_SIZE;
-                    max_score = __shfl_sync(0xffffffff, score, val_thread);
-                    maxscore[thread_idx % WARP_SIZE] = max_score;
-                    maxi[thread_idx % WARP_SIZE] = __shfl_sync(0xffffffff, i, val_thread);
-                    maxj[thread_idx % WARP_SIZE] = __shfl_sync(0xffffffff, j, val_thread);
-
-                }
             }
 
             
@@ -426,16 +352,28 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     long long int nw = clock64() - start;
     long long int tb = 0;
 
-    //int16_t i = max_i;
-    //int16_t j = max_j;
     start = clock64();
 
     uint16_t aligned_nodes = 0;
     if (thread_idx == 0)
     {
-        int16_t i = maxi[0];
-        int16_t j = maxj[0];
+        // Find location of the maximum score in the matrix.
+        int16_t i = 0;
+        int16_t j = read_count;
+        int16_t mscore = SHRT_MIN;
 
+        for (int16_t idx = 1; idx <= graph_count; idx++)
+        {
+            if (outgoing_edge_count_global[graph[idx - 1]] == 0)
+            {
+                int16_t s = scores[idx * CUDAPOA_MAX_SEQUENCE_SIZE + j];
+                if (mscore < s)
+                {
+                    mscore = s;
+                    i = idx;
+                }
+            }
+        }
         // Fill in backtrace
 
         int16_t prev_i = 0;
