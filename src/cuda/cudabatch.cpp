@@ -57,7 +57,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
 
     //Set the device
     CU_CHECK_ERR(cudaSetDevice(device));
-    device_id = device;
+    device_id_ = device;
 
     // Create new CUDA stream.
     CU_CHECK_ERR(cudaStreamCreate(&stream_));
@@ -249,7 +249,7 @@ void CUDABatchProcessor::generateMemoryMap()
 
 void CUDABatchProcessor::generatePOA()
 {
-    CU_CHECK_ERR(cudaSetDevice(device_id));
+    CU_CHECK_ERR(cudaSetDevice(device_id_));
     // Launch kernel to run 1 POA per thread in thread block.
     std::cout << TABS << bid_ << " Launching kernel for " << windows_.size() << std::endl;
     nvidia::cudapoa::generatePOA(consensus_d_,
@@ -304,7 +304,7 @@ void CUDABatchProcessor::getConsensus()
 bool CUDABatchProcessor::generateConsensus()
 {
     // Generate consensus for all windows in the batch
-    CU_CHECK_ERR(cudaSetDevice(device_id));
+    CU_CHECK_ERR(cudaSetDevice(device_id_));
     generateMemoryMap();
     generatePOA();
     getConsensus();
@@ -314,7 +314,7 @@ bool CUDABatchProcessor::generateConsensus()
 
 void CUDABatchProcessor::reset()
 {
-    CU_CHECK_ERR(cudaSetDevice(device_id));
+    CU_CHECK_ERR(cudaSetDevice(device_id_));
     windows_.clear();
     sequence_count_ = 0;
 

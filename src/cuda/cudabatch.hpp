@@ -109,7 +109,7 @@ protected:
     uint32_t max_depth_per_window_;
 
     // GPU Device ID
-    uint32_t device_id;
+    uint32_t device_id_;
 
     // Windows belonging to the batch.
     std::vector<std::shared_ptr<Window>> windows_;

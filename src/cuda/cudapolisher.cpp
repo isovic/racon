@@ -33,7 +33,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     const uint32_t MAX_WINDOWS = 256;
     const uint32_t MAX_DEPTH_PER_WINDOW = 500;
 
-    int num_devices;
+    int32_t num_devices;
     CU_CHECK_ERR(cudaGetDeviceCount(&num_devices));
 
 
