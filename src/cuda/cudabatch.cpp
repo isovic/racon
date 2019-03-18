@@ -31,12 +31,12 @@ inline std::string printTabs(uint32_t tab_count)
     return s;
 }
 
-std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth)
+std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
 {
-    return std::unique_ptr<CUDABatchProcessor>(new CUDABatchProcessor(max_windows, max_window_depth));
+    return std::unique_ptr<CUDABatchProcessor>(new CUDABatchProcessor(max_windows, max_window_depth, device));
 }
 
-CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth)
+CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
     : max_windows_(max_windows)
     , max_depth_per_window_(max_window_depth)
     , windows_()
@@ -54,6 +54,10 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
         std::cerr << "Thread block size needs to be in multiples of 32." << std::endl;
         exit(-1);
     }
+
+    //Set the device
+    CU_CHECK_ERR(cudaSetDevice(device));
+    device_id = device;
 
     // Create new CUDA stream.
     CU_CHECK_ERR(cudaStreamCreate(&stream_));
@@ -245,6 +249,7 @@ void CUDABatchProcessor::generateMemoryMap()
 
 void CUDABatchProcessor::generatePOA()
 {
+    CU_CHECK_ERR(cudaSetDevice(device_id));
     // Launch kernel to run 1 POA per thread in thread block.
     std::cout << TABS << bid_ << " Launching kernel for " << windows_.size() << std::endl;
     nvidia::cudapoa::generatePOA(consensus_d_,
@@ -299,6 +304,7 @@ void CUDABatchProcessor::getConsensus()
 bool CUDABatchProcessor::generateConsensus()
 {
     // Generate consensus for all windows in the batch
+    CU_CHECK_ERR(cudaSetDevice(device_id));
     generateMemoryMap();
     generatePOA();
     getConsensus();
@@ -308,6 +314,7 @@ bool CUDABatchProcessor::generateConsensus()
 
 void CUDABatchProcessor::reset()
 {
+    CU_CHECK_ERR(cudaSetDevice(device_id));
     windows_.clear();
     sequence_count_ = 0;
 

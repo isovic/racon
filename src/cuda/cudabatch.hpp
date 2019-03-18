@@ -17,7 +17,7 @@ namespace racon {
 class Window;
 
 class CUDABatchProcessor;
-std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth);
+std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device);
 
 class CUDABatchProcessor
 {
@@ -62,7 +62,8 @@ public:
     uint32_t getBatchID() const { return bid_; }
 
     // Builder function to create a new CUDABatchProcessor object.
-    friend std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth);
+    friend std::unique_ptr<CUDABatchProcessor>
+    createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device);
 
 protected:
     /**
@@ -71,7 +72,7 @@ protected:
      * @param[in] max_windows      : Maximum number windows in batch
      * @param[in] max_window_depth : Maximum number of sequences per window
      */
-    CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth);
+    CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device);
     CUDABatchProcessor(const CUDABatchProcessor&) = delete;
     const CUDABatchProcessor& operator=(const CUDABatchProcessor&) = delete;
 
@@ -106,6 +107,9 @@ protected:
     // Data limits.
     uint32_t max_windows_;
     uint32_t max_depth_per_window_;
+
+    // GPU Device ID
+    uint32_t device_id;
 
     // Windows belonging to the batch.
     std::vector<std::shared_ptr<Window>> windows_;

@@ -33,15 +33,20 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     const uint32_t MAX_WINDOWS = 256;
     const uint32_t MAX_DEPTH_PER_WINDOW = 500;
 
+    int num_devices;
+    CU_CHECK_ERR(cudaGetDeviceCount(&num_devices));
+
+
 #ifdef DEBUG
     std::cerr << "In DEBUG mode. Using window size of 200." << std::endl;
     window_length_ = 200;
     for(uint32_t i = 0; i < 1; i++)
 #else
-      for(uint32_t i = 0; i < 6; i++) //TODO: Make the number of batch processors a CLI arg
+      for(uint32_t i = 0; i < 4; i++) //TODO: Make the number of batch processors a CLI arg
 #endif
     {
-        batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW));
+        uint32_t device = i % num_devices;
+        batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW, device));
     }
 }
 
