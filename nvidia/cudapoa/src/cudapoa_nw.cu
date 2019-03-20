@@ -42,8 +42,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     //__shared__ int16_t score_i[1024];
     //__shared__ int16_t score_prev_i[1024];
 
-    __shared__ int16_t prev_score[1];
-
     uint32_t thread_idx = threadIdx.x;
 
     long long int start = clock64();
@@ -146,8 +144,8 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
     long long int serial = 0;
 
-    const uint32_t m = 4;
-    uint16_t max_cols = max(read_count, (((read_count - 1) / (blockDim.x * m)) + 1) * (blockDim.x * m));
+    const uint32_t cells_per_thread = 4;
+    uint16_t max_cols = max(read_count, (((read_count - 1) / (blockDim.x * cells_per_thread)) + 1) * (blockDim.x * cells_per_thread));
     //if (thread_idx == 0)
     //{
     //    printf("max cols %d\n", max_cols);
@@ -161,7 +159,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         uint16_t i = graph_pos + 1;
         //int32_t* scores_i = &scores[i * CUDAPOA_MAX_MATRIX_DIMENSION];
 
-        int16_t init_score = scores[i * CUDAPOA_MAX_SEQUENCE_SIZE];
+        int16_t first_element_prev_score = scores[i * CUDAPOA_MAX_SEQUENCE_SIZE];
         uint16_t out_edge_count = outgoing_edge_count_global[node_id];
 
         uint16_t pred_count = incoming_edge_count[node_id];
@@ -183,17 +181,9 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
         uint8_t n = nodes[node_id];
 
-        //int16_t prev_score = init_score;
-        //if (thread_idx == 0)
-        //{
-        //    prev_score[0] = init_score;
-        //}
-
-        //__syncthreads();
-
         // max_cols is the first warp boundary multiple beyond read_count. This is done
         // so all threads in the warp enter the loop.
-        for(uint16_t read_pos = thread_idx * m; read_pos < max_cols; read_pos += blockDim.x * m)
+        for(uint16_t read_pos = thread_idx * cells_per_thread; read_pos < max_cols; read_pos += blockDim.x * cells_per_thread)
         {
             //printf("updating vertical for pos %d thread %d\n", read_pos, thread_idx);
             int16_t char_profile0 = (n == read[read_pos + 0] ? MATCH : MISMATCH);
@@ -253,63 +243,75 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             //if (thread_idx < 32)
             //for(uint8_t warp = 0; warp < num_warps; warp++)
             //{
-            // For the first thread, calculate the score from score of the last thread in the
-            // last warp. If j == 1, then prev_score is initialized from score matrix.
             //uint32_t first_warp_thread_idx = warp * WARP_SIZE;
             //uint32_t last_warp_thread_idx = (warp + 1) * WARP_SIZE - 1;
-
-            if (thread_idx == 0)
-            {
-                //printf("last score for thread 0 is %d\n", init_score);
-                //score0 = max(prev_score[0] + GAP, score);
-                score0 = max(init_score + GAP, score0);
-                score1 = max(score0 + GAP, score1);
-                score2 = max(score1 + GAP, score2);
-                score3 = max(score2 + GAP, score3);
-                //printf("score for thread %d location %d is %d with prev_score %d\n", thread_idx, j, score, prev_score);
-            }
 
             // While there are changes to the horizontal score values, keep updating the matrix.
             // So loop will only run the number of time there are corrections in the matrix.
             // The any_sync warp primitive lets us easily check if any of the threads had an update.
-            //bool loop = true;
-            uint32_t loop = 0xffffffff >> 1;
-            uint16_t thread_id_to_process = 1;
-            while(loop)
+            bool loop = true;
+            //uint16_t loop = 31;
+            //uint16_t thread_id_to_process = 1;
+            while(__any_sync(0xffffffff, loop))
             {
-                //loop = false;
+
+                // To increase instruction level parallelism, we compute the scores
+                // in reverse order. And then check if any of the scores had an update,
+                // and if there's an update then we rerun the loop to capture the effects
+                // of the change in the next loop.
+                loop = false;
                 // The shfl_up lets us grab a value from the lane below.
                 //printf("thread %d line %d\n", thread_idx, __LINE__);
-                //int16_t last_score = __shfl_up_sync(0xffffffff << 1, score3, 1);
-                //int16_t last_score = __shfl_up_sync(0xffffffff << 1, score1, 1);
-                int16_t last_score = __shfl_up_sync(0x1 << thread_id_to_process, score3, 1);
-                //printf("thread %d line %d\n", thread_idx, __LINE__);
-                if (thread_idx == thread_id_to_process)
+                int16_t last_score = __shfl_up_sync(0xffffffff >> 1, score3, 1);
+                if (thread_idx == 0)
                 {
-                    score0 = max(last_score + GAP, score0);
-                    score1 = max(score0 + GAP, score1);
-                    score2 = max(score1 + GAP, score2);
-                    score3 = max(score2 + GAP, score3);
+                    last_score = first_element_prev_score;
+                }
+                __syncwarp();
+
+                //printf("thread %d line %d\n", thread_idx, __LINE__);
+                //if (thread_idx == thread_id_to_process)
+                //{
+                bool check3 = false;
+                int16_t tscore = max(score2 + GAP, score3);
+                if (tscore > score3)
+                {
+                    score3 = tscore;
+                    check3 = true;
                 }
 
-                loop = loop >> 1;
-                thread_id_to_process++;
-                //printf("thread %d line %d\n", thread_idx, __LINE__);
+                bool check2 = false;
+                tscore = max(score1 + GAP, score2);
+                if (tscore > score2)
+                {
+                    score2 = tscore;
+                    check2 = true;
+                }
+
+                bool check1 = false;
+                tscore = max(score0 + GAP, score1);
+                if (tscore > score1)
+                {
+                    score1 = tscore;
+                    check1 = true;
+                }
+
+                bool check0 = false;
+                tscore = max(last_score + GAP, score0);
+                if (tscore > score0)
+                {
+                    score0 = tscore;
+                    check0 = true;
+                }
+
+                loop = check0 || check1 || check2 || check3;
             }
 
             //printf("score after shuffle operations for thread %d location %d is %d\n", thread_idx, j, score);
 
-            // Move the score of the last thread in the warp to a variable
-            // into the first thread, so in the next warp the the first thread has a valid
-            // prev value.
-            //prev_score = __shfl_down_sync(0x1, score, 31);//score;
-
-            //if (thread_idx == (WARP_SIZE - 1))
-            //{
-            //    prev_score[0] = score3;
-            //}
-
-            init_score = __shfl_sync(0xffffffff, score3, 31);
+            // Copy over the last element score of the last lane into a register of first lane
+            // which can be used to compute the first cell of the next warp.
+            first_element_prev_score = __shfl_sync(0xffffffff, score3, 31);
 
             //if (thread_idx == 0)
             //{
@@ -323,7 +325,8 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + j3] = score3;
             serial += (clock64() - temp);
 
-            __syncthreads();
+            //__syncthreads();
+            __syncwarp();
         }
 
         //__syncthreads();
