@@ -56,7 +56,7 @@ CUDAPolisher::~CUDAPolisher()
     cudaProfilerStop();
 }
 
-void CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
+std::pair<uint32_t, uint32_t> CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
 {
     batch_processors_.at(batch_id)->reset();
 
@@ -89,25 +89,40 @@ void CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
                 count,
                 batch_processors_.at(batch_id)->getBatchID());
     }
+
+    return std::pair<uint32_t, uint32_t>(initial_count, next_window_index_);
 }
 
-bool CUDAPolisher::processBatch(uint32_t batch_id)
+void CUDAPolisher::processBatch(uint32_t batch_id)
 {
-    bool result = true;
-    while(result)
+    while(true)
     {
-        fillNextBatchOfWindows(batch_id);
+        std::pair<uint32_t, uint32_t> range = fillNextBatchOfWindows(batch_id);
         if (batch_processors_.at(batch_id)->hasWindows())
         {
             // Launch workload.
-            result = batch_processors_.at(batch_id)->generateConsensus();
+            const std::vector<bool>& results = batch_processors_.at(batch_id)->generateConsensus();
+
+            // Check if the number of batches processed is same as the range of
+            // of windows that were added.
+            if (results.size() != (range.second - range.first))
+            {
+                throw std::runtime_error("Windows processed doesn't match \
+                        range of windows passed to batch\n");
+            }
+
+            // Copy over the results from the batch into the per window
+            // result vector of the CUDAPolisher.
+            for(uint32_t i = 0; i < results.size(); i++)
+            {
+                window_consensus_status_.at(range.first + i) = results.at(i);
+            }
         }
         else
         {
             break;
         }
     }
-    return result;
 }
 
 void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
@@ -118,8 +133,11 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 
+    // Initialize window consensus statuses.
+    window_consensus_status_.resize(windows_.size(), false);
+
     // Process each of the batches in a separate thread.
-    std::vector<std::future<bool>> thread_futures;
+    std::vector<std::future<void>> thread_futures;
     for(uint32_t i = 0; i < batch_processors_.size(); i++)
     {
         thread_futures.emplace_back(std::async(std::launch::async,
@@ -133,20 +151,21 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     for(uint32_t i = 0; i < thread_futures.size(); i++)
     {
         thread_futures.at(i).wait();
-        if (!thread_futures.at(i).get())
-        {
-            std::cerr << "Batch " << i << " had issues \
-                processing its windows." << std::endl;
-        }
     }
 
     // Collect results from all windows into final output.
     std::string polished_data = "";
+    uint32_t num_polished_windows = 0;
+
     for (uint64_t i = 0; i < windows_.size(); ++i) {
+
+        num_polished_windows += window_consensus_status_.at(i) == true ? 1 : 0;
         polished_data += windows_[i]->consensus();
 
         if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
-            double polished_ratio = 1.0f;
+            double polished_ratio = num_polished_windows /
+                static_cast<double>(windows_[i]->rank() + 1);
+            //double polished_ratio = 1.0f;
 
             if (!drop_unpolished_sequences || polished_ratio > 0) {
                 std::string tags = type_ == PolisherType::kF ? "r" : "";
@@ -157,13 +176,12 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                     tags, polished_data));
             }
 
+            num_polished_windows = 0;
             polished_data.clear();
         }
         windows_[i].reset();
     }
 
-    (void) dst;
-    (void) drop_unpolished_sequences;
     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
     std::cout << "[CUDAPolisher] Polished in " << ((double)duration / 1000) << " s." << std::endl;

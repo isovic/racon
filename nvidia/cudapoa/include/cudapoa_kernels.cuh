@@ -55,7 +55,9 @@ void generatePOA(uint8_t* consensus_d,
                  uint16_t* node_id_to_pos,
                  uint16_t* node_alignments,
                  uint16_t* node_alignment_count,
-                 uint16_t* sorted_poa_local_edge_count);
+                 uint16_t* sorted_poa_local_edge_count,
+                 int32_t* consensus_scores,
+                 int16_t* consensus_predecessors);
 
 void topologicalSort(uint16_t* sorted_poa_d,
                      uint16_t* sorted_poa_node_map_d,

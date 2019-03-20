@@ -22,6 +22,10 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
     //printf("Running addition for alignment %d\n", alignment_length);
     int16_t head_node_id = -1;
     int16_t curr_node_id = -1;
+    uint16_t prev_weight = 0;
+
+#pragma message("TODO: Send node weights into kernel as vector. Currently hard coded.")
+    const uint16_t NODE_WEIGHT = 1;
 
     // Basic algorithm is to iterate through the alignment of the read.
     // For each position in that alignment -
@@ -134,23 +138,26 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
             // Create new edges if necessary.
             if (head_node_id != -1)
             {
-                uint16_t out_count = outgoing_edge_count[head_node_id];
                 bool edge_exists = false;
-                for(uint16_t e = 0; e < out_count; e++)
+                uint16_t in_count = incoming_edge_count[curr_node_id];
+                for(uint16_t e = 0; e < in_count; e++)
                 {
-                    if(outgoing_edges[head_node_id * CUDAPOA_MAX_NODE_EDGES + e] == curr_node_id)
+                    if(incoming_edges[curr_node_id * CUDAPOA_MAX_NODE_EDGES + e] == head_node_id)
                     {
                         edge_exists = true;
+                        incoming_edge_w[curr_node_id * CUDAPOA_MAX_NODE_EDGES + e] += (prev_weight + NODE_WEIGHT);
+                        //printf("Update existing node from %d to %d with weight %d\n", head_node_id, curr_node_id, incoming_edge_w[curr_node_id * CUDAPOA_MAX_NODE_EDGES + e]);
                     }
                 }
                 if (!edge_exists)
                 {
-                    outgoing_edges[head_node_id * CUDAPOA_MAX_NODE_EDGES + out_count] = curr_node_id; 
-                    outgoing_edge_count[head_node_id] = out_count + 1;
-                    uint16_t in_count = incoming_edge_count[curr_node_id];
                     incoming_edges[curr_node_id * CUDAPOA_MAX_NODE_EDGES + in_count] = head_node_id;
+                    incoming_edge_w[curr_node_id * CUDAPOA_MAX_NODE_EDGES + in_count] = prev_weight + NODE_WEIGHT;
                     incoming_edge_count[curr_node_id] = in_count + 1;
-                    //printf("Created new edge %d to %d\n", head_node_id, curr_node_id);
+                    uint16_t out_count = outgoing_edge_count[head_node_id];
+                    outgoing_edges[head_node_id * CUDAPOA_MAX_NODE_EDGES + out_count] = curr_node_id;
+                    outgoing_edge_count[head_node_id] = out_count + 1;
+                    //printf("Created new edge %d to %d with weight %d\n", head_node_id, curr_node_id, prev_weight + NODE_WEIGHT);
 
                     if (out_count + 1 >= CUDAPOA_MAX_NODE_EDGES || in_count + 1 >= CUDAPOA_MAX_NODE_EDGES)
                     {
@@ -161,6 +168,8 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
 
             head_node_id = curr_node_id;
         }
+
+        prev_weight = NODE_WEIGHT;
 
     }
     //printf("final size %d\n", node_count);

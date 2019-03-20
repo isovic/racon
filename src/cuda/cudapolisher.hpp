@@ -36,14 +36,19 @@ protected:
     CUDAPolisher(const CUDAPolisher&) = delete;
     const CUDAPolisher& operator=(const CUDAPolisher&) = delete;
 
-    // Insert new windows into the batch referred to by batch_id.
-    void fillNextBatchOfWindows(uint32_t batch_id);
+    // Insert new windows into the batch referred to by batch_id. Return
+    // the range of windows added to the batch. Interval closed in front, open
+    // at the end.
+    std::pair<uint32_t, uint32_t> fillNextBatchOfWindows(uint32_t batch_id);
 
     // Generate POA for all windows in the batch.
-    bool processBatch(uint32_t batch_id);
+    void processBatch(uint32_t batch_id);
 
     // Vector of batches. Generated during construction time.
     std::vector<std::unique_ptr<CUDABatchProcessor>> batch_processors_;
+
+    // Vector of bool indicating consensus generation status for each window.
+    std::vector<bool> window_consensus_status_;
 
     // Mutex for accessing the vector of windows.
     std::mutex mutex_windows_;

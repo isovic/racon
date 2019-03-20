@@ -4,6 +4,7 @@
 #include "cudapoa_nw.cu"
 #include "cudapoa_topsort.cu"
 #include "cudapoa_add_alignment.cu"
+#include "cudapoa_generate_consensus.cu"
 
 #include <stdio.h>
 
@@ -24,7 +25,9 @@ void generatePOAKernel(uint8_t* consensus_d,
                        uint16_t* incoming_edge_w_d, uint16_t* outgoing_edge_w_d,
                        uint16_t* sorted_poa_d, uint16_t* node_id_to_pos_d,
                        uint16_t* node_alignments_d, uint16_t* node_alignment_count_d,
-                       uint16_t* sorted_poa_local_edge_count_d)
+                       uint16_t* sorted_poa_local_edge_count_d,
+                       int32_t* consensus_scores_d,
+                       int16_t* consensus_predecessors_d)
 {
 
     uint32_t block_idx = blockIdx.x;
@@ -99,6 +102,9 @@ void generatePOAKernel(uint8_t* consensus_d,
     //{
     //    printf("%c ", nodes[i]);
     //}
+
+    // Generate consensus only if sequences are aligned to graph.
+    bool generate_consensus = false;
 
     //printf("window id %d, sequence %d\n", block_idx, num_sequences_in_window - 1);
 
@@ -251,6 +257,7 @@ void generatePOAKernel(uint8_t* consensus_d,
 
         __syncthreads();
 
+        generate_consensus = true;
     }
 
     // Dummy kernel code to copy first sequence as output.
@@ -261,13 +268,37 @@ void generatePOAKernel(uint8_t* consensus_d,
     //    output_row[c] = input_row[c];
     //}
 
+    uint8_t* consensus = &consensus_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+    int32_t* consensus_scores = &consensus_scores_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+    int16_t* consensus_predecessors = &consensus_predecessors_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+
+    long long int consensus_time = 0;
+
+    if (thread_idx == 0 && generate_consensus)
+    {
+        long long int start = clock64();
+        generateConsensus(nodes,
+                sequence_lengths[0],
+                sorted_poa,
+                node_id_to_pos,
+                incoming_edges,
+                incoming_edge_count,
+                outoing_edges,
+                outgoing_edge_count,
+                incoming_edge_weights,
+                consensus_predecessors,
+                consensus_scores,
+                consensus);
+        consensus_time = (clock64() - start);
+    }
     //if (thread_idx == 0)
     //{
-    //    long long int total = back_time + nw_time + add_time + top_time;
+    //    long long int total = back_time + nw_time + add_time + top_time + consensus_time;
     //    printf("Total time of backbone generation is %lf %\n", ((double)back_time / total) * 100.f);
     //    printf("Total time of nw is %lf %\n", ((double)nw_time / total) * 100.f);
     //    printf("Total time of addition is %lf %\n", ((double)add_time / total) * 100.f);
     //    printf("Total time of topsort is %lf %\n", ((double)top_time / total) * 100.f);
+    //    printf("Total time of consensus is %lf %\n", ((double)consensus_time / total) * 100.f);
     //}
 
 }
@@ -295,7 +326,9 @@ void generatePOA(uint8_t* consensus_d,
                  uint16_t* node_id_to_pos,
                  uint16_t* node_alignments,
                  uint16_t* node_alignment_count,
-                 uint16_t* sorted_poa_local_edge_count)
+                 uint16_t* sorted_poa_local_edge_count,
+                 int32_t* consensus_scores,
+                 int16_t* consensus_predecessors)
 {
     generatePOAKernel<<<num_blocks, num_threads, 0, stream>>>(consensus_d,
                                                               sequences_d,
@@ -316,7 +349,9 @@ void generatePOA(uint8_t* consensus_d,
                                                               node_id_to_pos,
                                                               node_alignments,
                                                               node_alignment_count,
-                                                              sorted_poa_local_edge_count);
+                                                              sorted_poa_local_edge_count,
+                                                              consensus_scores,
+                                                              consensus_predecessors);
 }
 
 } // namespace cudapoa

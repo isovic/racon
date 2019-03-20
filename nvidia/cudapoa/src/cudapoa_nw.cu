@@ -29,6 +29,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     //printf("Running NW\n");
     // Set gap/mismatch penalty. Currently acquired from default racon settings.
     // TODO: Pass scores from arguments.
+#pragma message("TODO: Pass match/gap/mismatch scores into NW kernel as parameters.")
     const int16_t GAP = -8;
     const int16_t MISMATCH = -6;
     const int16_t MATCH = 8;
@@ -379,7 +380,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         int16_t prev_i = 0;
         int16_t prev_j = 0;
 
-        //printf("maxi %d maxj %d score %d\n", i, j, scores[i * CUDAPOA_MAX_MATRIX_DIMENSION + j]);
+        //printf("maxi %d maxj %d score %d\n", i, j, scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + j]);
 
         // Trace back from maximum score position to generate alignment.
         // Trace back is done by re-calculating the score at each cell

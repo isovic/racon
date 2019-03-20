@@ -45,10 +45,10 @@ public:
      * @brief Runs the core computation to generate consensus for
      *        all windows in the batch.
      *
-     * @return Boolean indicating succesful generation of consensus
-     *         for all windows.
+     * @return Vector of bool indicating succesful generation of consensus
+     *         for each window in the batch.
      */
-    bool generateConsensus();
+    const std::vector<bool>& generateConsensus();
 
     /**
      * @brief Resets the state of the object, which includes
@@ -124,6 +124,7 @@ protected:
     std::unique_ptr<uint8_t[]> consensus_h_;
     uint8_t *consensus_d_;
     size_t consensus_pitch_;
+    std::vector<bool> window_consensus_status_;
 
     // Buffers for input data.
     uint8_t *inputs_h_;
@@ -152,6 +153,8 @@ protected:
     uint16_t* sorted_poa_d_;
     uint16_t* sorted_poa_node_map_d_;
     uint16_t* sorted_poa_local_edge_count_d_;
+    int32_t* consensus_scores_d_;
+    int16_t* consensus_predecessors_d_;
 
 
     static uint32_t batches;

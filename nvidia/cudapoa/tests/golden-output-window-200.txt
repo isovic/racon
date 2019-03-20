@@ -1,11 +1,9 @@
 [CUDAPolisher] Constructed.
-0 Allocated input buffers of size 125.245MB
-0 Allocated output buffers of size 0MB
+0 Allocated input buffers of size 125MB
+0 Allocated output buffers of size 0.25MB
 0 Allocated temp buffers of size 1026.5MB
-0 Allocated temp buffers of size 255.5MB
+0 Allocated temp buffers of size 257.5MB
 Starting CUDA polish
-0 Launching data copy
-0 Launched data copy
 0 Launching kernel for 1
 0 Launched kernel
 0 Launching memcpy D2H
@@ -320,4 +318,5 @@ aligned nodes 34
 graph 665, read 135
 aligned nodes 148
 0 Finished memcpy D2H
-[CUDAPolisher] Polished in 0.557 s.
+TTGAATTTTCAACATCAGAATGAATTAAATGTGCATGATTTGTAATACCAATTTGAATGTTCTGTGCATTTCGCTTAATAAAATTATAATAATGAACATCGTGACGTGCCGGTACATATGTTTCAATTTTCTGGTCAAAATACATCTTTTGACCACCTTTTAAATTTAATTCCTGTATATCTCCGGACGGCGTCTCTGTA
+[CUDAPolisher] Polished in 0.475 s.
