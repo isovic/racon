@@ -1,4 +1,3 @@
-
 #include "cudapoa_kernels.cuh"
 #include <stdio.h>
 
@@ -303,7 +302,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     score0 = tscore;
                     check0 = true;
                 }
-
+                //TODO: See if using only one `check` variable affects performance.    
                 loop = check0 || check1 || check2 || check3;
             }
 
