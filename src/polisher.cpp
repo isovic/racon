@@ -56,7 +56,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-    uint32_t num_threads, bool use_cuda) {
+    uint32_t num_threads, uint32_t cuda_batches) {
 
     if (type != PolisherType::kC && type != PolisherType::kF) {
         fprintf(stderr, "[racon::createPolisher] error: invalid polisher type!\n");
@@ -127,14 +127,14 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         exit(1);
     }
 
-    if (use_cuda)
+    if (cuda_batches > 0)
     {
 #ifdef CUDA_ENABLED
         // If CUDA is enabled, return an instance of the CUDAPolisher object.
         return std::unique_ptr<Polisher>(new CUDAPolisher(std::move(sparser),
                     std::move(oparser), std::move(tparser), type, window_length,
                     quality_threshold, error_threshold, match, mismatch, gap,
-                    num_threads));
+                    num_threads, cuda_batches));
 #else
         fprintf(stderr, "[racon::createPolisher] error: "
                 "Attemping to use CUDA when CUDA support is not available.\n"

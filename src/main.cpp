@@ -24,7 +24,7 @@ static struct option options[] = {
     {"mismatch", required_argument, 0, 'x'},
     {"gap", required_argument, 0, 'g'},
     {"threads", required_argument, 0, 't'},
-    {"use-cuda", no_argument, 0, 'c'},
+    {"cuda-batches", optional_argument, 0, 'c'},
     {"version", no_argument, 0, 'v'},
     {"help", no_argument, 0, 'h'},
     {0, 0, 0, 0}
@@ -48,11 +48,11 @@ int main(int argc, char** argv) {
     bool drop_unpolished_sequences = true;
     uint32_t num_threads = 1;
 
-    bool use_cuda = false;
+    uint32_t cuda_batches = 0;
 
     std::string optstring = "ufw:q:e:m:x:g:t:h";
 #ifdef CUDA_ENABLED
-    optstring += "c";
+    optstring += "c::";
 #endif
 
     char argument;
@@ -93,7 +93,7 @@ int main(int argc, char** argv) {
                 exit(0);
 #ifdef CUDA_ENABLED
             case 'c':
-                use_cuda = true;
+                cuda_batches = (optarg != NULL ? atoi(optarg) : 1);
                 break;
 #endif
             default:
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
         input_paths[2], type == 0 ? racon::PolisherType::kC :
         racon::PolisherType::kF, window_length, quality_threshold,
-        error_threshold, match, mismatch, gap, num_threads, use_cuda);
+        error_threshold, match, mismatch, gap, num_threads, cuda_batches);
 
     polisher->initialize();
 
@@ -174,8 +174,9 @@ void help() {
         "        -h, --help\n"
         "            prints the usage\n"
 #ifdef CUDA_ENABLED
-        "        -c, --use-cuda\n"
-        "            use CUDA accelerated polishing\n"
+        "        -c, --cuda-batches\n"
+        "            default: 1\n"
+        "            number of batches for CUDA accelerated polishing\n"
 #endif
     );
 }

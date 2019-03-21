@@ -45,7 +45,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-    uint32_t num_threads, bool use_cuda);
+    uint32_t num_threads, uint32_t cuda_batches);
 
 class Polisher {
 public:
@@ -60,7 +60,7 @@ public:
         const std::string& overlaps_path, const std::string& target_path,
         PolisherType type, uint32_t window_length, double quality_threshold,
         double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-        uint32_t num_threads, bool use_cuda);
+        uint32_t num_threads, uint32_t cuda_batches);
 
 protected:
     Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
