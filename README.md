@@ -95,8 +95,9 @@ Usage of `racon` is as following:
             prints the usage
 
     only available when built with CUDA:
-        -c, --use-cuda
-            use CUDA accelerated polishing
+        -c, --cuda-batches
+            default: 1
+            number of batches for CUDA accelerated polishing
 
 `racon_test` is run without any parameters.
 
