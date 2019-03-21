@@ -28,7 +28,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
                 type, window_length, quality_threshold,
                 error_threshold, match, mismatch, gap, num_threads)
 {
-    std::cout << "[CUDAPolisher] Constructed." << std::endl;
+    std::cerr << "[CUDAPolisher] Constructed." << std::endl;
 
     const uint32_t MAX_WINDOWS = 256;
     const uint32_t MAX_DEPTH_PER_WINDOW = 500;
@@ -42,7 +42,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     window_length_ = 200;
     for(uint32_t i = 0; i < 1; i++)
 #else
-      for(uint32_t i = 0; i < 4; i++) //TODO: Make the number of batch processors a CLI arg
+    for(uint32_t i = 0; i < 6; i++) //TODO: Make the number of batch processors a CLI arg
 #endif
     {
         uint32_t device = i % num_devices;
@@ -129,7 +129,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     bool drop_unpolished_sequences)
 {
     // Dummy polish function.
-    std::cout << "Starting CUDA polish" << std::endl;
+    std::cerr << "Starting CUDA polish" << std::endl;
 
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 
@@ -184,7 +184,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    std::cout << "[CUDAPolisher] Polished in " << ((double)duration / 1000) << " s." << std::endl;
+    std::cerr << "[CUDAPolisher] Polished in " << ((double)duration / 1000) << " s." << std::endl;
 }
 
 }

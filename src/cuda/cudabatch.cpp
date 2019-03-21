@@ -82,7 +82,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     CU_CHECK_ERR(cudaMalloc((void**)&sequence_lengths_d_, max_windows * max_depth_per_window_ * sizeof(uint16_t)));
     CU_CHECK_ERR(cudaMalloc((void**)&window_details_d_, max_windows * sizeof(nvidia::cudapoa::WindowDetails)));
 
-    std::cout << TABS << bid_ << " Allocated input buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
+    std::cerr << TABS << bid_ << " Allocated input buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
 
     // Output buffers.
     input_size = max_windows_ * CUDAPOA_MAX_SEQUENCE_SIZE;
@@ -93,7 +93,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
                     &consensus_pitch_,
                     sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW,
                     max_windows_));
-    std::cout << TABS << bid_ << " Allocated output buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
+    std::cerr << TABS << bid_ << " Allocated output buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
 
     // Buffers for storing NW scores and backtrace.
     CU_CHECK_ERR(cudaMalloc((void**) &scores_d_, sizeof(int16_t) * CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_SEQUENCE_SIZE * NUM_BLOCKS));
@@ -103,7 +103,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     // Debug print for size allocated.
     uint32_t temp_size = (sizeof(int16_t) * CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_SEQUENCE_SIZE * NUM_BLOCKS );
     temp_size += 2 * (sizeof(int16_t) * CUDAPOA_MAX_MATRIX_DIMENSION * NUM_BLOCKS );
-    std::cout << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
+    std::cerr << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
 
     // Allocate graph buffers.
     CU_CHECK_ERR(cudaMalloc((void**) &nodes_d_, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
@@ -149,7 +149,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
     temp_size += sizeof(int16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
     temp_size += sizeof(int16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
-    std::cout << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
+    std::cerr << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
 }
 
 CUDABatchProcessor::~CUDABatchProcessor()
@@ -164,7 +164,7 @@ CUDABatchProcessor::~CUDABatchProcessor()
     CU_CHECK_ERR(cudaFree(traceback_i_d_));
     CU_CHECK_ERR(cudaFree(traceback_j_d_));
 
-    std::cout << TABS << "Destroyed buffers." << std::endl;
+    std::cerr << TABS << "Destroyed buffers." << std::endl;
 
     CU_CHECK_ERR(cudaFree(nodes_d_));
     CU_CHECK_ERR(cudaFree(node_alignments_d_));
@@ -261,7 +261,7 @@ void CUDABatchProcessor::generatePOA()
 {
     CU_CHECK_ERR(cudaSetDevice(device_id_));
     // Launch kernel to run 1 POA per thread in thread block.
-    std::cout << TABS << bid_ << " Launching kernel for " << windows_.size() << std::endl;
+    std::cerr << TABS << bid_ << " Launching kernel for " << windows_.size() << std::endl;
     nvidia::cudapoa::generatePOA(consensus_d_,
                                  inputs_d_,
                                  sequence_lengths_d_,
@@ -288,12 +288,12 @@ void CUDABatchProcessor::generatePOA()
                                  consensus_scores_d_,
                                  consensus_predecessors_d_);
     CU_CHECK_ERR(cudaPeekAtLastError());
-    std::cout << TABS << bid_ << " Launched kernel" << std::endl;
+    std::cerr << TABS << bid_ << " Launched kernel" << std::endl;
 }
 
 void CUDABatchProcessor::getConsensus()
 {
-    std::cout << TABS << bid_ << " Launching memcpy D2H" << std::endl;
+    std::cerr << TABS << bid_ << " Launching memcpy D2H" << std::endl;
     CU_CHECK_ERR(cudaMemcpy2DAsync(consensus_h_.get(),
 				   CUDAPOA_MAX_SEQUENCE_SIZE,
 				   consensus_d_,
@@ -304,7 +304,7 @@ void CUDABatchProcessor::getConsensus()
 				   stream_));
     CU_CHECK_ERR(cudaStreamSynchronize(stream_));
 
-    std::cout << TABS << bid_ << " Finished memcpy D2H" << std::endl;
+    std::cerr << TABS << bid_ << " Finished memcpy D2H" << std::endl;
 
     for(uint32_t i = 0; i < windows_.size(); i++)
     {

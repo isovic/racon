@@ -121,9 +121,9 @@ int main(int argc, char** argv) {
     std::vector<std::unique_ptr<racon::Sequence>> polished_sequences;
     polisher->polish(polished_sequences, drop_unpolished_sequences);
 
-    //for (const auto& it: polished_sequences) {
-    //    fprintf(stdout, ">%s\n%s\n", it->name().c_str(), it->data().c_str());
-    //}
+    for (const auto& it: polished_sequences) {
+        fprintf(stdout, ">%s\n%s\n", it->name().c_str(), it->data().c_str());
+    }
 
     return 0;
 }
