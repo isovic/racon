@@ -79,6 +79,7 @@ void generatePOAKernel(uint8_t* consensus_d,
         node_alignment_count[0] = 0;
         node_id_to_pos[0] = 0;
         outgoing_edge_count[sequence_lengths[0] - 1] = 0;
+        incoming_edge_weights[0] = 0;
 
         //Build the rest of the graphs
         for (uint16_t nucleotide_idx=1; nucleotide_idx<sequence_lengths[0]; nucleotide_idx++){
@@ -87,6 +88,7 @@ void generatePOAKernel(uint8_t* consensus_d,
             outoing_edges[(nucleotide_idx-1) * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx;
             outgoing_edge_count[nucleotide_idx-1] = 1;
             incoming_edges[nucleotide_idx * CUDAPOA_MAX_NODE_EDGES] = nucleotide_idx - uint16_t(1);
+            incoming_edge_weights[nucleotide_idx * CUDAPOA_MAX_NODE_EDGES] = 0;
             incoming_edge_count[nucleotide_idx] = 1;
             node_alignment_count[nucleotide_idx] = 0;
             node_id_to_pos[nucleotide_idx] = nucleotide_idx;
