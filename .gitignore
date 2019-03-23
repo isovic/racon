@@ -1,2 +1,5 @@
 # Compiled Object files
 build
+subprojects
+!subprojects/*.wrap
+
