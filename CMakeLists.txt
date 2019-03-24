@@ -4,7 +4,7 @@ project(racon)
 # The version number.
 set (RACON_VERSION_MAJOR 1)
 set (RACON_VERSION_MINOR 3)
-set (RACON_VERSION_PATCH 3)
+set (RACON_VERSION_PATCH 4)
 # Get the commit ID.
 execute_process(
   COMMAND git log -1 --pretty=%h
