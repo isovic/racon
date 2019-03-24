@@ -1,13 +1,17 @@
-.PHONY: all clean release debug debug-gcc6 dist modules
+.PHONY: all clean meson cmake debug dist modules
 
-all: release
+all: meson
 
 clean:
-	rm -rf build
+	rm -rf build build-meson
 
-release:
+meson:
 	@echo "[Invoking Meson]"
-	@mkdir -p build && cd build && meson --buildtype=release -Dc_args=-O3 && ninja
+	@mkdir -p build-meson && cd build-meson && meson --buildtype=release -Dc_args=-O3 && ninja
+
+cmake:
+	@echo "[Invoking CMake]"
+	@mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
 
 debug:
 	@echo "[Invoking Meson]"
