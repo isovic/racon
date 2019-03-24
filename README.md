@@ -19,10 +19,15 @@ A **wrapper script** is also available to enable easier usage to the end-user fo
 
 ## Dependencies
 1. gcc 4.8+ or clang 3.4+
-2. cmake 3.2+
+2. cmake 3.2+ or meson 0.49+
 
 ## Installation
-To install Racon run the following commands:
+There are two alternative build options which can be used to compile Racon:
+1. CMake, and
+2. Meson.
+
+### CMake
+To compile Racon using CMake, run the following commands:
 
 ```bash
 git clone --recursive https://github.com/isovic/racon.git racon
@@ -42,6 +47,34 @@ Optionally, you can run `sudo make install` to install racon executable to your 
 To build unit tests add `-Dracon_build_tests=ON` while running `cmake`. After installation, an executable named `racon_test` will be created in `build/bin`.
 
 To build the wrapper script add `-Dracon_build_wrapper=ON` while running `cmake`. After installation, an executable named `racon_wrapper` (python script) will be created in `build/bin`.
+
+### Meson
+To compile Racon using Meson, run the following commands:
+```bash
+git clone --recursive https://github.com/isovic/racon.git racon
+cd racon
+mkdir build
+cd build
+meson --buildtype=release -Dc_args=-O3
+ninja
+```
+
+After successful installation, an executable named `racon` will appear in `build/`.
+Tests are built automatically when Meson build is instantiated.
+
+### Wrapping the builds using a Makefile
+Alternatively, to achieve the same, we provide Makefile shorthands.  
+To run the above commands and build the project using CMake, simply type:  
+```
+make cmake
+```
+
+For the Meson build version, analogously write:
+```
+make meson
+```
+
+(Note: CMake build directory will be `build`, and Meson will be built in `build-meson` to make the two build types distinct.)
 
 ## Usage
 Usage of `racon` is as following:
