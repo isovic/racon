@@ -15,7 +15,7 @@ rebuild: modules
 
 cmake: modules
 	@echo "[Invoking CMake]"
-	@mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
+	@mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -Dracon_build_tests=ON .. && make
 
 debug: modules
 	@echo "[Invoking Meson]"
