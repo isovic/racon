@@ -229,6 +229,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
                 score2 = max(scores_pred_i_2[j2 - 1] + char_profile2,
                         max(score2, scores_pred_i_2[j2] + GAP));
+
                 score3 = max(scores_pred_i_2[j3 - 1] + char_profile3,
                         max(score3, scores_pred_i_2[j3] + GAP));
             }
@@ -363,13 +364,14 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             if (outgoing_edge_count_global[graph[idx - 1]] == 0)
             {
                 int16_t s = scores[idx * CUDAPOA_MAX_SEQUENCE_SIZE + j];
-                if (mscore < s)
+                if (mscore <= s)
                 {
                     mscore = s;
                     i = idx;
                 }
             }
         }
+
         // Fill in backtrace
 
         int16_t prev_i = 0;

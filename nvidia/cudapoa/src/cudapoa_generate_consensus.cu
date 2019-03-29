@@ -31,7 +31,7 @@ uint16_t branchCompletion(uint16_t max_score_id_pos,
         uint16_t out_node_in_edges = incoming_edge_count[out_node_id];
         for(uint16_t ie = 0; ie < out_node_in_edges; ie++)
         {
-            uint16_t id = incoming_edges[out_node_in_edges * CUDAPOA_MAX_NODE_EDGES + ie];
+            uint16_t id = incoming_edges[out_node_id * CUDAPOA_MAX_NODE_EDGES + ie];
             if (id != node_id)
             {
                 scores[id] = -1;
@@ -62,7 +62,7 @@ uint16_t branchCompletion(uint16_t max_score_id_pos,
                 continue;
             }
 
-            uint16_t edge_w = incoming_edge_w[node_id * CUDAPOA_MAX_NODE_EDGES + e];
+            int32_t edge_w = static_cast<int32_t>(incoming_edge_w[node_id * CUDAPOA_MAX_NODE_EDGES + e]);
             if (score_node_id < edge_w ||
                     (score_node_id == edge_w &&
                      scores[predecessors[node_id]] <= scores[begin_node_id]))
@@ -82,6 +82,7 @@ uint16_t branchCompletion(uint16_t max_score_id_pos,
             max_score = score_node_id;
             max_score_id = node_id;
         }
+        //printf("max score %d, max score id %d, node id %d score %d\n", max_score, max_score_id, node_id, score_node_id);
 
         scores[node_id] = score_node_id;
     }
@@ -130,7 +131,7 @@ void generateConsensus(uint8_t* nodes,
         // then update the score of the node to be the incoming edge weight.
         for(uint16_t e = 0; e < in_edges; e++)
         {
-            uint16_t edge_w = incoming_edge_w[node_id * CUDAPOA_MAX_NODE_EDGES + e];
+            int32_t edge_w = static_cast<int32_t>(incoming_edge_w[node_id * CUDAPOA_MAX_NODE_EDGES + e]);
             uint16_t begin_node_id = incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + e];
             if (score_node_id < edge_w ||
                     (score_node_id == edge_w &&
@@ -154,6 +155,7 @@ void generateConsensus(uint8_t* nodes,
             max_score_id = node_id;
             max_score = score_node_id;
         }
+        //printf("max score %d, max score id %d, node id %d score %d\n", max_score, max_score_id, node_id, score_node_id);
 
         scores[node_id] = score_node_id;
     }
@@ -184,6 +186,7 @@ void generateConsensus(uint8_t* nodes,
         consensus[consensus_pos] = nodes[max_score_id];
         max_score_id = predecessors[max_score_id];
         consensus_pos++;
+
     }
     consensus[consensus_pos] = nodes[max_score_id];
     consensus++;

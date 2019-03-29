@@ -244,6 +244,8 @@ void generatePOAKernel(uint8_t* consensus_d,
 
             // Run a topsort on the graph. Not strictly necessary at this point
             //printf("running topsort\n");
+#if 1
+            // Faster top sort
             topologicalSortDeviceUtil(sorted_poa,
                                       node_id_to_pos,
                                       sequence_lengths[0],
@@ -251,6 +253,16 @@ void generatePOAKernel(uint8_t* consensus_d,
                                       outoing_edges,
                                       outgoing_edge_count,
                                       sorted_poa_local_edge_count);
+#else
+            // Upoptimized top sort, but exactly matches racon SISD results
+            raconTopologicalSortDeviceUtil(sorted_poa,
+                                      node_id_to_pos,
+                                      sequence_lengths[0],
+                                      incoming_edge_count,
+                                      incoming_edges,
+                                      node_alignment_count,
+                                      node_alignments);
+#endif
 
             long long int top_end = clock64();
             top_time += (top_end - add_end);

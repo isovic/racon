@@ -96,6 +96,106 @@ void topologicalSort(uint16_t* sorted_poa_d,
                                                                   outgoing_edge_count_d);
 }
 
+// Implementation of topological sort that matches the original
+// racon source topological sort. This is helpful in ensuring the
+// correctness of the GPU implementation. With this change,
+// the GPU code exactly matches the SISD implementation of spoa.
+__device__
+void raconTopologicalSortDeviceUtil(uint16_t* sorted_poa,
+                                    uint16_t* sorted_poa_node_map,
+                                    uint16_t node_count,
+                                    uint16_t* incoming_edge_count,
+                                    uint16_t* incoming_edges,
+                                    uint16_t* aligned_node_count,
+                                    uint16_t* aligned_nodes)
+{
+    __shared__ uint8_t node_marks[CUDAPOA_MAX_NODES_PER_WINDOW];
+    __shared__ bool check_aligned_nodes[CUDAPOA_MAX_NODES_PER_WINDOW];
+    __shared__ uint16_t nodes_to_visit[CUDAPOA_MAX_NODES_PER_WINDOW];
+    int16_t node_idx = -1;
+    uint16_t sorted_poa_idx = 0;
+
+    for(uint16_t i = 0; i < CUDAPOA_MAX_NODES_PER_WINDOW; i++)
+    {
+        node_marks[i] = 0;
+        check_aligned_nodes[i] = true;
+    }
+
+    for(uint16_t i = 0; i < node_count; i++)
+    {
+        if (node_marks[i] != 0)
+        {
+            continue;
+        }
+
+        node_idx++;
+        nodes_to_visit[node_idx] = i;
+
+        while(node_idx != -1)
+        {
+            uint16_t node_id = nodes_to_visit[node_idx];
+            bool valid = true;
+
+            if (node_marks[node_id] != 2)
+            {
+                for(uint16_t e = 0; e < incoming_edge_count[node_id]; e++)
+                {
+                    uint16_t begin_node_id = incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + e];
+                    if (node_marks[begin_node_id] != 2)
+                    {
+                        node_idx++;
+                        nodes_to_visit[node_idx] = begin_node_id;
+                        valid = false;
+                    }
+                }
+
+                if (check_aligned_nodes[node_id])
+                {
+                    for(uint16_t a = 0; a < aligned_node_count[node_id]; a++)
+                    {
+                        uint16_t aid = aligned_nodes[node_id * CUDAPOA_MAX_NODE_ALIGNMENTS + a];
+                        if (node_marks[aid] != 2)
+                        {
+                            node_idx++;
+                            nodes_to_visit[node_idx] = aid;
+                            check_aligned_nodes[aid] = false;
+                            valid = false;
+                        }
+                    }
+                }
+
+                if (valid)
+                {
+                    node_marks[node_id] = 2;
+                    if (check_aligned_nodes[node_id])
+                    {
+                        sorted_poa[sorted_poa_idx] = node_id;
+                        sorted_poa_node_map[node_id] = sorted_poa_idx;
+                        sorted_poa_idx++;
+                        for(uint16_t a = 0; a < aligned_node_count[node_id]; a++)
+                        {
+                            uint16_t aid = aligned_nodes[node_id * CUDAPOA_MAX_NODE_ALIGNMENTS + a];
+                            sorted_poa[sorted_poa_idx] = aid;
+                            sorted_poa_node_map[aid] = sorted_poa_idx;
+                            sorted_poa_idx++;
+                        }
+                    }
+                }
+                else
+                {
+                    node_marks[node_id] = 1;
+                }
+            }
+
+            if (valid)
+            {
+                node_idx--;
+            }
+        }
+    }
+
+}
+
 }
 
 }
