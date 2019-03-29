@@ -364,7 +364,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             if (outgoing_edge_count_global[graph[idx - 1]] == 0)
             {
                 int16_t s = scores[idx * CUDAPOA_MAX_SEQUENCE_SIZE + j];
-                if (mscore <= s)
+                if (mscore < s)
                 {
                     mscore = s;
                     i = idx;
