@@ -70,7 +70,7 @@ racon_version_h = configure_file(
 # Headers #
 ###########
 
-racon_include_directories = [include_directories('src'),]
+racon_include_directories = [include_directories('src'), include_directories('test')]
 
 ######################
 # Sources + codebase #
@@ -111,7 +111,7 @@ if not meson.is_subproject()
           'racon_test',
           racon_test_cpp_sources,
           dependencies : [racon_thread_dep, racon_zlib_dep, gtest_dep],
-          include_directories : vendor_include_directories + racon_include_directories + racon_test_include_directories,
+          include_directories : racon_include_directories + vendor_include_directories + racon_test_include_directories,
           link_with : [racon_lib, vendor_lib],
           cpp_args : [racon_warning_flags, racon_cpp_flags, racon_test_extra_flags])
   endif
