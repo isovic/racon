@@ -97,6 +97,7 @@ if not meson.is_subproject()
   racon_bin = executable(
     'racon',
     ['src/main.cpp'],
+    install : true,
     dependencies : [racon_thread_dep, racon_zlib_dep],
     include_directories : vendor_include_directories + racon_include_directories,
     link_with : [racon_lib],
