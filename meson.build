@@ -7,7 +7,7 @@ project(
     'warning_level=3',
     'cpp_std=c++11'],
   license : 'MIT',
-  meson_version : '>= 0.49')
+  meson_version : '>= 0.48')
 
 cpp = meson.get_compiler('cpp')
 
