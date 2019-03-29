@@ -5,18 +5,19 @@ all: meson
 clean:
 	rm -rf build build-meson
 
-meson:
+meson: modules
 	@echo "[Invoking Meson]"
 	@mkdir -p build-meson && cd build-meson && meson --buildtype=release -Dc_args=-O3 && ninja
 
-rebuild:
-	ninja -C build-meson
+rebuild: modules
+	@echo "[Running Ninja only]"
+	@ninja -C build-meson
 
-cmake:
+cmake: modules
 	@echo "[Invoking CMake]"
 	@mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
 
-debug:
+debug: modules
 	@echo "[Invoking Meson]"
 	@mkdir -p build-debug && cd build-debug && (meson --buildtype=debugoptimized -Db_sanitize=address) && ninja
 
@@ -24,4 +25,5 @@ dist: release
 	cd build && ninja-dist
 
 modules:
-	git submodule update --init
+	@echo "[Fetching submodules]"
+	@git submodule update --init
