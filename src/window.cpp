@@ -129,7 +129,7 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
             fprintf(stderr, "[racon::Window::generate_consensus] warning: "
                 "contig %lu might be chimeric in window %u!\n", id_, rank_);
         } else {
-            //consensus_ = consensus_.substr(begin, end - begin + 1);
+            consensus_ = consensus_.substr(begin, end - begin + 1);
         }
     }
 
