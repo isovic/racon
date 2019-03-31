@@ -55,7 +55,7 @@ protected:
 
     // Index of next window to be added to a batch.
 #ifdef DEBUG
-    uint32_t next_window_index_ = 67;//5000;
+    uint32_t next_window_index_ = 5000;
 #else
     uint32_t next_window_index_ = 0;
 #endif
