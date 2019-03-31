@@ -49,8 +49,12 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
 
     NUM_BLOCKS = max_windows_;
 
-    // Verify that thread block size is in multiples of warp size.
-    if (NUM_THREADS % 32 != 0)
+    // Verify that maximum sequence size is in multiples of tb size.
+    // We subtract one because the matrix dimension needs to be one element larger
+    // than the sequence size.
+    // TODO: Create a different macro for the matrix dimension that is
+    // 1 larger than the max sequence size.
+    if ((CUDAPOA_MAX_SEQUENCE_SIZE - 1) % NUM_THREADS != 0)
     {
         std::cerr << "Thread block size needs to be in multiples of 32." << std::endl;
         exit(-1);
