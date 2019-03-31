@@ -38,8 +38,8 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
 
 
 #ifdef DEBUG
-    std::cerr << "In DEBUG mode. Using window size of 200." << std::endl;
-    window_length_ = 200;
+    window_length_ = 500;
+    std::cerr << "In DEBUG mode. Using window size of " << window_length_ << std::endl;
     for(uint32_t i = 0; i < 1; i++)
 #else
     for(uint32_t i = 0; i < cuda_batches; i++)
@@ -66,7 +66,7 @@ std::pair<uint32_t, uint32_t> CUDAPolisher::fillNextBatchOfWindows(uint32_t batc
     // TODO: Reducing window wize by 10 for debugging.
     uint32_t initial_count = next_window_index_;
 #ifdef DEBUG
-    uint32_t count = 5001;//windows_.size();
+    uint32_t count = 68;//windows_.size();
 #else
     uint32_t count = windows_.size();
 #endif

@@ -50,11 +50,11 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     NUM_BLOCKS = max_windows_;
 
     // Verify that thread block size is in multiples of warp size.
-    if (NUM_THREADS % 32 != 0)
-    {
-        std::cerr << "Thread block size needs to be in multiples of 32." << std::endl;
-        exit(-1);
-    }
+    //if (NUM_THREADS % 32 != 0)
+    //{
+    //    std::cerr << "Thread block size needs to be in multiples of 32." << std::endl;
+    //    exit(-1);
+    //}
 
     //Set the device
     CU_CHECK_ERR(cudaSetDevice(device));
