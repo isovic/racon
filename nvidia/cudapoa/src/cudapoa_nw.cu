@@ -275,7 +275,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 }
                 if (thread_idx == 32)
                 {
-                    last_score = SHRT_MIN - GAP;
+                    last_score = score0;
                 }
                 __syncwarp();
 
