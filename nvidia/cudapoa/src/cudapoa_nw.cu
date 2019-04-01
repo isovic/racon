@@ -7,7 +7,24 @@ namespace nvidia {
 
 namespace cudapoa {
 
-// Device function for running Needleman-Wunsch dynamic programming loop.
+/**
+ * @brief Device function for running Needleman-Wunsch dynamic programming loop.
+ *
+ * @param[in] nodes                Device buffer with unique nodes in graph
+ * @param[in] graph                Device buffer with sorted graph
+ * @param[in] node_id_to_pos       Device scratch space for mapping node ID to position in graph
+ * @param[in] incoming_edge_count  Device buffer with number of incoming edges per node
+ * @param[in] incoming_edges       Device buffer with incoming edges per node
+ * @param[in] outgoing_edge_count  Device buffer with number of outgoing edges per node
+ * @param[in] outgoing_edges       Device buffer with outgoing edges per node
+ * @param[in] read                 Device buffer with sequence (read) to align
+ * @param[in] read_count           Number of bases in read
+ * @param[out] scores              Device scratch space that scores alignment matrix score
+ * @param[out] alignment_graph     Device scratch space for backtrace alignment of graph
+ * @param[out] alignment_read      Device scratch space for backtrace alignment of sequence
+ *
+ * @return Number of nodes in final alignment.
+ */
 __device__
 uint16_t runNeedlemanWunsch(uint8_t* nodes,
                         uint16_t* graph,
@@ -15,15 +32,13 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                         uint16_t graph_count,
                         uint16_t* incoming_edge_count,
                         uint16_t* incoming_edges,
-                        //uint16_t* incoming_edges_global,
-                        uint16_t* outgoing_edge_count_global,
+                        uint16_t* outgoing_edge_count,
                         uint16_t* outgoing_edges,
-                        //uint8_t* read_global,
                         uint8_t* read,
                         uint16_t read_count,
                         int16_t* scores,
-                        int16_t* traceback_i,
-                        int16_t* traceback_j)
+                        int16_t* alignment_graph,
+                        int16_t* alignment_read)
 {
     //printf("Running NW\n");
     // Set gap/mismatch penalty. Currently acquired from default racon settings.
@@ -33,13 +48,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     const int16_t MISMATCH = -6;
     const int16_t MATCH = 8;
 
-    //__shared__ uint16_t local_incoming_edges[CUDAPOA_MAX_NODE_EDGES];
-    //__shared__ uint16_t node_id_to_pos[2048];
-    //__shared__ uint16_t incoming_edge_count[1024];
-    //__shared__ uint16_t outgoing_edge_count[1024];
-
-    //__shared__ int16_t score_i[1024];
-    //__shared__ int16_t score_prev_i[1024];
     __shared__ int16_t first_element_prev_score;
 
     uint32_t thread_idx = threadIdx.x;
@@ -72,7 +80,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         {
             //node_id_to_pos[graph_pos] = node_id_to_pos_global[graph_pos];
             //incoming_edge_count[graph_pos] = incoming_edge_count_global[graph_pos];
-            //outgoing_edge_count[graph_pos]= outgoing_edge_count_global[graph_pos];
+            //outgoing_edge_count[graph_pos]= outgoing_edge_count[graph_pos];
             //nodes[graph_pos] = nodes_global[graph_pos];
 
             scores[0] = 0;
@@ -82,7 +90,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             uint16_t pred_count = incoming_edge_count[node_id];
             if (pred_count == 0)
             {
-                scores[i * CUDAPOA_MAX_SEQUENCE_SIZE] = GAP;
+                scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION] = GAP;
             }
             else
             {
@@ -96,9 +104,9 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     //        scores[pred_node_graph_pos * CUDAPOA_MAX_MATRIX_DIMENSION],
                     //        pred_node_graph_pos);
                     //printf("node id %d parent id %d\n", node_id, pred_node_id);
-                    penalty = max(penalty, scores[pred_node_graph_pos * CUDAPOA_MAX_SEQUENCE_SIZE]);
+                    penalty = max(penalty, scores[pred_node_graph_pos * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION]);
                 }
-                scores[i * CUDAPOA_MAX_SEQUENCE_SIZE] = penalty + GAP;
+                scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION] = penalty + GAP;
             }
 
             //printf("%d \n", scores[i * CUDAPOA_MAX_MATRIX_DIMENSION]);
@@ -170,15 +178,15 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
         if (thread_idx == 0)
         {
-            first_element_prev_score = scores[i * CUDAPOA_MAX_SEQUENCE_SIZE];
+            first_element_prev_score = scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION];
         }
-        uint16_t out_edge_count = outgoing_edge_count_global[node_id];
+        uint16_t out_edge_count = outgoing_edge_count[node_id];
 
         uint16_t pred_count = incoming_edge_count[node_id];
 
         uint16_t pred_i_1 = (pred_count == 0 ? 0 :
                 node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES]] + 1);
-        int16_t* scores_pred_i_1 = &scores[pred_i_1 * CUDAPOA_MAX_SEQUENCE_SIZE];
+        int16_t* scores_pred_i_1 = &scores[pred_i_1 * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION];
 
         uint8_t n = nodes[node_id];
 
@@ -219,7 +227,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 for (uint16_t p = 1; p < pred_count; p++)
                 {
                     int16_t pred_i_2 = node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + p]] + 1;
-                    int16_t* scores_pred_i_2 = &scores[pred_i_2 * CUDAPOA_MAX_SEQUENCE_SIZE];
+                    int16_t* scores_pred_i_2 = &scores[pred_i_2 * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION];
 
                     score0 = max(scores_pred_i_2[j0 - 1] + char_profile0,
                             max(score0, scores_pred_i_2[j0] + GAP));
@@ -331,10 +339,10 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             // Index into score matrix.
             if (warp_idx < max_warps)
             {
-                scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + j0] = score0;
-                scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + j1] = score1;
-                scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + j2] = score2;
-                scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + j3] = score3;
+                scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j0] = score0;
+                scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j1] = score1;
+                scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j2] = score2;
+                scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j3] = score3;
             }
 
             serial += (clock64() - temp);
@@ -349,7 +357,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 //        {
 //            for(uint32_t j = 0; j < read_count + 1; j++)
 //            {
-//                printf("%05d\n", scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + j]);
+//                printf("%05d\n", scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j]);
 //            }
 //        }
 //    }
@@ -369,9 +377,9 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
 
         for (int16_t idx = 1; idx <= graph_count; idx++)
         {
-            if (outgoing_edge_count_global[graph[idx - 1]] == 0)
+            if (outgoing_edge_count[graph[idx - 1]] == 0)
             {
-                int16_t s = scores[idx * CUDAPOA_MAX_SEQUENCE_SIZE + j];
+                int16_t s = scores[idx * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j];
                 if (mscore < s)
                 {
                     mscore = s;
@@ -385,7 +393,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         int16_t prev_i = 0;
         int16_t prev_j = 0;
 
-        //printf("maxi %d maxj %d score %d\n", i, j, scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + j]);
+        //printf("maxi %d maxj %d score %d\n", i, j, scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j]);
 
         // Trace back from maximum score position to generate alignment.
         // Trace back is done by re-calculating the score at each cell
@@ -395,7 +403,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
         while(!(i == 0 && j == 0))
         {
             //printf("%d %d\n", i, j);
-            int16_t scores_ij = scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + j];
+            int16_t scores_ij = scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j];
             bool pred_found = false;
             // printf("%d %d node %d\n", i, j, graph[i-1]);
 
@@ -410,7 +418,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                         (node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES]] + 1));
 
                 //printf("j %d\n", j-1);
-                if (scores_ij == (scores[pred_i * CUDAPOA_MAX_SEQUENCE_SIZE + (j - 1)] + match_cost))
+                if (scores_ij == (scores[pred_i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + (j - 1)] + match_cost))
                 {
                     prev_i = pred_i;
                     prev_j = j - 1;
@@ -423,7 +431,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     {
                         pred_i = (node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + p]] + 1);
 
-                        if (scores_ij == (scores[pred_i * CUDAPOA_MAX_SEQUENCE_SIZE + (j - 1)] + match_cost))
+                        if (scores_ij == (scores[pred_i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + (j - 1)] + match_cost))
                         {
                             prev_i = pred_i;
                             prev_j = j - 1;
@@ -442,7 +450,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                 uint16_t pred_i = (pred_count == 0 ? 0 :
                         node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES]] + 1);
 
-                if (scores_ij == scores[pred_i * CUDAPOA_MAX_SEQUENCE_SIZE + j] + GAP)
+                if (scores_ij == scores[pred_i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j] + GAP)
                 {
                     prev_i = pred_i;
                     prev_j = j;
@@ -455,7 +463,7 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
                     {
                         pred_i = node_id_to_pos[incoming_edges[node_id * CUDAPOA_MAX_NODE_EDGES + p]] + 1;
 
-                        if (scores_ij == scores[pred_i * CUDAPOA_MAX_SEQUENCE_SIZE + j] + GAP)
+                        if (scores_ij == scores[pred_i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + j] + GAP)
                         {
                             prev_i = pred_i;
                             prev_j = j;
@@ -467,18 +475,18 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
             }
 
             // Check if move is horizontal.
-            if (!pred_found && scores_ij == scores[i * CUDAPOA_MAX_SEQUENCE_SIZE + (j - 1)] + GAP)
+            if (!pred_found && scores_ij == scores[i * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION + (j - 1)] + GAP)
             {
                 prev_i = i;
                 prev_j = j - 1;
                 pred_found = true;
             }
 
-            traceback_i[aligned_nodes] = (i == prev_i ? -1 : graph[i-1]);
-            traceback_j[aligned_nodes] = (j == prev_j ? -1 : j-1);
+            alignment_graph[aligned_nodes] = (i == prev_i ? -1 : graph[i-1]);
+            alignment_read[aligned_nodes] = (j == prev_j ? -1 : j-1);
             aligned_nodes++;
 
-            //printf("%d %d\n", traceback_i[aligned_nodes - 1], traceback_j[aligned_nodes-1]);
+            //printf("%d %d\n", alignment_graph[aligned_nodes - 1], alignment_read[aligned_nodes-1]);
 
             i = prev_i;
             j = prev_j;
@@ -502,72 +510,6 @@ uint16_t runNeedlemanWunsch(uint8_t* nodes,
     //}
 
     return aligned_nodes;
-}
-
-
-// Kernel for running Needleman-Wunsch independently.
-__global__
-void needlemanWunschKernel(uint8_t* nodes,
-                           uint16_t* graph,
-                           uint16_t* node_id_to_pos,
-                           uint16_t graph_count,
-                           uint16_t* incoming_edge_count,
-                           uint16_t* incoming_edges,
-                           uint16_t* outgoing_edge_count,
-                           uint16_t* outgoing_edges,
-                           uint8_t* read,
-                           uint16_t read_count,
-                           int16_t* scores,
-                           int16_t* traceback_i,
-                           int16_t* traceback_j)
-{
-    if (blockIdx.x == 0 && threadIdx.x == 0)
-    {
-    runNeedlemanWunsch(nodes,
-                       graph,
-                       node_id_to_pos,
-                       graph_count,
-                       incoming_edge_count,
-                       incoming_edges,
-                       outgoing_edge_count,
-                       outgoing_edges,
-                       read,
-                       read_count,
-                       scores,
-                       traceback_i,
-                       traceback_j);
-    }
-}
-
-// Host function for needleman wunsch kernel.
-void needlemanWunsch(uint8_t* nodes,
-                    uint16_t* graph,
-                    uint16_t* node_id_to_pos,
-                    uint16_t graph_count,
-                    uint16_t* incoming_edge_count,
-                    uint16_t* incoming_edges,
-                    uint16_t* outgoing_edge_count,
-                    uint16_t* outgoing_edges,
-                    uint8_t* read,
-                    uint16_t read_count,
-                    int16_t* scores,
-                    int16_t* traceback_i,
-                    int16_t* traceback_j,
-                    uint32_t num_threads, uint32_t num_blocks, cudaStream_t stream)
-{
-    needlemanWunschKernel<<<num_blocks, num_threads, 0, stream>>>(nodes,
-                                                                  graph,
-                                                                  node_id_to_pos,
-                                                                  graph_count,
-                                                                  incoming_edge_count,
-                                                                  incoming_edges,
-                                                                  outgoing_edge_count,
-                                                                  outgoing_edges,
-                                                                  read,
-                                                                  read_count,
-                                                                  scores,
-                                                                  traceback_i,
-                                                                  traceback_j);
 }
 
 }

@@ -91,8 +91,22 @@ uint16_t branchCompletion(uint16_t max_score_id_pos,
 }
 
 
-// Device function to generate consensus from a given graph.
-// The input graph needs to be topologically sorted.
+/**
+ * @brief Device function to generate consensus from a given graph.
+ *        The input graph needs to be topologically sorted.
+ *
+ * @param[in] nodes                 Device buffer with unique nodes in graph
+ * @param[in] node_count            Number of nodes in graph
+ * @param[in] graph                 Device buffer with sorted graph
+ * @param[in] node_id_to_pos        Device scratch space for mapping node ID to position in graph
+ * @param[in] incoming_edges        Device buffer with incoming edges per node
+ * @param[in] incoming_edges_count  Device buffer with number of incoming edges per node
+ * @param[in] outgoing_edges        Device buffer with outgoing edges per node
+ * @param[in] outgoing_edges_count  Device buffer with number of outgoing edges per node
+ * @param[in] predecessors          Device buffer with predecessors of nodes while traversing graph during consensus
+ * @param[in] scores                Device buffer with score of each node while traversing graph during consensus
+ * @param[out] consensus            Device buffer for generated consensus
+ */
 __device__
 void generateConsensus(uint8_t* nodes,
                          uint16_t node_count,

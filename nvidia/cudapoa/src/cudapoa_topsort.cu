@@ -5,7 +5,17 @@ namespace nvidia {
 
 namespace cudapoa {
 
-// Device function for running topoligical sort on graph.
+/**
+ * @brief Device function for running topoligical sort on graph.
+ *
+ * @param[out] sorted_poa                Device buffer with sorted graph
+ * @param[out] sorted_poa_node_map       Device scratch space for mapping node ID to position in graph
+ * @param[in] node_count                 Number of nodes graph
+ * @param[in] incoming_edge_count        Device buffer with number of incoming edges per node
+ * @param[in] outgoing_edges             Device buffer with outgoing edges per node
+ * @param[in] outgoing_edge_count        Device buffer with number of outgoing edges per node
+ * @param[in] local_incoming_edge_count  Device scratch space for maintaining edge counts during topological sort
+ */
 __device__
 void topologicalSortDeviceUtil(uint16_t* sorted_poa,
                                uint16_t* sorted_poa_node_map,
@@ -56,44 +66,6 @@ void topologicalSortDeviceUtil(uint16_t* sorted_poa,
     }
 
     // sorted_poa will have final ordering of node IDs.
-}
-
-// Kernel for running topological independently.
-__global__
-void topologicalSortKernel(uint16_t* sorted_poa_d,
-                           uint16_t* sorted_poa_node_map_d,
-                           uint16_t node_count,
-                           uint16_t* incoming_edge_count_d,
-                           uint16_t* outgoing_edges_d,
-                           uint16_t* outgoing_edge_count_d)
-{
-    if (blockIdx.x == 0 && threadIdx.x == 0)
-    {
-        topologicalSortDeviceUtil(sorted_poa_d,
-                                  sorted_poa_node_map_d,
-                                  node_count,
-                                  incoming_edge_count_d,
-                                  outgoing_edges_d,
-                                  outgoing_edge_count_d,
-                                  NULL);
-    }
-}
-
-// Host function for running topological sort kernel.
-void topologicalSort(uint16_t* sorted_poa_d,
-                     uint16_t* sorted_poa_node_map_d,
-                     uint16_t node_count,
-                     uint16_t* incoming_edge_count_d,
-                     uint16_t* outgoing_edges_d,
-                     uint16_t* outgoing_edge_count_d,
-                     uint32_t num_threads, uint32_t num_blocks, cudaStream_t stream)
-{
-    topologicalSortKernel<<<num_blocks, num_threads, 0, stream>>>(sorted_poa_d,
-                                                                  sorted_poa_node_map_d,
-                                                                  node_count,
-                                                                  incoming_edge_count_d,
-                                                                  outgoing_edges_d,
-                                                                  outgoing_edge_count_d);
 }
 
 // Implementation of topological sort that matches the original

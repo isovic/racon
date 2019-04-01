@@ -41,7 +41,6 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     : max_windows_(max_windows)
     , max_depth_per_window_(max_window_depth)
     , windows_()
-    , sequence_count_()
     , stream_()
     , consensus_pitch_()
 {
@@ -54,7 +53,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     // than the sequence size.
     // TODO: Create a different macro for the matrix dimension that is
     // 1 larger than the max sequence size.
-    if ((CUDAPOA_MAX_SEQUENCE_SIZE - 1) % NUM_THREADS != 0)
+    if (CUDAPOA_MAX_SEQUENCE_SIZE % NUM_THREADS != 0)
     {
         std::cerr << "Thread block size needs to be in multiples of 32." << std::endl;
         exit(-1);
@@ -100,16 +99,16 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     std::cerr << TABS << bid_ << " Allocated output buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
 
     // Buffers for storing NW scores and backtrace.
-    CU_CHECK_ERR(cudaMalloc((void**) &scores_d_, sizeof(int16_t) * CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_SEQUENCE_SIZE * NUM_BLOCKS));
-    CU_CHECK_ERR(cudaMalloc((void**) &traceback_i_d_, sizeof(int16_t) * CUDAPOA_MAX_MATRIX_DIMENSION * NUM_BLOCKS ));
-    CU_CHECK_ERR(cudaMalloc((void**) &traceback_j_d_, sizeof(int16_t) * CUDAPOA_MAX_MATRIX_DIMENSION * NUM_BLOCKS ));
+    CU_CHECK_ERR(cudaMalloc((void**) &scores_d_, sizeof(int16_t) * CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION * NUM_BLOCKS));
+    CU_CHECK_ERR(cudaMalloc((void**) &alignment_graph_d_, sizeof(int16_t) * CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * NUM_BLOCKS ));
+    CU_CHECK_ERR(cudaMalloc((void**) &alignment_read_d_, sizeof(int16_t) * CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * NUM_BLOCKS ));
 
     // Debug print for size allocated.
-    uint32_t temp_size = (sizeof(int16_t) * CUDAPOA_MAX_MATRIX_DIMENSION * CUDAPOA_MAX_SEQUENCE_SIZE * NUM_BLOCKS );
-    temp_size += 2 * (sizeof(int16_t) * CUDAPOA_MAX_MATRIX_DIMENSION * NUM_BLOCKS );
+    uint32_t temp_size = (sizeof(int16_t) * CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION * NUM_BLOCKS );
+    temp_size += 2 * (sizeof(int16_t) * CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * NUM_BLOCKS );
     std::cerr << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
 
-    // Allocate graph buffers.
+    // Allocate graph buffers. Size is based maximum data per window, times number of windows being processed.
     CU_CHECK_ERR(cudaMalloc((void**) &nodes_d_, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
     CU_CHECK_ERR(cudaMalloc((void**) &node_alignments_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS * NUM_BLOCKS ));
     CU_CHECK_ERR(cudaMalloc((void**) &node_alignment_count_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
@@ -165,8 +164,8 @@ CUDABatchProcessor::~CUDABatchProcessor()
     CU_CHECK_ERR(cudaFree(consensus_d_));
 
     CU_CHECK_ERR(cudaFree(scores_d_));
-    CU_CHECK_ERR(cudaFree(traceback_i_d_));
-    CU_CHECK_ERR(cudaFree(traceback_j_d_));
+    CU_CHECK_ERR(cudaFree(alignment_graph_d_));
+    CU_CHECK_ERR(cudaFree(alignment_read_d_));
 
     std::cerr << TABS << "Destroyed buffers." << std::endl;
 
@@ -201,7 +200,6 @@ bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
     if (doesWindowFit(window))
     {
         windows_.push_back(window);
-        sequence_count_ += std::min(max_depth_per_window_, (uint32_t) window->sequences_.size());
         return true;
     }
     else
@@ -275,8 +273,8 @@ void CUDABatchProcessor::generatePOA()
                                  NUM_BLOCKS,
                                  stream_,
                                  scores_d_,
-                                 traceback_i_d_,
-                                 traceback_j_d_,
+                                 alignment_graph_d_,
+                                 alignment_read_d_,
                                  nodes_d_,
                                  incoming_edges_d_,
                                  incoming_edge_count_d_,
@@ -354,7 +352,6 @@ void CUDABatchProcessor::reset()
 {
     CU_CHECK_ERR(cudaSetDevice(device_id_));
     windows_.clear();
-    sequence_count_ = 0;
     window_consensus_status_.clear();
 
     // Clear host and device memory.

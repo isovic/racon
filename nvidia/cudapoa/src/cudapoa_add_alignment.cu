@@ -6,6 +6,27 @@ namespace nvidia {
 
 namespace cudapoa {
 
+/**
+ * @brief Device function for adding a new alignment to the partial order alignment graph.
+ *
+ * @param[in/out] nodes                       Device buffer with unique nodes in graph
+ * @param[in] node_count                  Number of nodes in graph
+ * @graph[in] node_alignments             Device buffer with alignment nodes per node in graph
+ * @param[in] node_alignment_count        Device buffer with number of aligned nodes
+ * @param[in] incoming_edges              Device buffer with incoming edges per node
+ * @param[in] incoming_edges_count        Device buffer with number of incoming edges per node
+ * @param[in] outgoing_edges              Device buffer with outgoing edges per node
+ * @param[in] outgoing_edges_count        Device buffer with number of outgoing edges per node
+ * @param[in] incoming_edge_w             Device buffer with weight of incoming edges
+ * @param[in] outgoing_edge_w             Device buffer with weight of outgoing edges
+ * @param[in] alignment_length            Total length of new alignment
+ * @param[in] graph                       Device scratch space with sorted graph
+ * @param[in] alignment_graph             Device buffer with nodes from graph in alignment
+ * @param[in] read                        Device scratch space with sequence
+ * @param[in] alignment_read              Device buffer with bases from read in alignment
+ *
+ * @return Number of nodes in graph after update
+ */
 __device__
 uint16_t addAlignmentToGraph(uint8_t* nodes,
                          uint16_t node_count,
@@ -174,60 +195,6 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
     }
     //printf("final size %d\n", node_count);
     return node_count;
-}
-
-__global__
-void addAlignmentToGraphKernel(uint8_t* nodes,
-                         uint16_t node_count,
-                         uint16_t* node_alignments, uint16_t* node_alignment_count,
-                         uint16_t* incoming_edges, uint16_t* incoming_edge_count,
-                         uint16_t* outgoing_edges, uint16_t* outgoing_edge_count,
-                         uint16_t* incoming_edge_w, uint16_t* outgoing_edge_w,
-                         uint16_t alignment_length,
-                         uint16_t* graph,
-                         int16_t* alignment_graph,
-                         uint8_t* read,
-                         int16_t* alignment_read)
-{
-    if (blockIdx.x == 0 && threadIdx.x == 0)
-    {
-        addAlignmentToGraph(nodes,
-                node_count,
-                node_alignments, node_alignment_count,
-                incoming_edges, incoming_edge_count,
-                outgoing_edges, outgoing_edge_count,
-                incoming_edge_w, outgoing_edge_w,
-                alignment_length,
-                graph,
-                alignment_graph,
-                read,
-                alignment_read);
-    }
-}
-
-void addAlignmentToGraphHost(uint8_t* nodes,
-                         uint16_t node_count,
-                         uint16_t* node_alignments, uint16_t* node_alignment_count,
-                         uint16_t* incoming_edges, uint16_t* incoming_edge_count,
-                         uint16_t* outgoing_edges, uint16_t* outgoing_edge_count,
-                         uint16_t* incoming_edge_w, uint16_t* outgoing_edge_w,
-                         uint16_t alignment_length,
-                         uint16_t* graph,
-                         int16_t* alignment_graph,
-                         uint8_t* read,
-                         int16_t* alignment_read, cudaStream_t stream)
-{
-        addAlignmentToGraphKernel<<<1, 1, 0, stream>>>(nodes,
-                node_count,
-                node_alignments, node_alignment_count,
-                incoming_edges, incoming_edge_count,
-                outgoing_edges, outgoing_edge_count,
-                incoming_edge_w, outgoing_edge_w,
-                alignment_length,
-                graph,
-                alignment_graph,
-                read,
-                alignment_read);
 }
 
 }
