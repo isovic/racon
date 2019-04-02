@@ -19,13 +19,13 @@ A **wrapper script** is also available to enable easier usage to the end-user fo
 
 ## Dependencies
 1. gcc 4.8+ or clang 3.4+
-2. cmake 3.2+
+2. cmake 3.2+ (cmake 3.10+ for CUDA support)
 
 ## Installation
 To install Racon run the following commands:
 
 ```bash
-git clone --recursive https://github.com/isovic/racon.git racon
+git clone --recursive ssh://git@gitlab-master.nvidia.com:12051/mvella/racon-gpu.git
 cd racon
 mkdir build
 cd build
@@ -46,6 +46,28 @@ To build the wrapper script add `-Dracon_build_wrapper=ON` while running `cmake`
 ### CUDA Support
 To build `racon` with CUDA support, add `-Dracon_enable_cuda=ON` while running `cmake`. If CUDA support is unavailable, the `cmake` step will error out. 
 Note that the CUDA support flag does not produce a new binary target. Instead it augments the existing `racon` binary itself.
+
+```bash
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON ..
+make
+```
+
+To run a faster version that only runs CUDA consensus generation on a single window, add `-Ddebug=ON` to the CMake command.
+
+#### CUDA Testing
+
+To test the CUDA implementation, a few end 2 end tests have been added.
+
+To use the tests, first download the raw dataset from https://s3-eu-west-1.amazonaws.com/ont-research/nvidia.tar.gz.
+Extract this to your $HOME folder. After extraction, ensure that the following directories are readable
+`${HOME}/ont-racon-data/nvidia` and `${HOME}/ont-racon-data/nvidia/iterated_racon`.
+
+The test scripts have been added to tests/cuda_end2end folder. The correct golden value files and
+test scripts are automatically to the `bin` folder based on the CMake settings. Don't forget to
+run `make` after the updating CMake flags.
+
+To run the tests, simply navigate to `bin` and execute `./cuda_test.sh`
 
 ## Usage
 Usage of `racon` is as following:
