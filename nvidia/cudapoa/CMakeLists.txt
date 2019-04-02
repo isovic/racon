@@ -21,6 +21,10 @@ if(debug)
     target_compile_definitions(cudapoa PUBLIC DEBUG)
 endif()
 
+if(spoa_accurate)
+    target_compile_definitions(cudapoa PUBLIC SPOA_ACCURATE)
+endif()
+
 target_include_directories(cudapoa PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Add tests folder

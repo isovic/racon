@@ -79,11 +79,11 @@ void raconTopologicalSortDeviceUtil(uint16_t* sorted_poa,
                                     uint16_t* incoming_edge_count,
                                     uint16_t* incoming_edges,
                                     uint16_t* aligned_node_count,
-                                    uint16_t* aligned_nodes)
+                                    uint16_t* aligned_nodes,
+                                    uint8_t* node_marks,
+                                    bool* check_aligned_nodes,
+                                    uint16_t* nodes_to_visit)
 {
-    __shared__ uint8_t node_marks[CUDAPOA_MAX_NODES_PER_WINDOW];
-    __shared__ bool check_aligned_nodes[CUDAPOA_MAX_NODES_PER_WINDOW];
-    __shared__ uint16_t nodes_to_visit[CUDAPOA_MAX_NODES_PER_WINDOW];
     int16_t node_idx = -1;
     uint16_t sorted_poa_idx = 0;
 

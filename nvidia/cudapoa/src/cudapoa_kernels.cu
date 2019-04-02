@@ -39,6 +39,9 @@ namespace cudapoa {
  * @param[in] sorted_poa_local_edge_count Device scratch space for maintaining edge counts during topological sort
  * @param[in] consensus_scores            Device scratch space for storing score of each node while traversing graph during consensus
  * @param[in] consensus_predecessors      Device scratch space for storing predecessors of nodes while traversing graph during consensus
+ * @param[in] node_marks_d_               Device scratch space for storing node marks when running spoa accurate top sort
+ * @param[in] check_aligned_nodes_d_      Device scratch space for storing check for aligned nodes
+ * @param[in] nodes_to_visit_d_           Device scratch space for storing stack of nodes to be visited in topsort
  */
 __global__
 void generatePOAKernel(uint8_t* consensus_d,
@@ -62,7 +65,10 @@ void generatePOAKernel(uint8_t* consensus_d,
                        uint16_t* node_alignment_count_d,
                        uint16_t* sorted_poa_local_edge_count_d,
                        int32_t* consensus_scores_d,
-                       int16_t* consensus_predecessors_d)
+                       int16_t* consensus_predecessors_d,
+                       uint8_t* node_marks_d_,
+                       bool* check_aligned_nodes_d_,
+                       uint16_t* nodes_to_visit_d_)
 {
 
     uint32_t block_idx = blockIdx.x;
@@ -93,6 +99,10 @@ void generatePOAKernel(uint8_t* consensus_d,
     int16_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION * block_idx];
     int16_t* alignment_graph = &alignment_graph_d[CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * block_idx];
     int16_t* alignment_read = &alignment_read_d[CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * block_idx];
+
+    uint8_t* node_marks = &node_marks_d_[CUDAPOA_MAX_NODES_PER_WINDOW * block_idx];
+    bool* check_aligned_nodes = &check_aligned_nodes_d_[CUDAPOA_MAX_NODES_PER_WINDOW * block_idx];
+    uint16_t* nodes_to_visit = &nodes_to_visit_d_[CUDAPOA_MAX_NODES_PER_WINDOW * block_idx];
 
     //get Block-specific variables
     uint32_t window_idx = blockIdx.x;
@@ -279,7 +289,19 @@ void generatePOAKernel(uint8_t* consensus_d,
 
             // Run a topsort on the graph. Not strictly necessary at this point
             //printf("running topsort\n");
-#if 1
+#ifdef SPOA_ACCURATE
+            // Eexactly matches racon SISD results
+            raconTopologicalSortDeviceUtil(sorted_poa,
+                                      node_id_to_pos,
+                                      sequence_lengths[0],
+                                      incoming_edge_count,
+                                      incoming_edges,
+                                      node_alignment_count,
+                                      node_alignments,
+                                      node_marks,
+                                      check_aligned_nodes,
+                                      nodes_to_visit);
+#else
             // Faster top sort
             topologicalSortDeviceUtil(sorted_poa,
                                       node_id_to_pos,
@@ -288,15 +310,6 @@ void generatePOAKernel(uint8_t* consensus_d,
                                       outoing_edges,
                                       outgoing_edge_count,
                                       sorted_poa_local_edge_count);
-#else
-            // Upoptimized top sort, but exactly matches racon SISD results
-            raconTopologicalSortDeviceUtil(sorted_poa,
-                                      node_id_to_pos,
-                                      sequence_lengths[0],
-                                      incoming_edge_count,
-                                      incoming_edges,
-                                      node_alignment_count,
-                                      node_alignments);
 #endif
 
             long long int top_end = clock64();
@@ -377,7 +390,10 @@ void generatePOA(uint8_t* consensus_d,
                  uint16_t* node_alignment_count,
                  uint16_t* sorted_poa_local_edge_count,
                  int32_t* consensus_scores,
-                 int16_t* consensus_predecessors)
+                 int16_t* consensus_predecessors,
+                 uint8_t* node_marks,
+                 bool* check_aligned_nodes,
+                 uint16_t* nodes_to_visit)
 {
     generatePOAKernel<<<num_blocks, num_threads, 0, stream>>>(consensus_d,
                                                               sequences_d,
@@ -400,7 +416,10 @@ void generatePOA(uint8_t* consensus_d,
                                                               node_alignment_count,
                                                               sorted_poa_local_edge_count,
                                                               consensus_scores,
-                                                              consensus_predecessors);
+                                                              consensus_predecessors,
+                                                              node_marks,
+                                                              check_aligned_nodes,
+                                                              nodes_to_visit);
 }
 
 } // namespace cudapoa

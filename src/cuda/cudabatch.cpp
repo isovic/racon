@@ -123,6 +123,9 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     CU_CHECK_ERR(cudaMalloc((void**) &sorted_poa_local_edge_count_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
     CU_CHECK_ERR(cudaMalloc((void**) &consensus_scores_d_, sizeof(int32_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
     CU_CHECK_ERR(cudaMalloc((void**) &consensus_predecessors_d_, sizeof(int16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
+    CU_CHECK_ERR(cudaMalloc((void**) &node_marks_d_, sizeof(int8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
+    CU_CHECK_ERR(cudaMalloc((void**) &check_aligned_nodes_d_, sizeof(bool) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
+    CU_CHECK_ERR(cudaMalloc((void**) &nodes_to_visit_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
 
     CU_CHECK_ERR(cudaMemset(nodes_d_, 0, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
     CU_CHECK_ERR(cudaMemset(node_alignments_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS * NUM_BLOCKS ));
@@ -137,6 +140,9 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     CU_CHECK_ERR(cudaMemset(sorted_poa_local_edge_count_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
     CU_CHECK_ERR(cudaMemset(consensus_scores_d_, -1, sizeof(int32_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
     CU_CHECK_ERR(cudaMemset(consensus_predecessors_d_, -1, sizeof(int16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
+    CU_CHECK_ERR(cudaMemset(node_marks_d_, 0, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
+    CU_CHECK_ERR(cudaMemset(check_aligned_nodes_d_, 0, sizeof(bool) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
+    CU_CHECK_ERR(cudaMemset(nodes_to_visit_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ));
 
     // Debug print for size allocated.
     temp_size = sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
@@ -152,6 +158,9 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
     temp_size += sizeof(int16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
     temp_size += sizeof(int16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
+    temp_size += sizeof(int8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
+    temp_size += sizeof(bool) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
+    temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * NUM_BLOCKS ;
     std::cerr << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
 }
 
@@ -182,6 +191,9 @@ CUDABatchProcessor::~CUDABatchProcessor()
     CU_CHECK_ERR(cudaFree(sorted_poa_local_edge_count_d_));
     CU_CHECK_ERR(cudaFree(consensus_scores_d_));
     CU_CHECK_ERR(cudaFree(consensus_predecessors_d_));
+    CU_CHECK_ERR(cudaFree(node_marks_d_));
+    CU_CHECK_ERR(cudaFree(check_aligned_nodes_d_));
+    CU_CHECK_ERR(cudaFree(nodes_to_visit_d_));
 }
 
 bool CUDABatchProcessor::doesWindowFit(std::shared_ptr<Window> window) const
@@ -288,7 +300,10 @@ void CUDABatchProcessor::generatePOA()
                                  node_alignment_count_d_,
                                  sorted_poa_local_edge_count_d_,
                                  consensus_scores_d_,
-                                 consensus_predecessors_d_);
+                                 consensus_predecessors_d_,
+                                 node_marks_d_,
+                                 check_aligned_nodes_d_,
+                                 nodes_to_visit_d_);
     CU_CHECK_ERR(cudaPeekAtLastError());
     std::cerr << TABS << bid_ << " Launched kernel" << std::endl;
 }

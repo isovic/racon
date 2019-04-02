@@ -196,6 +196,15 @@ protected:
     // graph traversal.
     int16_t* consensus_predecessors_d_;
 
+    // Device buffer to store node marks when performing spoa accurate topsort.
+    uint8_t* node_marks_d_;
+
+    // Device buffer to store check for aligned nodes.
+    bool* check_aligned_nodes_d_;
+
+    // Device buffer to store stack for nodes to be visited.
+    uint16_t* nodes_to_visit_d_;
+
     // Static batch count used to generate batch IDs.
     static uint32_t batches;
 

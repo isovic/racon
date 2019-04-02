@@ -12,7 +12,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(racon_build_tests "Build racon unit tests" OFF)
 option(racon_build_wrapper "Build racon wrapper" OFF)
 option(racon_enable_cuda "Build racon with NVIDIA CUDA support" OFF)
-option(debug "Add debug prints" OFF)
+option(debug "Add debug prints to cudapoa and cudapolisher" OFF)
+option(spoa_accurate "Run cudapoa code in mode that matches spoa" OFF)
 
 # Check CUDA compatibility.
 if(racon_enable_cuda)
