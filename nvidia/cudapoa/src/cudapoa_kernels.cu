@@ -290,7 +290,7 @@ void generatePOAKernel(uint8_t* consensus_d,
             // Run a topsort on the graph. Not strictly necessary at this point
             //printf("running topsort\n");
 #ifdef SPOA_ACCURATE
-            // Eexactly matches racon SISD results
+            // Exactly matches racon CPU results
             raconTopologicalSortDeviceUtil(sorted_poa,
                                       node_id_to_pos,
                                       sequence_lengths[0],
