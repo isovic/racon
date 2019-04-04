@@ -74,15 +74,6 @@ protected:
     const CUDABatchProcessor& operator=(const CUDABatchProcessor&) = delete;
 
     /*
-     * @brief Checks if a new window can fit into the batch.
-     *
-     * @param[in] window : Window to check for fit.
-     *
-     * @return Whether it can be fit or not.
-     */
-    bool doesWindowFit(std::shared_ptr<Window>) const;
-
-    /*
      * @brief Process all the windows and re-map them into
      *        memory for more efficient processing in the CUDA
      *        kernels.
@@ -101,26 +92,26 @@ protected:
      */
     void getConsensus();
 
-    // Windows belonging to the batch.
-    std::vector<std::shared_ptr<Window>> windows_;
-
-    // Consensus generation status for each window.
-    std::vector<bool> window_consensus_status_;
-
+protected:
     // Static batch count used to generate batch IDs.
     static uint32_t batches;
 
     // Batch ID.
     uint32_t bid_ = 0;
 
+    // Maximum windows allowed in batch.
+    uint32_t max_windows_;
+
     // CUDA-POA library object that manages POA batch.
     nvidia::cudapoa::Batch cudapoa_batch_;
 
     // Stream for running POA batch.
     cudaStream_t stream_;
+    // Windows belonging to the batch.
+    std::vector<std::shared_ptr<Window>> windows_;
 
-    // Maximum windows allowed in batch.
-    uint32_t max_windows_;
+    // Consensus generation status for each window.
+    std::vector<bool> window_consensus_status_;
 };
 
 } // namespace racon

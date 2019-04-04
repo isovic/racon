@@ -43,16 +43,9 @@ CUDABatchProcessor::~CUDABatchProcessor()
     CU_CHECK_ERR(cudaStreamDestroy(stream_));
 }
 
-bool CUDABatchProcessor::doesWindowFit(std::shared_ptr<Window> window) const
-{
-    // Checks if adding new window will go over either the MAX_SEQUENCES
-    // or max_windows_ count of the batch.
-    return (windows_.size() + 1 <= max_windows_);
-}
-
 bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
 {
-    if (doesWindowFit(window))
+    if (windows_.size() < max_windows_)
     {
         windows_.push_back(window);
         return true;
