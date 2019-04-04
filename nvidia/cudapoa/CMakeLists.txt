@@ -13,7 +13,8 @@ set(sources
     src/cudapoa_kernels.cu
     src/cudapoa_topsort.cu
     src/cudapoa_add_alignment.cu
-    src/cudapoa_nw.cu)
+    src/cudapoa_nw.cu
+    src/cudapoa_batch.cpp)
 
 cuda_add_library(cudapoa STATIC ${sources})
 
