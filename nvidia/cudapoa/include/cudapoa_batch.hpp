@@ -27,22 +27,31 @@ public:
     Batch(uint32_t max_poas, uint32_t max_sequences_per_poa);
     ~Batch();
 
+    // Add new partial order alignment to batch.
     void add_poa();
 
+    // Add sequence to last partial order alignment.
     void add_seq_to_poa(const char* seq, uint32_t seq_len);
 
+    // Get total number of partial order alignments in batch.
     uint32_t get_total_poas() const;
 
+    // Run partial order alignment algorithm over all POAs.
     void generate_poa();
 
+    // Get the consensus for each POA.
     const std::vector<std::string>& get_consensus();
 
+    // Set GPU device to run batch on.
     void set_device_id(uint32_t);
 
+    // Set CUDA stream for GPU device.
     void set_cuda_stream(cudaStream_t stream);
 
+    // Return batch ID.
     uint32_t batch_id() const;
 
+    // Reset batch. Must do before re-using batch.
     void reset();
 
 protected:

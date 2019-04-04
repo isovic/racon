@@ -276,10 +276,6 @@ void Batch::reset()
     num_nucleotides_copied_ = 0;
     global_sequence_idx_ = 0;
     consensus_strings_.clear();
-
-    // Clear host and device memory.
-    memset(&inputs_h_[0], 0, max_poas_ * max_sequences_per_poa_ * CUDAPOA_MAX_SEQUENCE_SIZE);
-    CU_CHECK_ERR(cudaMemsetAsync(inputs_d_, 0, max_poas_ * max_sequences_per_poa_ * CUDAPOA_MAX_SEQUENCE_SIZE, stream_));
 }
 
 void Batch::add_seq_to_poa(const char* seq, uint32_t seq_len)
