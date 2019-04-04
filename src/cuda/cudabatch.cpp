@@ -74,17 +74,27 @@ void CUDABatchProcessor::generateMemoryMap()
     for(uint32_t i = 0; i < num_windows; i++)
     {
         // Add new poa
-        cudapoa_batch_.add_poa();
+        nvidia::cudapoa::status s = cudapoa_batch_.add_poa();
+        if (s != nvidia::cudapoa::CUDAPOA_SUCCESS)
+        {
+            fprintf(stderr, "Failed to add new to batch %d.\n",
+                    cudapoa_batch_.batch_id());
+            exit(1);
+        }
 
-        //printf("%s %d\n", __FILE__, __LINE__);
-        auto window = windows_.at(i);
-        auto num_seqs = (uint16_t) window->sequences_.size();
+        std::shared_ptr<Window> window = windows_.at(i);
+        uint32_t num_seqs = window->sequences_.size();
         for(uint32_t j = 0; j < num_seqs; j++)
         {
-            // Add sequences to latest poa
-            auto seq = window->sequences_.at(j);
-            //printf("%s %d wid %d sid %d\n", __FILE__, __LINE__, i, j);
-            cudapoa_batch_.add_seq_to_poa(seq.first, seq.second);
+            // Add sequences to latest poa in batch.
+            std::pair<const char*, uint32_t> seq = window->sequences_.at(j);
+            nvidia::cudapoa::status s = cudapoa_batch_.add_seq_to_poa(seq.first, seq.second);
+            if (s != nvidia::cudapoa::CUDAPOA_SUCCESS)
+            {
+                fprintf(stderr, "Could not add sequence to POA in batch %d.\n",
+                        cudapoa_batch_.batch_id());
+                exit(1);
+            }
         }
     }
 }

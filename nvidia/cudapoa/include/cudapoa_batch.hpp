@@ -13,25 +13,28 @@ namespace nvidia {
 
 namespace cudapoa {
 
+enum status
+{
+    CUDAPOA_SUCCESS = 0,
+    CUDAPOA_EXCEEDED_MAXIMUM_POAS,
+    CUDAPOA_EXCEEDED_MAXIMUM_SEQUENCE_SIZE,
+    CUDAPOA_EXCEEDED_MAXIMUM_SEQUENCES_PER_POA,
+    UNKNOWN_FAILURE
+};
+
 class Batch
 {
     const uint32_t NUM_THREADS = 64;
 
 public:
-    enum output_type
-    {
-        consensus,
-        multi_sequence_alignment
-    };
-
     Batch(uint32_t max_poas, uint32_t max_sequences_per_poa);
     ~Batch();
 
     // Add new partial order alignment to batch.
-    void add_poa();
+    status add_poa();
 
     // Add sequence to last partial order alignment.
-    void add_seq_to_poa(const char* seq, uint32_t seq_len);
+    status add_seq_to_poa(const char* seq, uint32_t seq_len);
 
     // Get total number of partial order alignments in batch.
     uint32_t get_total_poas() const;

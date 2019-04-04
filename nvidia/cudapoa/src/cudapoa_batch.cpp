@@ -257,17 +257,20 @@ void Batch::set_device_id(uint32_t device_id)
     device_id_ = device_id;
 }
 
-void Batch::add_poa()
+status Batch::add_poa()
 {
     if (poa_count_ == max_poas_)
     {
-        throw std::runtime_error("Maximum POAs already added to batch.");
+        return CUDAPOA_EXCEEDED_MAXIMUM_POAS;
     }
+
     WindowDetails window_details{};
     window_details.seq_len_buffer_offset = global_sequence_idx_;
     window_details.seq_starts = num_nucleotides_copied_;
     window_details_h_[poa_count_] = window_details;
     poa_count_++;
+
+    return CUDAPOA_SUCCESS;
 }
 
 void Batch::reset()
@@ -278,11 +281,11 @@ void Batch::reset()
     consensus_strings_.clear();
 }
 
-void Batch::add_seq_to_poa(const char* seq, uint32_t seq_len)
+status Batch::add_seq_to_poa(const char* seq, uint32_t seq_len)
 {
     if (seq_len >= CUDAPOA_MAX_SEQUENCE_SIZE)
     {
-        throw std::runtime_error("Inserted sequence is larger than maximum sequence size.");
+        return CUDAPOA_EXCEEDED_MAXIMUM_SEQUENCE_SIZE;
     }
 
     WindowDetails *window_details = &window_details_h_[poa_count_ - 1];
@@ -290,7 +293,7 @@ void Batch::add_seq_to_poa(const char* seq, uint32_t seq_len)
 
     if (window_details->num_seqs == max_sequences_per_poa_)
     {
-        throw std::runtime_error("Number of sequences in POA larger than max specified.");
+        return CUDAPOA_EXCEEDED_MAXIMUM_SEQUENCES_PER_POA;
     }
 
     memcpy(&(inputs_h_[num_nucleotides_copied_]),
@@ -300,6 +303,8 @@ void Batch::add_seq_to_poa(const char* seq, uint32_t seq_len)
 
     num_nucleotides_copied_ += seq_len;
     global_sequence_idx_++;
+
+    return CUDAPOA_SUCCESS;
 }
 
 }
