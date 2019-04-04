@@ -113,7 +113,7 @@ protected:
     // Batch ID.
     uint32_t bid_ = 0;
 
-    std::unique_ptr<nvidia::cudapoa::Batch> cudapoa_batch_;
+    nvidia::cudapoa::Batch cudapoa_batch_;
 
     cudaStream_t stream_;
 

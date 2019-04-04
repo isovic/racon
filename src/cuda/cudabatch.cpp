@@ -12,23 +12,9 @@
 #include "cudabatch.hpp"
 #include "cudautils.hpp"
 
-//#ifndef TABS
-//#define TABS printTabs(bid_)
-//#endif
-
 namespace racon {
 
 uint32_t CUDABatchProcessor::batches = 0;
-
-//inline std::string printTabs(uint32_t tab_count)
-//{
-//    std::string s;
-//    for(uint32_t i = 0; i < tab_count; i++)
-//    {
-//        s += "\t";
-//    }
-//    return s;
-//}
 
 std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
 {
@@ -38,19 +24,17 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32
 CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
     : windows_()
     , max_windows_(max_windows)
+    , cudapoa_batch_(max_windows, max_window_depth)
 {
     bid_ = CUDABatchProcessor::batches++;
 
-    // Create nvidia::cudapoa::Batch here
-    cudapoa_batch_.reset(new nvidia::cudapoa::Batch(max_windows, max_window_depth));
-
     //Set the device
     CU_CHECK_ERR(cudaSetDevice(device));
-    cudapoa_batch_->set_device_id(device);
+    cudapoa_batch_.set_device_id(device);
 
     // Create new CUDA stream.
     CU_CHECK_ERR(cudaStreamCreate(&stream_));
-    cudapoa_batch_->set_cuda_stream(stream_);
+    cudapoa_batch_.set_cuda_stream(stream_);
 }
 
 CUDABatchProcessor::~CUDABatchProcessor()
@@ -91,7 +75,7 @@ void CUDABatchProcessor::generateMemoryMap()
     for(uint32_t i = 0; i < num_windows; i++)
     {
         // Add new poa
-        cudapoa_batch_->add_poa();
+        cudapoa_batch_.add_poa();
 
         //printf("%s %d\n", __FILE__, __LINE__);
         auto window = windows_.at(i);
@@ -101,7 +85,7 @@ void CUDABatchProcessor::generateMemoryMap()
             // Add sequences to latest poa
             auto seq = window->sequences_.at(j);
             //printf("%s %d wid %d sid %d\n", __FILE__, __LINE__, i, j);
-            cudapoa_batch_->add_seq_to_poa(seq.first, seq.second);
+            cudapoa_batch_.add_seq_to_poa(seq.first, seq.second);
         }
     }
 }
@@ -110,12 +94,12 @@ void CUDABatchProcessor::generateMemoryMap()
 void CUDABatchProcessor::generatePOA()
 {
     // call generate poa function
-    cudapoa_batch_->generate_poa();
+    cudapoa_batch_.generate_poa();
 }
 
 void CUDABatchProcessor::getConsensus()
 {
-    const std::vector<std::string>& consensuses = cudapoa_batch_->get_consensus();
+    const std::vector<std::string>& consensuses = cudapoa_batch_.get_consensus();
 
     for(uint32_t i = 0; i < windows_.size(); i++)
     {
@@ -157,7 +141,7 @@ void CUDABatchProcessor::reset()
 {
     windows_.clear();
     window_consensus_status_.clear();
-    cudapoa_batch_->reset();
+    cudapoa_batch_.reset();
 }
 
 } // namespace racon
