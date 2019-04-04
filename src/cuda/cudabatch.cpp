@@ -68,7 +68,6 @@ bool CUDABatchProcessor::hasWindows() const
     return (windows_.size() != 0);
 }
 
-
 void CUDABatchProcessor::generateMemoryMap()
 {
     auto num_windows = windows_.size();
@@ -89,7 +88,6 @@ void CUDABatchProcessor::generateMemoryMap()
         }
     }
 }
-
 
 void CUDABatchProcessor::generatePOA()
 {

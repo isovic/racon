@@ -113,10 +113,13 @@ protected:
     // Batch ID.
     uint32_t bid_ = 0;
 
+    // CUDA-POA library object that manages POA batch.
     nvidia::cudapoa::Batch cudapoa_batch_;
 
+    // Stream for running POA batch.
     cudaStream_t stream_;
 
+    // Maximum windows allowed in batch.
     uint32_t max_windows_;
 };
 

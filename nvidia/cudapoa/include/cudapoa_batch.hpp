@@ -37,13 +37,13 @@ public:
 
     const std::vector<std::string>& get_consensus();
 
-    void reset();
-
     void set_device_id(uint32_t);
 
     void set_cuda_stream(cudaStream_t stream);
 
     uint32_t batch_id() const;
+
+    void reset();
 
 protected:
     // Maximum POAs to process in batch.
@@ -158,9 +158,6 @@ protected:
     
     // Vector of consensus results.
     std::vector<std::string> consensus_strings_;
-
-    uint32_t NUM_BLOCKS = 1;
-
 };
 
 }
