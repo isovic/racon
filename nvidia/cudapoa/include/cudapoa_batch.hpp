@@ -91,8 +91,8 @@ protected:
     uint16_t * sequence_lengths_d_;
 
     // Host and device buffer pointers that hold Window Details struct.
-    nvidia::cudapoa::WindowDetails * window_details_d_;
-    nvidia::cudapoa::WindowDetails * window_details_h_;
+    WindowDetails * window_details_d_;
+    WindowDetails * window_details_h_;
 
     // Device buffer for the scoring matrix for all windows.
     int16_t* scores_d_;
