@@ -59,7 +59,7 @@ To run a faster version that only runs CUDA consensus generation on a single win
 
 To test the CUDA implementation, a few end 2 end tests have been added.
 
-To use the tests, first download the raw dataset from https://s3-eu-west-1.amazonaws.com/ont-research/nvidia.tar.gz.
+To use the tests, first download the raw dataset from https://drive.google.com/open?id=1laLky0kPANSSB9SFIVAMyCYvXD7ZqR6c .
 Extract this to your $HOME folder. After extraction, ensure that the following directories are readable
 `${HOME}/ont-racon-data/nvidia` and `${HOME}/ont-racon-data/nvidia/iterated_racon`.
 
