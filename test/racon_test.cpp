@@ -33,7 +33,7 @@ public:
 
         polisher = racon::createPolisher(sequences_path, overlaps_path, target_path,
             type, window_length, quality_threshold, error_threshold, match,
-            mismatch, gap, 4, false);
+            mismatch, gap, 4);
     }
 
     void TearDown() {}
@@ -53,25 +53,25 @@ public:
 
 TEST(RaconInitializeTest, PolisherTypeError) {
     EXPECT_DEATH((racon::createPolisher("", "", "", static_cast<racon::PolisherType>(3),
-        0, 0, 0, 0, 0, 0, 0, false)), ".racon::createPolisher. error: invalid polisher"
+        0, 0, 0, 0, 0, 0, 0)), ".racon::createPolisher. error: invalid polisher"
         " type!");
 }
 
 TEST(RaconInitializeTest, WindowLengthError) {
     EXPECT_DEATH((racon::createPolisher("", "", "", racon::PolisherType::kC, 0,
-        0, 0, 0, 0, 0, 0, false)), ".racon::createPolisher. error: invalid window length!");
+        0, 0, 0, 0, 0, 0)), ".racon::createPolisher. error: invalid window length!");
 }
 
 TEST(RaconInitializeTest, SequencesPathExtensionError) {
     EXPECT_DEATH((racon::createPolisher("", "", "", racon::PolisherType::kC, 500,
-        0, 0, 0, 0, 0, 0, false)), ".racon::createPolisher. error: file  has unsupported "
+        0, 0, 0, 0, 0, 0)), ".racon::createPolisher. error: file  has unsupported "
         "format extension .valid extensions: .fasta, .fasta.gz, .fa, .fa.gz, "
         ".fastq, .fastq.gz, .fq, .fq.gz.!");
 }
 
 TEST(RaconInitializeTest, OverlapsPathExtensionError) {
     EXPECT_DEATH((racon::createPolisher(racon_test_data_path + "sample_reads.fastq.gz",
-        "", "", racon::PolisherType::kC, 500, 0, 0, 0, 0, 0, 0, false)),
+        "", "", racon::PolisherType::kC, 500, 0, 0, 0, 0, 0, 0)),
         ".racon::createPolisher. error: file  has unsupported format extension "
         ".valid extensions: .mhap, .mhap.gz, .paf, .paf.gz, .sam, .sam.gz.!");
 }
@@ -79,7 +79,7 @@ TEST(RaconInitializeTest, OverlapsPathExtensionError) {
 TEST(RaconInitializeTest, TargetPathExtensionError) {
     EXPECT_DEATH((racon::createPolisher(racon_test_data_path + "sample_reads.fastq.gz",
         racon_test_data_path + "sample_overlaps.paf.gz", "", racon::PolisherType::kC,
-        500, 0, 0, 0, 0, 0, 0, false)), ".racon::createPolisher. error: file  has "
+        500, 0, 0, 0, 0, 0, 0)), ".racon::createPolisher. error: file  has "
         "unsupported format extension .valid extensions: .fasta, .fasta.gz, .fa,"
         " .fa.gz, .fastq, .fastq.gz, .fq, .fq.gz.!");
 }

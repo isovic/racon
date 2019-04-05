@@ -1,311 +1,311 @@
-graph 200, read 86
+graph 200, read 189
 aligned nodes 200
-graph 202, read 198
+graph 209, read 196
+aligned nodes 201
+graph 215, read 195
+aligned nodes 201
+graph 224, read 200
 aligned nodes 204
-graph 212, read 187
-aligned nodes 196
-graph 216, read 195
-aligned nodes 201
-graph 225, read 169
-aligned nodes 198
-graph 235, read 193
-aligned nodes 194
-graph 235, read 203
-aligned nodes 208
-graph 261, read 201
-aligned nodes 201
-graph 265, read 199
+graph 232, read 199
 aligned nodes 200
-graph 271, read 204
-aligned nodes 204
-graph 278, read 196
+graph 234, read 199
 aligned nodes 199
-graph 282, read 198
-aligned nodes 200
-graph 291, read 202
-aligned nodes 205
-graph 300, read 195
+graph 239, read 197
 aligned nodes 198
-graph 300, read 203
-aligned nodes 206
-graph 308, read 198
-aligned nodes 199
-graph 313, read 206
-aligned nodes 207
-graph 319, read 188
-aligned nodes 195
-graph 331, read 199
-aligned nodes 201
-graph 336, read 198
-aligned nodes 198
-graph 338, read 196
-aligned nodes 198
-graph 338, read 203
+graph 242, read 202
 aligned nodes 204
-graph 348, read 195
-aligned nodes 197
-graph 351, read 200
+graph 249, read 199
+aligned nodes 202
+graph 253, read 199
 aligned nodes 203
-graph 357, read 200
-aligned nodes 202
-graph 365, read 197
-aligned nodes 201
-graph 380, read 199
-aligned nodes 201
-graph 386, read 202
-aligned nodes 204
-graph 397, read 199
-aligned nodes 200
-graph 406, read 199
+graph 263, read 202
 aligned nodes 206
-graph 412, read 196
-aligned nodes 199
-graph 417, read 199
-aligned nodes 200
-graph 420, read 187
-aligned nodes 196
-graph 423, read 198
-aligned nodes 198
-graph 430, read 198
-aligned nodes 202
-graph 438, read 110
-aligned nodes 130
-graph 439, read 199
-aligned nodes 200
-graph 440, read 210
-aligned nodes 215
-graph 461, read 182
-aligned nodes 187
-graph 464, read 189
-aligned nodes 199
-graph 469, read 196
-aligned nodes 196
-graph 470, read 201
-aligned nodes 204
-graph 475, read 196
-aligned nodes 197
-graph 476, read 201
-aligned nodes 205
-graph 479, read 13
-aligned nodes 59
-graph 479, read 200
-aligned nodes 201
-graph 479, read 198
-aligned nodes 199
-graph 483, read 198
-aligned nodes 199
-graph 483, read 194
-aligned nodes 195
-graph 485, read 198
-aligned nodes 199
-graph 487, read 193
-aligned nodes 194
-graph 487, read 194
-aligned nodes 195
-graph 490, read 190
-aligned nodes 192
-graph 497, read 213
-aligned nodes 217
-graph 508, read 198
-aligned nodes 199
-graph 514, read 200
-aligned nodes 200
-graph 515, read 196
-aligned nodes 198
-graph 515, read 199
-aligned nodes 202
-graph 519, read 191
-aligned nodes 193
-graph 521, read 194
-aligned nodes 201
-graph 523, read 180
-aligned nodes 191
-graph 527, read 190
-aligned nodes 192
-graph 528, read 193
-aligned nodes 197
-graph 535, read 199
-aligned nodes 199
-graph 536, read 199
-aligned nodes 199
-graph 537, read 198
-aligned nodes 199
-graph 538, read 196
-aligned nodes 197
-graph 539, read 191
-aligned nodes 193
-graph 539, read 196
-aligned nodes 198
-graph 539, read 73
-aligned nodes 80
-graph 541, read 73
-aligned nodes 74
-graph 541, read 207
+graph 275, read 199
 aligned nodes 207
-graph 543, read 201
-aligned nodes 202
-graph 547, read 190
-aligned nodes 199
-graph 553, read 196
-aligned nodes 197
-graph 557, read 203
-aligned nodes 206
-graph 559, read 198
-aligned nodes 203
-graph 561, read 199
-aligned nodes 199
-graph 561, read 148
-aligned nodes 154
-graph 562, read 201
+graph 292, read 200
 aligned nodes 201
-graph 564, read 199
+graph 292, read 198
 aligned nodes 200
-graph 566, read 196
-aligned nodes 197
-graph 567, read 198
+graph 295, read 206
+aligned nodes 206
+graph 302, read 193
+aligned nodes 196
+graph 304, read 198
+aligned nodes 206
+graph 318, read 197
+aligned nodes 203
+graph 329, read 204
+aligned nodes 205
+graph 334, read 199
+aligned nodes 205
+graph 341, read 201
+aligned nodes 202
+graph 345, read 199
+aligned nodes 203
+graph 350, read 196
+aligned nodes 198
+graph 353, read 198
 aligned nodes 200
-graph 569, read 191
+graph 358, read 191
 aligned nodes 194
-graph 570, read 192
-aligned nodes 192
-graph 571, read 205
+graph 365, read 192
+aligned nodes 193
+graph 369, read 205
+aligned nodes 211
+graph 379, read 198
+aligned nodes 204
+graph 392, read 201
+aligned nodes 202
+graph 393, read 200
+aligned nodes 201
+graph 400, read 202
+aligned nodes 203
+graph 405, read 198
+aligned nodes 198
+graph 406, read 203
+aligned nodes 206
+graph 409, read 195
+aligned nodes 197
+graph 409, read 197
+aligned nodes 199
+graph 410, read 204
 aligned nodes 210
-graph 577, read 198
-aligned nodes 205
-graph 582, read 201
-aligned nodes 201
-graph 582, read 199
-aligned nodes 201
-graph 584, read 202
-aligned nodes 203
-graph 584, read 198
-aligned nodes 198
-graph 585, read 203
-aligned nodes 204
-graph 587, read 195
-aligned nodes 196
-graph 588, read 197
-aligned nodes 197
-graph 588, read 204
-aligned nodes 207
-graph 590, read 200
-aligned nodes 201
-graph 591, read 194
-aligned nodes 198
-graph 592, read 202
-aligned nodes 203
-graph 595, read 196
-aligned nodes 198
-graph 596, read 195
-aligned nodes 196
-graph 599, read 200
+graph 416, read 200
 aligned nodes 200
-graph 602, read 199
-aligned nodes 200
-graph 602, read 199
-aligned nodes 201
-graph 602, read 197
-aligned nodes 197
-graph 602, read 202
+graph 418, read 194
 aligned nodes 203
-graph 605, read 199
-aligned nodes 200
-graph 607, read 199
-aligned nodes 202
-graph 610, read 189
-aligned nodes 192
-graph 610, read 199
-aligned nodes 205
-graph 613, read 200
-aligned nodes 200
-graph 613, read 198
-aligned nodes 198
-graph 613, read 206
-aligned nodes 207
-graph 615, read 193
-aligned nodes 193
-graph 615, read 198
-aligned nodes 201
-graph 619, read 197
-aligned nodes 198
-graph 620, read 204
-aligned nodes 206
-graph 622, read 200
-aligned nodes 202
-graph 625, read 197
-aligned nodes 197
-graph 625, read 197
-aligned nodes 198
-graph 626, read 197
-aligned nodes 197
-graph 629, read 192
-aligned nodes 193
-graph 633, read 193
-aligned nodes 194
-graph 635, read 203
-aligned nodes 205
-graph 635, read 200
-aligned nodes 201
-graph 635, read 202
-aligned nodes 203
-graph 636, read 178
-aligned nodes 182
-graph 639, read 194
-aligned nodes 194
-graph 639, read 198
-aligned nodes 198
-graph 639, read 198
+graph 422, read 101
+aligned nodes 145
+graph 424, read 199
 aligned nodes 199
-graph 640, read 102
-aligned nodes 111
-graph 640, read 197
+graph 428, read 186
 aligned nodes 197
-graph 642, read 196
-aligned nodes 197
-graph 643, read 200
-aligned nodes 201
-graph 646, read 196
-aligned nodes 196
-graph 646, read 199
-aligned nodes 200
-graph 647, read 197
-aligned nodes 197
-graph 648, read 195
-aligned nodes 195
-graph 652, read 199
-aligned nodes 200
-graph 654, read 186
-aligned nodes 194
-graph 659, read 202
+graph 441, read 202
+aligned nodes 204
+graph 442, read 200
 aligned nodes 203
-graph 659, read 200
-aligned nodes 202
-graph 660, read 182
-aligned nodes 183
-graph 663, read 196
+graph 444, read 182
+aligned nodes 189
+graph 450, read 196
 aligned nodes 198
-graph 663, read 200
-aligned nodes 200
-graph 663, read 178
-aligned nodes 183
-graph 664, read 173
-aligned nodes 179
-graph 664, read 101
-aligned nodes 105
-graph 665, read 97
-aligned nodes 102
-graph 665, read 80
+graph 451, read 200
+aligned nodes 201
+graph 453, read 178
+aligned nodes 184
+graph 457, read 173
+aligned nodes 180
+graph 460, read 195
+aligned nodes 199
+graph 465, read 97
+aligned nodes 109
+graph 467, read 80
+aligned nodes 92
+graph 467, read 79
 aligned nodes 84
-graph 665, read 79
+graph 467, read 79
 aligned nodes 80
-graph 666, read 79
-aligned nodes 80
-graph 666, read 50
-aligned nodes 55
-graph 667, read 24
-aligned nodes 31
-graph 667, read 32
-aligned nodes 35
-graph 668, read 135
-aligned nodes 147
+graph 467, read 50
+aligned nodes 74
+graph 467, read 24
+aligned nodes 47
+graph 467, read 32
+aligned nodes 36
+graph 467, read 135
+aligned nodes 145
+graph 485, read 194
+aligned nodes 194
+graph 485, read 197
+aligned nodes 198
+graph 485, read 197
+aligned nodes 200
+graph 485, read 197
+aligned nodes 200
+graph 490, read 192
+aligned nodes 192
+graph 495, read 193
+aligned nodes 195
+graph 499, read 203
+aligned nodes 203
+graph 501, read 200
+aligned nodes 202
+graph 507, read 202
+aligned nodes 204
+graph 507, read 178
+aligned nodes 185
+graph 512, read 199
+aligned nodes 199
+graph 512, read 198
+aligned nodes 199
+graph 512, read 198
+aligned nodes 199
+graph 514, read 197
+aligned nodes 198
+graph 515, read 196
+aligned nodes 197
+graph 515, read 200
+aligned nodes 200
+graph 519, read 196
+aligned nodes 196
+graph 520, read 199
+aligned nodes 201
+graph 523, read 197
+aligned nodes 197
+graph 524, read 199
+aligned nodes 199
+graph 525, read 203
+aligned nodes 204
+graph 532, read 195
+aligned nodes 197
+graph 533, read 200
+aligned nodes 200
+graph 536, read 200
+aligned nodes 205
+graph 539, read 197
+aligned nodes 198
+graph 543, read 199
+aligned nodes 204
+graph 543, read 202
+aligned nodes 207
+graph 545, read 199
+aligned nodes 199
+graph 552, read 196
+aligned nodes 198
+graph 552, read 196
+aligned nodes 197
+graph 552, read 187
+aligned nodes 191
+graph 555, read 198
+aligned nodes 199
+graph 561, read 198
+aligned nodes 201
+graph 565, read 199
+aligned nodes 200
+graph 565, read 210
+aligned nodes 214
+graph 577, read 182
+aligned nodes 185
+graph 577, read 198
+aligned nodes 200
+graph 584, read 196
+aligned nodes 197
+graph 584, read 198
+aligned nodes 202
+graph 585, read 198
+aligned nodes 200
+graph 588, read 187
+aligned nodes 189
+graph 588, read 195
+aligned nodes 199
+graph 589, read 193
+aligned nodes 193
+graph 589, read 203
+aligned nodes 206
+graph 599, read 201
+aligned nodes 202
+graph 599, read 199
+aligned nodes 201
+graph 601, read 204
+aligned nodes 204
+graph 602, read 196
+aligned nodes 196
+graph 602, read 189
+aligned nodes 196
+graph 604, read 202
+aligned nodes 203
+graph 607, read 195
+aligned nodes 195
+graph 607, read 203
+aligned nodes 204
+graph 611, read 198
+aligned nodes 199
+graph 611, read 206
+aligned nodes 208
+graph 613, read 188
+aligned nodes 191
+graph 616, read 199
+aligned nodes 200
+graph 617, read 198
+aligned nodes 199
+graph 618, read 198
+aligned nodes 199
+graph 618, read 199
+aligned nodes 202
+graph 620, read 191
+aligned nodes 192
+graph 622, read 194
+aligned nodes 196
+graph 625, read 180
+aligned nodes 186
+graph 627, read 190
+aligned nodes 192
+graph 628, read 193
+aligned nodes 197
+graph 633, read 199
+aligned nodes 199
+graph 634, read 199
+aligned nodes 199
+graph 634, read 196
+aligned nodes 199
+graph 634, read 196
+aligned nodes 196
+graph 634, read 191
+aligned nodes 192
+graph 634, read 196
+aligned nodes 196
+graph 634, read 207
+aligned nodes 208
+graph 636, read 201
+aligned nodes 204
+graph 637, read 190
+aligned nodes 194
+graph 641, read 196
+aligned nodes 199
+graph 643, read 203
+aligned nodes 205
+graph 644, read 200
+aligned nodes 200
+graph 645, read 201
+aligned nodes 202
+graph 647, read 201
+aligned nodes 203
+graph 648, read 200
+aligned nodes 200
+graph 648, read 198
+aligned nodes 201
+graph 650, read 198
+aligned nodes 198
+graph 651, read 194
+aligned nodes 197
+graph 651, read 198
+aligned nodes 199
+graph 653, read 193
+aligned nodes 193
+graph 653, read 194
+aligned nodes 194
+graph 654, read 190
+aligned nodes 192
+graph 656, read 213
+aligned nodes 215
+graph 664, read 198
+aligned nodes 198
+graph 666, read 196
+aligned nodes 196
+graph 666, read 199
+aligned nodes 203
+graph 668, read 169
+aligned nodes 172
+graph 669, read 148
+aligned nodes 154
+graph 670, read 110
+aligned nodes 116
+graph 672, read 102
+aligned nodes 109
+graph 673, read 86
+aligned nodes 89
+graph 675, read 73
+aligned nodes 78
+graph 675, read 73
+aligned nodes 76
+graph 675, read 13
+aligned nodes 21
 TTGAATTTTCAACATCAGAATGAATTAAATGTGCATGATTTGTAATACCAATTTGAATGTTCTGTGCATTTCGCTTAATAAAATTATAATAATGAACATCGTGACGTGCCGGTACATATGTTTCAATTTTCTGGTCAAAATACATCTTTTGACCACCTTTTAAATTTAATTCCTGTATATCTCCGGACGGCGTCTCTGTA

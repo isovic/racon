@@ -22,9 +22,9 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32
 }
 
 CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
-    : windows_()
-    , max_windows_(max_windows)
+    : max_windows_(max_windows)
     , cudapoa_batch_(max_windows, max_window_depth)
+    , windows_()
 {
     bid_ = CUDABatchProcessor::batches++;
 
@@ -64,7 +64,7 @@ bool CUDABatchProcessor::hasWindows() const
 void CUDABatchProcessor::generateMemoryMap()
 {
     auto num_windows = windows_.size();
-    for(uint32_t i = 0; i < num_windows; i++)
+    for(uint32_t w = 0; w < num_windows; w++)
     {
         // Add new poa
         nvidia::cudapoa::status s = cudapoa_batch_.add_poa();
@@ -75,12 +75,30 @@ void CUDABatchProcessor::generateMemoryMap()
             exit(1);
         }
 
-        std::shared_ptr<Window> window = windows_.at(i);
+        std::shared_ptr<Window> window = windows_.at(w);
         uint32_t num_seqs = window->sequences_.size();
-        for(uint32_t j = 0; j < num_seqs; j++)
+
+        // Add first sequence as backbone to graph.
+        std::pair<const char*, uint32_t> seq = window->sequences_.front();
+        cudapoa_batch_.add_seq_to_poa(seq.first, seq.second);
+
+        // Add the rest of the sequences in sorted order of starting positions.
+        std::vector<uint32_t> rank;
+        rank.reserve(window->sequences_.size());
+
+        for (uint32_t i = 0; i < num_seqs; ++i) {
+            rank.emplace_back(i);
+        }
+
+        std::sort(rank.begin() + 1, rank.end(), [&](uint32_t lhs, uint32_t rhs) {
+                return window->positions_[lhs].first < window->positions_[rhs].first; });
+
+        // Start from index 1 since first sequence has already been added as backbone.
+        for(uint32_t j = 1; j < num_seqs; j++)
         {
+            uint32_t i = rank.at(j);
             // Add sequences to latest poa in batch.
-            std::pair<const char*, uint32_t> seq = window->sequences_.at(j);
+            seq = window->sequences_.at(i);
             nvidia::cudapoa::status s = cudapoa_batch_.add_seq_to_poa(seq.first, seq.second);
             if (s != nvidia::cudapoa::CUDAPOA_SUCCESS)
             {
