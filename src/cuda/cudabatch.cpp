@@ -118,7 +118,9 @@ void CUDABatchProcessor::generatePOA()
 
 void CUDABatchProcessor::getConsensus()
 {
-    const std::vector<std::string>& consensuses = cudapoa_batch_.get_consensus();
+    std::vector<std::string> consensuses;
+    std::vector<std::vector<uint16_t>> coverages;
+    cudapoa_batch_.get_consensus(consensuses, coverages);
 
     for(uint32_t i = 0; i < windows_.size(); i++)
     {
@@ -138,6 +140,29 @@ void CUDABatchProcessor::getConsensus()
         else
         {
             window->consensus_ = consensuses.at(i);
+            if (window->type_ ==  WindowType::kTGS)
+            {
+                uint32_t average_coverage = (window->sequences_.size() - 1) / 2;
+
+                int32_t begin = 0, end =  window->consensus_.size() - 1;
+                for (; begin < static_cast<int32_t>( window->consensus_.size()); ++begin) {
+                    if (coverages.at(i).at(begin) >= average_coverage) {
+                        break;
+                    }
+                }
+                for (; end >= 0; --end) {
+                    if (coverages.at(i).at(end) >= average_coverage) {
+                        break;
+                    }
+                }
+
+                if (begin >= end) {
+                    fprintf(stderr, "[CUDABatchProcessor] warning: "
+                            "contig might be chimeric in window %u!\n", window->id_, window->rank_);
+                } else {
+                    window->consensus_ =  window->consensus_.substr(begin, end - begin + 1);
+                }
+            }
             window_consensus_status_.emplace_back(true);
 #ifdef DEBUG
             printf("%s\n", window->consensus_.c_str());

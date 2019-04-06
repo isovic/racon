@@ -106,6 +106,10 @@ uint16_t branchCompletion(uint16_t max_score_id_pos,
  * @param[in] predecessors          Device buffer with predecessors of nodes while traversing graph during consensus
  * @param[in] scores                Device buffer with score of each node while traversing graph during consensus
  * @param[out] consensus            Device buffer for generated consensus
+ * @param[out] coverate             Device buffer for coverage of each base in consensus
+ * @param[out] node_coverage_counts Device buffer with coverage of each base in graph
+ * @param[in] node_alignments       Device buffer with aligned nodes for each node in graph
+ * @param[in] node_alignment)count  Device buffer with aligned nodes count for each node in graph
  */
 __device__
 void generateConsensus(uint8_t* nodes,
@@ -119,7 +123,11 @@ void generateConsensus(uint8_t* nodes,
                          uint16_t* incoming_edge_w,
                          int16_t* predecessors,
                          int32_t* scores,
-                         uint8_t* consensus)
+                         uint8_t* consensus,
+                         uint16_t* coverage,
+                         uint16_t* node_coverage_counts,
+                         uint16_t* node_alignments,
+                         uint16_t* node_alignment_count)
 {
     // Initialize scores and predecessors to default value.
     for(uint16_t i = 0; i < node_count; i++)
@@ -198,11 +206,23 @@ void generateConsensus(uint8_t* nodes,
     while(predecessors[max_score_id] != -1)
     {
         consensus[consensus_pos] = nodes[max_score_id];
+        uint16_t cov = node_coverage_counts[max_score_id];
+        for(uint16_t a = 0; a < node_alignment_count[max_score_id]; a++)
+        {
+            cov += node_coverage_counts[node_alignments[max_score_id * CUDAPOA_MAX_NODE_ALIGNMENTS + a]];
+        }
+        coverage[consensus_pos] = cov;
         max_score_id = predecessors[max_score_id];
         consensus_pos++;
 
     }
     consensus[consensus_pos] = nodes[max_score_id];
+    uint16_t cov = node_coverage_counts[max_score_id];
+    for(uint16_t a = 0; a < node_alignment_count[max_score_id]; a++)
+    {
+        cov += node_coverage_counts[node_alignments[max_score_id * CUDAPOA_MAX_NODE_ALIGNMENTS + a]];
+    }
+    coverage[consensus_pos] = cov;
     consensus++;
     consensus[consensus_pos] = '\0';
 }

@@ -61,14 +61,20 @@ Batch::Batch(uint32_t max_poas, uint32_t max_sequences_per_poa)
     std::cerr << TABS << bid_ << " Allocated input buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
 
     // Output buffers.
+    // Buffer for final consensus.
     input_size = max_poas_ * CUDAPOA_MAX_SEQUENCE_SIZE;
     CU_CHECK_ERR(cudaHostAlloc((void**) &consensus_h_, input_size * sizeof(uint8_t),
                   cudaHostAllocDefault));
 
-    CU_CHECK_ERR(cudaMallocPitch((void**) &consensus_d_,
-                    &consensus_pitch_,
-                    sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW,
-                    max_poas_));
+    CU_CHECK_ERR(cudaMalloc((void**) &consensus_d_,  input_size * sizeof(uint8_t)));
+
+    // Buffer for converage of each base in consensus.
+    CU_CHECK_ERR(cudaHostAlloc((void**) &coverage_h_, input_size * sizeof(uint16_t),
+                  cudaHostAllocDefault));
+
+    CU_CHECK_ERR(cudaMalloc((void**) &coverage_d_,  input_size * sizeof(uint16_t)));
+
+    input_size += input_size * sizeof(uint16_t);
     std::cerr << TABS << bid_ << " Allocated output buffers of size " << (static_cast<float>(input_size)  / (1024 * 1024)) << "MB" << std::endl;
 
     // Buffers for storing NW scores and backtrace.
@@ -99,6 +105,7 @@ Batch::Batch(uint32_t max_poas, uint32_t max_sequences_per_poa)
     CU_CHECK_ERR(cudaMalloc((void**) &node_marks_d_, sizeof(int8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ));
     CU_CHECK_ERR(cudaMalloc((void**) &check_aligned_nodes_d_, sizeof(bool) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ));
     CU_CHECK_ERR(cudaMalloc((void**) &nodes_to_visit_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ));
+    CU_CHECK_ERR(cudaMalloc((void**) &node_coverage_counts_d_, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ));
 
     CU_CHECK_ERR(cudaMemset(nodes_d_, 0, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ));
     CU_CHECK_ERR(cudaMemset(node_alignments_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * CUDAPOA_MAX_NODE_ALIGNMENTS * max_poas_ ));
@@ -116,6 +123,7 @@ Batch::Batch(uint32_t max_poas, uint32_t max_sequences_per_poa)
     CU_CHECK_ERR(cudaMemset(node_marks_d_, 0, sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ));
     CU_CHECK_ERR(cudaMemset(check_aligned_nodes_d_, 0, sizeof(bool) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ));
     CU_CHECK_ERR(cudaMemset(nodes_to_visit_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ));
+    CU_CHECK_ERR(cudaMemset(node_coverage_counts_d_, 0, sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ));
 
     // Debug print for size allocated.
     temp_size = sizeof(uint8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ;
@@ -133,6 +141,7 @@ Batch::Batch(uint32_t max_poas, uint32_t max_sequences_per_poa)
     temp_size += sizeof(int16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ;
     temp_size += sizeof(int8_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ;
     temp_size += sizeof(bool) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ;
+    temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ;
     temp_size += sizeof(uint16_t) * CUDAPOA_MAX_NODES_PER_WINDOW * max_poas_ ;
     std::cerr << TABS << bid_ << " Allocated temp buffers of size " << (static_cast<float>(temp_size)  / (1024 * 1024)) << "MB" << std::endl;
 }
@@ -190,6 +199,7 @@ void Batch::generate_poa()
     // Launch kernel to run 1 POA per thread in thread block.
     std::cerr << TABS << bid_ << " Launching kernel for " << poa_count_ << std::endl;
     nvidia::cudapoa::generatePOA(consensus_d_,
+                                 coverage_d_,
                                  inputs_d_,
                                  sequence_lengths_d_,
                                  window_details_d_,
@@ -216,20 +226,24 @@ void Batch::generate_poa()
                                  consensus_predecessors_d_,
                                  node_marks_d_,
                                  check_aligned_nodes_d_,
-                                 nodes_to_visit_d_);
+                                 nodes_to_visit_d_,
+                                 node_coverage_counts_d_);
     CU_CHECK_ERR(cudaPeekAtLastError());
     std::cerr << TABS << bid_ << " Launched kernel" << std::endl;
 }
 
-const std::vector<std::string>& Batch::get_consensus()
+void Batch::get_consensus(std::vector<std::string>& consensus,
+        std::vector<std::vector<uint16_t>>& coverage)
 {
     std::cerr << TABS << bid_ << " Launching memcpy D2H" << std::endl;
-    CU_CHECK_ERR(cudaMemcpy2DAsync(consensus_h_.get(),
-				   CUDAPOA_MAX_SEQUENCE_SIZE,
+    CU_CHECK_ERR(cudaMemcpyAsync(consensus_h_.get(),
 				   consensus_d_,
-				   consensus_pitch_,
-				   CUDAPOA_MAX_SEQUENCE_SIZE,
-				   max_poas_,
+				   CUDAPOA_MAX_SEQUENCE_SIZE * max_poas_ * sizeof(uint8_t),
+				   cudaMemcpyDeviceToHost,
+				   stream_));
+    CU_CHECK_ERR(cudaMemcpyAsync(coverage_h_,
+				   coverage_d_,
+				   CUDAPOA_MAX_SEQUENCE_SIZE * max_poas_ * sizeof(uint16_t),
 				   cudaMemcpyDeviceToHost,
 				   stream_));
     CU_CHECK_ERR(cudaStreamSynchronize(stream_));
@@ -238,13 +252,18 @@ const std::vector<std::string>& Batch::get_consensus()
 
     for(uint32_t poa = 0; poa < poa_count_; poa++)
     {
+        // Get the consensus string and reverse it since on GPU the
+        // string is built backwards..
         char* c = reinterpret_cast<char *>(&consensus_h_[poa * CUDAPOA_MAX_SEQUENCE_SIZE]);
-        std::string reversed_consensus = std::string(c);
-        std::reverse(reversed_consensus.begin(), reversed_consensus.end());
-        consensus_strings_.push_back(reversed_consensus);
-    }
+        consensus.emplace_back(std::string(c));
+        std::reverse(consensus.back().begin(), consensus.back().end());
 
-    return consensus_strings_;
+        // Similarly, get the coverage and reverse it.
+        coverage.emplace_back(std::vector<uint16_t>(
+                    &coverage_h_[poa * CUDAPOA_MAX_SEQUENCE_SIZE],
+                    &coverage_h_[poa * CUDAPOA_MAX_SEQUENCE_SIZE + consensus.back().size()]));
+        std::reverse(coverage.back().begin(), coverage.back().end());
+    }
 }
 
 void Batch::set_cuda_stream(cudaStream_t stream)
@@ -278,7 +297,6 @@ void Batch::reset()
     poa_count_ = 0;
     num_nucleotides_copied_ = 0;
     global_sequence_idx_ = 0;
-    consensus_strings_.clear();
 }
 
 status Batch::add_seq_to_poa(const char* seq, uint32_t seq_len)

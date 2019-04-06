@@ -43,7 +43,8 @@ public:
     void generate_poa();
 
     // Get the consensus for each POA.
-    const std::vector<std::string>& get_consensus();
+    void get_consensus(std::vector<std::string>& consensus,
+            std::vector<std::vector<uint16_t>>& coverage);
 
     // Set GPU device to run batch on.
     void set_device_id(uint32_t);
@@ -75,9 +76,6 @@ protected:
 
     // Device buffer pointer for storing consensus.
     uint8_t *consensus_d_;
-
-    // Pitch of consensus device buffer since it's a 2D array.
-    size_t consensus_pitch_;
 
     // Host and device buffer pointer for input data.
     uint8_t *inputs_h_;
@@ -153,6 +151,13 @@ protected:
     // Device buffer to store stack for nodes to be visited.
     uint16_t* nodes_to_visit_d_;
 
+    // Buffer for coverage of consensus.
+    uint16_t* coverage_h_;
+    uint16_t* coverage_d_;
+
+    // Device buffer for storing coverage of each node in graph.
+    uint16_t* node_coverage_counts_d_;
+
     // Static batch count used to generate batch IDs.
     static uint32_t batches;
 
@@ -167,9 +172,6 @@ protected:
 
     // Global sequence index.
     uint32_t global_sequence_idx_ = 0;
-    
-    // Vector of consensus results.
-    std::vector<std::string> consensus_strings_;
 };
 
 }

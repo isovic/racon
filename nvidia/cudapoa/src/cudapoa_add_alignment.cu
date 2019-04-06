@@ -24,6 +24,7 @@ namespace cudapoa {
  * @param[in] alignment_graph             Device buffer with nodes from graph in alignment
  * @param[in] read                        Device scratch space with sequence
  * @param[in] alignment_read              Device buffer with bases from read in alignment
+ * @param[in] node_coverage_count         Device buffer with coverage of each node in graph
  *
  * @return Number of nodes in graph after update
  */
@@ -38,7 +39,8 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
                          uint16_t* graph,
                          int16_t* alignment_graph,
                          uint8_t* read,
-                         int16_t* alignment_read)
+                         int16_t* alignment_read,
+                         uint16_t* node_coverage_counts)
 {
     //printf("Running addition for alignment %d\n", alignment_length);
     int16_t head_node_id = -1;
@@ -78,6 +80,7 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
                 outgoing_edge_count[curr_node_id] = 0;
                 incoming_edge_count[curr_node_id] = 0;
                 node_alignment_count[curr_node_id] = 0;
+                node_coverage_counts[curr_node_id] = 0;
             }
             else
             {
@@ -128,6 +131,7 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
                         outgoing_edge_count[curr_node_id] = 0;
                         incoming_edge_count[curr_node_id] = 0;
                         node_alignment_count[curr_node_id] = 0;
+                        node_coverage_counts[curr_node_id] = 0;
                         uint16_t new_node_alignments = 0;
 
                         for(uint16_t n = 0; n < num_aligned_node; n++)
@@ -185,9 +189,14 @@ uint16_t addAlignmentToGraph(uint8_t* nodes,
                         printf("exceeded max edge count\n");
                     }
                 }
+
             }
 
             head_node_id = curr_node_id;
+
+            // If a node is seen within a graph, then it's part of some
+            // read, hence its coverage is incremented by 1.
+            node_coverage_counts[head_node_id]++;
         }
 
         prev_weight = NODE_WEIGHT;

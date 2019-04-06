@@ -60,6 +60,7 @@ typedef struct WindowDetails
  *        algorithm.
  *
  * @param[out] consensus_d                Device buffer for generated consensus
+ * @param[out] coverage_d_                Device buffer for coverage of each base in consensus
  * @param[in] sequences_d                 Device buffer with sequences for all windows
  * @param[in] sequence_lengths_d          Device buffer sequence lengths
  * @param[in] window_details_d            Device buffer with structs 
@@ -85,11 +86,13 @@ typedef struct WindowDetails
  * @param[in] sorted_poa_local_edge_count Device scratch space for maintaining edge counts during topological sort
  * @param[in] consensus_scores            Device scratch space for storing score of each node while traversing graph during consensus
  * @param[in] consensus_predecessors      Device scratch space for storing predecessors of nodes while traversing graph during consensus
- * @param[in] node_marks_d_               Device scratch space for storing node marks when running spoa accurate top sort
- * @param[in] check_aligned_nodes_d_      Device scratch space for storing check for aligned nodes
- * @param[in] nodes_to_visit_d_           Device scratch space for storing stack of nodes to be visited in topsort
+ * @param[in] node_marks_d                Device scratch space for storing node marks when running spoa accurate top sort
+ * @param[in] check_aligned_nodes_d       Device scratch space for storing check for aligned nodes
+ * @param[in] nodes_to_visit_d            Device scratch space for storing stack of nodes to be visited in topsort
+ * @param[in] node_coverage_counts        Device scratch space for storing coverage count for each node in graph
  */
 void generatePOA(uint8_t* consensus_d,
+                 uint16_t* coverage_d_,
                  uint8_t* sequences_d,
                  uint16_t * sequence_lengths_d,
                  nvidia::cudapoa::WindowDetails * window_details_d,
@@ -116,7 +119,8 @@ void generatePOA(uint8_t* consensus_d,
                  int16_t* consensus_predecessors,
                  uint8_t* node_marks,
                  bool* check_aligned_nodes,
-                 uint16_t* nodes_to_visit);
+                 uint16_t* nodes_to_visit,
+                 uint16_t* node_coverage_counts);
 
 }
 

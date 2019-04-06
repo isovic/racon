@@ -17,6 +17,7 @@ namespace cudapoa {
  *        algorithm.
  *
  * @param[out] consensus_d                Device buffer for generated consensus
+ * @param[out] coverage_d                 Device buffer for coverage of each base in consensus
  * @param[in] sequences_d                 Device buffer with sequences for all windows
  * @param[in] sequence_lengths_d          Device buffer sequence lengths
  * @param[in] window_details_d            Device buffer with structs 
@@ -41,10 +42,12 @@ namespace cudapoa {
  * @param[in] consensus_predecessors      Device scratch space for storing predecessors of nodes while traversing graph during consensus
  * @param[in] node_marks_d_               Device scratch space for storing node marks when running spoa accurate top sort
  * @param[in] check_aligned_nodes_d_      Device scratch space for storing check for aligned nodes
- * @param[in] nodes_to_visit_d_           Device scratch space for storing stack of nodes to be visited in topsort
+ * @param[in] nodes_to_visit_d_           device scratch space for storing stack of nodes to be visited in topsort
+ * @param[in] node_coverage_counts_d_     device scratch space for storing coverage of each node in graph.
  */
 __global__
 void generatePOAKernel(uint8_t* consensus_d,
+                       uint16_t* coverage_d,
                        uint8_t* sequences_d,
                        uint16_t * sequence_lengths_d,
                        nvidia::cudapoa::WindowDetails * window_details_d,
@@ -68,7 +71,8 @@ void generatePOAKernel(uint8_t* consensus_d,
                        int16_t* consensus_predecessors_d,
                        uint8_t* node_marks_d_,
                        bool* check_aligned_nodes_d_,
-                       uint16_t* nodes_to_visit_d_)
+                       uint16_t* nodes_to_visit_d_,
+                       uint16_t* node_coverage_counts_d_)
 {
 
     uint32_t block_idx = blockIdx.x;
@@ -99,6 +103,7 @@ void generatePOAKernel(uint8_t* consensus_d,
     int16_t* scores = &scores_d[CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION * block_idx];
     int16_t* alignment_graph = &alignment_graph_d[CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * block_idx];
     int16_t* alignment_read = &alignment_read_d[CUDAPOA_MAX_MATRIX_GRAPH_DIMENSION * block_idx];
+    uint16_t* node_coverage_counts = &node_coverage_counts_d_[CUDAPOA_MAX_NODES_PER_WINDOW * block_idx];
 
     uint8_t* node_marks = &node_marks_d_[CUDAPOA_MAX_NODES_PER_WINDOW * block_idx];
     bool* check_aligned_nodes = &check_aligned_nodes_d_[CUDAPOA_MAX_NODES_PER_WINDOW * block_idx];
@@ -125,6 +130,7 @@ void generatePOAKernel(uint8_t* consensus_d,
         node_id_to_pos[0] = 0;
         outgoing_edge_count[sequence_lengths[0] - 1] = 0;
         incoming_edge_weights[0] = 0;
+        node_coverage_counts[0] = 1;
 
         //Build the rest of the graphs
         for (uint16_t nucleotide_idx=1; nucleotide_idx<sequence_lengths[0]; nucleotide_idx++){
@@ -137,6 +143,7 @@ void generatePOAKernel(uint8_t* consensus_d,
             incoming_edge_count[nucleotide_idx] = 1;
             node_alignment_count[nucleotide_idx] = 0;
             node_id_to_pos[nucleotide_idx] = nucleotide_idx;
+            node_coverage_counts[nucleotide_idx] = 1;
         }
 
     }
@@ -267,7 +274,8 @@ void generatePOAKernel(uint8_t* consensus_d,
                     incoming_edge_weights, outgoing_edge_weights,
                     alignment_length,
                     sorted_poa, alignment_graph, 
-                    sequence, alignment_read);
+                    sequence, alignment_read,
+                    node_coverage_counts);
 
             long long int add_end = clock64();
             add_time += (add_end - start);
@@ -330,14 +338,15 @@ void generatePOAKernel(uint8_t* consensus_d,
     //    output_row[c] = input_row[c];
     //}
 
-    uint8_t* consensus = &consensus_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
-    int32_t* consensus_scores = &consensus_scores_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
-    int16_t* consensus_predecessors = &consensus_predecessors_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
-
     long long int consensus_time = 0;
 
     if (thread_idx == 0 && generate_consensus)
     {
+        uint8_t* consensus = &consensus_d[block_idx * CUDAPOA_MAX_SEQUENCE_SIZE];
+        uint16_t* coverage = &coverage_d[block_idx * CUDAPOA_MAX_SEQUENCE_SIZE];
+        int32_t* consensus_scores = &consensus_scores_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+        int16_t* consensus_predecessors = &consensus_predecessors_d[block_idx * CUDAPOA_MAX_NODES_PER_WINDOW];
+
         long long int start = clock64();
         generateConsensus(nodes,
                 sequence_lengths[0],
@@ -350,7 +359,10 @@ void generatePOAKernel(uint8_t* consensus_d,
                 incoming_edge_weights,
                 consensus_predecessors,
                 consensus_scores,
-                consensus);
+                consensus,
+                coverage,
+                node_coverage_counts,
+                node_alignments, node_alignment_count);
         consensus_time = (clock64() - start);
     }
     //if (thread_idx == 0)
@@ -367,6 +379,7 @@ void generatePOAKernel(uint8_t* consensus_d,
 
 // Host function call for POA kernel.
 void generatePOA(uint8_t* consensus_d,
+                 uint16_t* coverage_d,
                  uint8_t* sequences_d,
                  uint16_t * sequence_lengths_d,
                  nvidia::cudapoa::WindowDetails * window_details_d,
@@ -393,9 +406,11 @@ void generatePOA(uint8_t* consensus_d,
                  int16_t* consensus_predecessors,
                  uint8_t* node_marks,
                  bool* check_aligned_nodes,
-                 uint16_t* nodes_to_visit)
+                 uint16_t* nodes_to_visit,
+                 uint16_t* node_coverage_counts)
 {
     generatePOAKernel<<<num_blocks, num_threads, 0, stream>>>(consensus_d,
+                                                              coverage_d,
                                                               sequences_d,
                                                               sequence_lengths_d,
                                                               window_details_d,
@@ -419,7 +434,8 @@ void generatePOA(uint8_t* consensus_d,
                                                               consensus_predecessors,
                                                               node_marks,
                                                               check_aligned_nodes,
-                                                              nodes_to_visit);
+                                                              nodes_to_visit,
+                                                              node_coverage_counts);
 }
 
 } // namespace cudapoa
