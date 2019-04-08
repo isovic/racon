@@ -24,17 +24,6 @@
 // Maximum horizontal dimension of scoring matrix, which stores sequences.
 #define CUDAPOA_MAX_MATRIX_SEQUENCE_DIMENSION (CUDAPOA_MAX_SEQUENCE_SIZE + 1)
 
-#define CU_CHECK_ERR(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
-{
-    if (code != cudaSuccess)
-    {
-        fprintf(stderr,"GPU Error:: %s %s %d\n", cudaGetErrorString(code), file, line);
-        if (abort) exit(code);
-    }
-}
-
 namespace nvidia {
 
 namespace cudapoa {
