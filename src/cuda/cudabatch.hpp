@@ -10,7 +10,7 @@
 #include <cuda_runtime_api.h>
 
 #include "window.hpp"
-#include "cudapoa_batch.hpp"
+#include "cudapoa/cudapoa_batch.hpp"
 
 namespace racon {
 
