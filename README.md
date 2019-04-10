@@ -68,9 +68,9 @@ cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON ..
 make
 ```
 
-To use a non-sibling GenomeWorks location, you must use the cmake line:
+To use a non-sibling GenomeWorks location, you must use the cmake line (note path must be absolute):
 ```
-cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON -DGENOMEWORKS_SRC_PATH=<path to GenomeWorks>..
+cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON -DGENOMEWORKS_SRC_PATH=<abs path to GenomeWorks>..
 ```
 
 
