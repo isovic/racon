@@ -25,7 +25,7 @@ A **wrapper script** is also available to enable easier usage to the end-user fo
 To install Racon run the following commands:
 
 ```bash
-git clone --recursive ssh://git@gitlab-master.nvidia.com:12051/mvella/racon-gpu.git
+git clone --recursive ssh://git@gitlab-master.nvidia.com:12051/genomics/racon-gpu.git
 cd racon
 mkdir build
 cd build
@@ -44,6 +44,21 @@ To build unit tests add `-Dracon_build_tests=ON` while running `cmake`. After in
 To build the wrapper script add `-Dracon_build_wrapper=ON` while running `cmake`. After installation, an executable named `racon_wrapper` (python script) will be created in `build/bin`.
 
 ### CUDA Support
+To prepare to use `racon` with CUDA support, clone NVIDIA GenomeWorks to a sibling directory of racon-gpu:
+
+```
+git clone ssh://git@gitlab-master.nvidia.com:12051/genomics/GenomeWorks.git
+```
+
+So there should be a directory with these repos as siblings:
+
+```
+GenomeWorks/
+racon-gpu/
+```
+
+(It is possible to build if the directories are not siblings, but the racon-gpu cmake line must be different)
+
 To build `racon` with CUDA support, add `-Dracon_enable_cuda=ON` while running `cmake`. If CUDA support is unavailable, the `cmake` step will error out. 
 Note that the CUDA support flag does not produce a new binary target. Instead it augments the existing `racon` binary itself.
 
@@ -52,6 +67,12 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON ..
 make
 ```
+
+To use a non-sibling GenomeWorks location, you must use the cmake line:
+```
+cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON -DGENOMEWORKS_SRC_PATH=<path to GenomeWorks>..
+```
+
 
 To run a faster version that only runs CUDA consensus generation on a single window, add `-Ddebug=ON` to the CMake command.
 
