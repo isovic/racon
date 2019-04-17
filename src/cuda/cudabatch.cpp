@@ -23,13 +23,11 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32
 
 CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
     : max_windows_(max_windows)
-    , cudapoa_batch_(max_windows, max_window_depth)
+    , cudapoa_batch_(max_windows, max_window_depth, device)
     , windows_()
 {
     bid_ = CUDABatchProcessor::batches++;
 
-    //Set the device
-    CU_CHECK_ERR(cudaSetDevice(device));
     cudapoa_batch_.set_device_id(device);
 
     // Create new CUDA stream.
