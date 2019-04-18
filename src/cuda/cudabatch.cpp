@@ -27,9 +27,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     , windows_()
 {
     bid_ = CUDABatchProcessor::batches++;
-
-    cudapoa_batch_.set_device_id(device);
-
+    
     // Create new CUDA stream.
     CU_CHECK_ERR(cudaStreamCreate(&stream_));
     cudapoa_batch_.set_cuda_stream(stream_);
