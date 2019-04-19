@@ -64,7 +64,7 @@ if [ "${BUILD_FOR_GPU}" == '1' ]; then
 
   CMAKE_BUILD_GPU="-Dracon_enable_cuda=ON -DGENOMEWORKS_SRC_PATH=${WORKSPACE}/GenomeWorks"
 else
-  CMAKE_BUILD_GPU="-Dracon_enable_cuda=OFF"
+  CMAKE_BUILD_GPU="-Dracon_enable_cuda=OFF -Dracon_build_tests=ON"
 fi
 
 export LOCAL_BUILD_ROOT=${WORKSPACE}
@@ -79,7 +79,14 @@ cd ${LOCAL_BUILD_DIR}
 # configure
 cmake $CMAKE_COMMON_VARIABLES ${CMAKE_BUILD_GPU} ..
 # build
-make -j${PARALLEL_LEVEL} VERBOSE=1
+make -j${PARALLEL_LEVEL} VERBOSE=1 all
+
+if [ "${TEST_ON_CPU}" == '1' ]; then
+  logger "Running CPU-based test..."
+  logger "Test results..."
+  cd ${LOCAL_BUILD_DIR}/bin
+  ./racon_test
+fi
 
 if [ "${TEST_ON_GPU}" == '1' ]; then
   logger "Pulling GPU test data..."
@@ -91,7 +98,7 @@ if [ "${TEST_ON_GPU}" == '1' ]; then
     tar xvzf ont-racon-data.tar.gz
   fi
 
-  logger "Running test..."
+  logger "Running GPU-based test..."
   logger "GPU config..."
   nvidia-smi
 
