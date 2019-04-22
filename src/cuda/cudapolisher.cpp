@@ -35,7 +35,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
 
     int32_t num_devices;
     CU_CHECK_ERR(cudaGetDeviceCount(&num_devices));
-
+    std::cerr << "Using " << num_devices << " GPU(s) to perform polishing" << std::endl;
 
 #ifdef DEBUG
     window_length_ = 200;
