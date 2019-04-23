@@ -93,7 +93,17 @@ int main(int argc, char** argv) {
                 exit(0);
 #ifdef CUDA_ENABLED
             case 'c':
-                cuda_batches = (optarg != NULL ? atoi(optarg) : 1);
+                //if option c encountered, cuda_batches initialized with a default value of 1.
+                cuda_batches = 1;
+                // next text entry is not an option, assuming it's the arg for option 'c'
+                if (optarg == NULL && argv[optind] != NULL
+                    && argv[optind][0] != '-') {
+                    cuda_batches = atoi(argv[optind++]);
+                } 
+                // optional argument provided in the ususal way
+                if (optarg != NULL) {
+                    cuda_batches = atoi(optarg);
+                }
                 break;
 #endif
             default:
