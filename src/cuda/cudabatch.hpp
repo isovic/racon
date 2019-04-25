@@ -103,7 +103,7 @@ protected:
     uint32_t max_windows_;
 
     // CUDA-POA library object that manages POA batch.
-    nvidia::cudapoa::Batch cudapoa_batch_;
+    genomeworks::cudapoa::Batch cudapoa_batch_;
 
     // Stream for running POA batch.
     cudaStream_t stream_;

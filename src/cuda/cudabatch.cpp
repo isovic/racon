@@ -63,8 +63,8 @@ void CUDABatchProcessor::generateMemoryMap()
     for(uint32_t w = 0; w < num_windows; w++)
     {
         // Add new poa
-        nvidia::cudapoa::status s = cudapoa_batch_.add_poa();
-        if (s != nvidia::cudapoa::CUDAPOA_SUCCESS)
+        genomeworks::cudapoa::StatusType s = cudapoa_batch_.add_poa();
+        if (s != genomeworks::cudapoa::StatusType::SUCCESS)
         {
             fprintf(stderr, "Failed to add new to batch %d.\n",
                     cudapoa_batch_.batch_id());
@@ -95,8 +95,8 @@ void CUDABatchProcessor::generateMemoryMap()
             uint32_t i = rank.at(j);
             // Add sequences to latest poa in batch.
             seq = window->sequences_.at(i);
-            nvidia::cudapoa::status s = cudapoa_batch_.add_seq_to_poa(seq.first, seq.second);
-            if (s != nvidia::cudapoa::CUDAPOA_SUCCESS)
+            genomeworks::cudapoa::StatusType s = cudapoa_batch_.add_seq_to_poa(seq.first, seq.second);
+            if (s != genomeworks::cudapoa::StatusType::SUCCESS)
             {
                 fprintf(stderr, "Could not add sequence to POA in batch %d.\n",
                         cudapoa_batch_.batch_id());
