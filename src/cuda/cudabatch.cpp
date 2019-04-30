@@ -23,14 +23,14 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32
 
 CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
     : max_windows_(max_windows)
-    , cudapoa_batch_(max_windows, max_window_depth, device)
+    , cudapoa_batch_(genomeworks::cudapoa::create_batch(max_windows, max_window_depth, device))
     , windows_()
 {
     bid_ = CUDABatchProcessor::batches++;
     
     // Create new CUDA stream.
     CU_CHECK_ERR(cudaStreamCreate(&stream_));
-    cudapoa_batch_.set_cuda_stream(stream_);
+    cudapoa_batch_->set_cuda_stream(stream_);
 }
 
 CUDABatchProcessor::~CUDABatchProcessor()
@@ -63,11 +63,11 @@ void CUDABatchProcessor::generateMemoryMap()
     for(uint32_t w = 0; w < num_windows; w++)
     {
         // Add new poa
-        genomeworks::cudapoa::StatusType s = cudapoa_batch_.add_poa();
+        genomeworks::cudapoa::StatusType s = cudapoa_batch_->add_poa();
         if (s != genomeworks::cudapoa::StatusType::SUCCESS)
         {
             fprintf(stderr, "Failed to add new to batch %d.\n",
-                    cudapoa_batch_.batch_id());
+                    cudapoa_batch_->batch_id());
             exit(1);
         }
 
@@ -76,7 +76,7 @@ void CUDABatchProcessor::generateMemoryMap()
 
         // Add first sequence as backbone to graph.
         std::pair<const char*, uint32_t> seq = window->sequences_.front();
-        cudapoa_batch_.add_seq_to_poa(seq.first, seq.second);
+        cudapoa_batch_->add_seq_to_poa(seq.first, seq.second);
 
         // Add the rest of the sequences in sorted order of starting positions.
         std::vector<uint32_t> rank;
@@ -95,11 +95,11 @@ void CUDABatchProcessor::generateMemoryMap()
             uint32_t i = rank.at(j);
             // Add sequences to latest poa in batch.
             seq = window->sequences_.at(i);
-            genomeworks::cudapoa::StatusType s = cudapoa_batch_.add_seq_to_poa(seq.first, seq.second);
+            genomeworks::cudapoa::StatusType s = cudapoa_batch_->add_seq_to_poa(seq.first, seq.second);
             if (s != genomeworks::cudapoa::StatusType::SUCCESS)
             {
                 fprintf(stderr, "Could not add sequence to POA in batch %d.\n",
-                        cudapoa_batch_.batch_id());
+                        cudapoa_batch_->batch_id());
                 exit(1);
             }
         }
@@ -109,14 +109,14 @@ void CUDABatchProcessor::generateMemoryMap()
 void CUDABatchProcessor::generatePOA()
 {
     // call generate poa function
-    cudapoa_batch_.generate_poa();
+    cudapoa_batch_->generate_poa();
 }
 
 void CUDABatchProcessor::getConsensus()
 {
     std::vector<std::string> consensuses;
     std::vector<std::vector<uint16_t>> coverages;
-    cudapoa_batch_.get_consensus(consensuses, coverages);
+    cudapoa_batch_->get_consensus(consensuses, coverages);
 
     for(uint32_t i = 0; i < windows_.size(); i++)
     {
@@ -181,7 +181,7 @@ void CUDABatchProcessor::reset()
 {
     windows_.clear();
     window_consensus_status_.clear();
-    cudapoa_batch_.reset();
+    cudapoa_batch_->reset();
 }
 
 } // namespace racon
