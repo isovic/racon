@@ -10,7 +10,7 @@
 #include <cuda_runtime_api.h>
 
 #include "window.hpp"
-#include "cudapoa/cudapoa_batch.hpp"
+#include "cudapoa/batch.hpp"
 
 namespace racon {
 
@@ -103,7 +103,7 @@ protected:
     uint32_t max_windows_;
 
     // CUDA-POA library object that manages POA batch.
-    genomeworks::cudapoa::Batch cudapoa_batch_;
+    std::unique_ptr<genomeworks::cudapoa::Batch> cudapoa_batch_;
 
     // Stream for running POA batch.
     cudaStream_t stream_;
