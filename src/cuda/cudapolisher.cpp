@@ -30,6 +30,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
 {
     std::cerr << "[CUDAPolisher] Constructed." << std::endl;
 
+    genomeworks::cudapoa::Init();
     const uint32_t MAX_WINDOWS = 256;
     const uint32_t MAX_DEPTH_PER_WINDOW = 500;
 
