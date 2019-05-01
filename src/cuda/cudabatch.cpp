@@ -64,7 +64,7 @@ void CUDABatchProcessor::generateMemoryMap()
     {
         // Add new poa
         genomeworks::cudapoa::StatusType s = cudapoa_batch_->add_poa();
-        if (s != genomeworks::cudapoa::StatusType::SUCCESS)
+        if (s != genomeworks::cudapoa::StatusType::success)
         {
             fprintf(stderr, "Failed to add new to batch %d.\n",
                     cudapoa_batch_->batch_id());
@@ -96,7 +96,7 @@ void CUDABatchProcessor::generateMemoryMap()
             // Add sequences to latest poa in batch.
             seq = window->sequences_.at(i);
             genomeworks::cudapoa::StatusType s = cudapoa_batch_->add_seq_to_poa(seq.first, seq.second);
-            if (s != genomeworks::cudapoa::StatusType::SUCCESS)
+            if (s != genomeworks::cudapoa::StatusType::success)
             {
                 fprintf(stderr, "Could not add sequence to POA in batch %d.\n",
                         cudapoa_batch_->batch_id());
