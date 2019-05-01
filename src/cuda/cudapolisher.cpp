@@ -11,6 +11,7 @@
 
 #include "sequence.hpp"
 #include "cudapolisher.hpp"
+#include <cudautils/cudautils.hpp>
 
 #include "bioparser/bioparser.hpp"
 
@@ -35,7 +36,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     const uint32_t MAX_DEPTH_PER_WINDOW = 500;
 
     int32_t num_devices;
-    CU_CHECK_ERR(cudaGetDeviceCount(&num_devices));
+    GW_CU_CHECK_ERR(cudaGetDeviceCount(&num_devices));
     std::cerr << "Using " << num_devices << " GPU(s) to perform polishing" << std::endl;
 
 #ifdef DEBUG
