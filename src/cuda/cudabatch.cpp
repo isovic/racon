@@ -12,6 +12,8 @@
 #include "cudabatch.hpp"
 #include "cudautils.hpp"
 
+#include <cudautils/cudautils.hpp>
+
 namespace racon {
 
 uint32_t CUDABatchProcessor::batches = 0;
@@ -29,14 +31,14 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     bid_ = CUDABatchProcessor::batches++;
     
     // Create new CUDA stream.
-    CU_CHECK_ERR(cudaStreamCreate(&stream_));
+    GW_CU_CHECK_ERR(cudaStreamCreate(&stream_));
     cudapoa_batch_->set_cuda_stream(stream_);
 }
 
 CUDABatchProcessor::~CUDABatchProcessor()
 {
     // Destroy CUDA stream.
-    CU_CHECK_ERR(cudaStreamDestroy(stream_));
+    GW_CU_CHECK_ERR(cudaStreamDestroy(stream_));
 }
 
 bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
