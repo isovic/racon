@@ -59,6 +59,12 @@ protected:
 #else
     uint32_t next_window_index_ = 0;
 #endif
+
+    // Number of batches for POA processing.
+    uint32_t cuda_batches_;
+
+    // Number of GPU devices to run with.
+    int32_t num_devices_;
 };
 
 }
