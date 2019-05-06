@@ -28,28 +28,33 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         : Polisher(std::move(sparser), std::move(oparser), std::move(tparser),
                 type, window_length, quality_threshold,
                 error_threshold, match, mismatch, gap, num_threads)
+        , cuda_batches_(cuda_batches)
 {
-    std::cerr << "[CUDAPolisher] Constructed." << std::endl;
-
-    genomeworks::cudapoa::Init();
-    const uint32_t MAX_WINDOWS = 256;
-    const uint32_t MAX_DEPTH_PER_WINDOW = 500;
-
-    int32_t num_devices;
-    GW_CU_CHECK_ERR(cudaGetDeviceCount(&num_devices));
-    std::cerr << "Using " << num_devices << " GPU(s) to perform polishing" << std::endl;
-
 #ifdef DEBUG
     window_length_ = 200;
     std::cerr << "In DEBUG mode. Using window size of " << window_length_ << std::endl;
-    for(uint32_t i = 0; i < 1; i++)
-#else
-    for(uint32_t i = 0; i < cuda_batches; i++)
 #endif
+
+    genomeworks::cudapoa::Init();
+
+    GW_CU_CHECK_ERR(cudaGetDeviceCount(&num_devices_));
+
+    if (num_devices_ < 1)
     {
-        uint32_t device = i % num_devices;
-        batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW, device));
+        throw std::runtime_error("No GPU devices found.");
     }
+
+    std::cerr << "Using " << num_devices_ << " GPU(s) to perform polishing" << std::endl;
+
+    // Run dummy call on each device to initialize CUDA context.
+    for(int32_t dev_id = 0; dev_id < num_devices_; dev_id++)
+    {
+        std::cerr << "Initialize device " << dev_id << std::endl;
+        GW_CU_CHECK_ERR(cudaSetDevice(dev_id));
+        GW_CU_CHECK_ERR(cudaFree(0));
+    }
+
+    std::cerr << "[CUDAPolisher] Constructed." << std::endl;
 }
 
 CUDAPolisher::~CUDAPolisher()
@@ -130,10 +135,37 @@ void CUDAPolisher::processBatch(uint32_t batch_id)
 void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     bool drop_unpolished_sequences)
 {
-    // Dummy polish function.
-    std::cerr << "Starting CUDA polish" << std::endl;
+    std::cerr << "[CUDAPolisher] Allocating memory on GPUs." << std::endl;
+    std::chrono::high_resolution_clock::time_point alloc_start = std::chrono::high_resolution_clock::now();
+    const uint32_t MAX_WINDOWS = 256;
+    const uint32_t MAX_DEPTH_PER_WINDOW = 500;
 
-    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+    // Bin batches into each GPU.
+    std::vector<uint32_t> batches_per_gpu(num_devices_, 0);
+
+#ifdef DEBUG
+    for(uint32_t i = 0; i < 1; i++)
+#else
+    for(uint32_t i = 0; i < cuda_batches_; i++)
+#endif
+    {
+        uint32_t device = i % num_devices_;
+        batches_per_gpu.at(device) = batches_per_gpu.at(device) + 1;
+    }
+
+    for(int32_t device = 0; device < num_devices_; device++)
+    {
+        for(uint32_t batch = 0; batch < batches_per_gpu.at(device); batch++)
+        {
+            batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW, device));
+        }
+    }
+
+    std::chrono::high_resolution_clock::time_point polish_start = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(polish_start - alloc_start).count();
+    std::cerr << "[CUDAPolisher] Allocated memory in " << ((double)duration / 1000) << " s." << std::endl;
+
+    std::cerr << "[CUDAPolisher] Starting CUDA polish." << std::endl;
 
     // Initialize window consensus statuses.
     window_consensus_status_.resize(windows_.size(), false);
@@ -167,7 +199,6 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
             double polished_ratio = num_polished_windows /
                 static_cast<double>(windows_[i]->rank() + 1);
-            //double polished_ratio = 1.0f;
 
             if (!drop_unpolished_sequences || polished_ratio > 0) {
                 std::string tags = type_ == PolisherType::kF ? "r" : "";
@@ -184,9 +215,12 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         windows_[i].reset();
     }
 
-    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    std::chrono::high_resolution_clock::time_point polish_end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(polish_end - polish_start).count();
     std::cerr << "[CUDAPolisher] Polished in " << ((double)duration / 1000) << " s." << std::endl;
+
+    // Clear POA processors.
+    batch_processors_.clear();
 }
 
 }
