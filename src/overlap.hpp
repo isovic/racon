@@ -71,6 +71,10 @@ public:
     friend bioparser::MhapParser<Overlap>;
     friend bioparser::PafParser<Overlap>;
     friend bioparser::SamParser<Overlap>;
+
+#ifdef CUDA_ENABLED
+    friend class CUDABatchAligner;
+#endif
 private:
     Overlap(uint64_t a_id, uint64_t b_id, double accuracy, uint32_t minmers,
         uint32_t a_rc, uint32_t a_begin, uint32_t a_end, uint32_t a_length,
@@ -89,6 +93,8 @@ private:
     Overlap();
     Overlap(const Overlap&) = delete;
     const Overlap& operator=(const Overlap&) = delete;
+    virtual void find_breaking_points_from_cigar(uint32_t window_length);
+    virtual void align_overlaps(const char* q, uint32_t q_len, const char* t, uint32_t t_len);
 
     std::string q_name_;
     uint64_t q_id_;

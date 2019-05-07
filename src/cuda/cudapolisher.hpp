@@ -10,6 +10,7 @@
 
 #include "polisher.hpp"
 #include "cudabatch.hpp"
+#include "cudaaligner.hpp"
 
 namespace racon {
 
@@ -35,6 +36,7 @@ protected:
         uint32_t num_threads, uint32_t cuda_batches);
     CUDAPolisher(const CUDAPolisher&) = delete;
     const CUDAPolisher& operator=(const CUDAPolisher&) = delete;
+    virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps) override;
 
     // Insert new windows into the batch referred to by batch_id. Return
     // the range of windows added to the batch. Interval closed in front, open
@@ -44,8 +46,11 @@ protected:
     // Generate POA for all windows in the batch.
     void processBatch(uint32_t batch_id);
 
-    // Vector of batches. Generated during construction time.
+    // Vector of POA batches.
     std::vector<std::unique_ptr<CUDABatchProcessor>> batch_processors_;
+
+    // Vector of aligner batches.
+    std::vector<std::unique_ptr<CUDABatchAligner>> batch_aligners_;
 
     // Vector of bool indicating consensus generation status for each window.
     std::vector<bool> window_consensus_status_;

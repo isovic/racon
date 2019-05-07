@@ -49,7 +49,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
 
 class Polisher {
 public:
-    ~Polisher();
+    virtual ~Polisher();
 
     virtual void initialize();
 
@@ -71,6 +71,7 @@ protected:
         uint32_t num_threads);
     Polisher(const Polisher&) = delete;
     const Polisher& operator=(const Polisher&) = delete;
+    virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps);
 
     std::unique_ptr<bioparser::Parser<Sequence>> sparser_;
     std::unique_ptr<bioparser::Parser<Overlap>> oparser_;
