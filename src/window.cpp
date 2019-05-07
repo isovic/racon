@@ -86,6 +86,7 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         spoa::Alignment alignment;
 #ifdef CUDA_ENABLED
 #pragma message("TODO: In CUDA mode, ignore subgraph")
+        (void) offset;
         alignment = alignment_engine->align_sequence_with_graph(
                 sequences_[i].first, sequences_[i].second, graph);
 #else

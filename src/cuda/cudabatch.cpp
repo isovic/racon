@@ -156,7 +156,7 @@ void CUDABatchProcessor::getConsensus()
 
                 if (begin >= end) {
                     fprintf(stderr, "[CUDABatchProcessor] warning: "
-                            "contig might be chimeric in window %u!\n", window->id_, window->rank_);
+                            "contig might be chimeric in window %lu!\n", window->id_);
                 } else {
                     window->consensus_ =  window->consensus_.substr(begin, end - begin + 1);
                 }
