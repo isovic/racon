@@ -38,6 +38,14 @@ protected:
     const CUDAPolisher& operator=(const CUDAPolisher&) = delete;
     virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps) override;
 
+    // Insert new windows into the batch referred to by batch_id. Return
+    // the range of windows added to the batch. Interval closed in front, open
+    // at the end.
+    std::pair<uint32_t, uint32_t> fillNextBatchOfWindows(uint32_t batch_id);
+
+    // Generate POA for all windows in the batch.
+    void processBatch(uint32_t batch_id);
+
     // Vector of POA batches.
     std::vector<std::unique_ptr<CUDABatchProcessor>> batch_processors_;
 
@@ -46,6 +54,16 @@ protected:
 
     // Vector of bool indicating consensus generation status for each window.
     std::vector<bool> window_consensus_status_;
+
+    // Mutex for accessing the vector of windows.
+    std::mutex mutex_windows_;
+
+    // Index of next window to be added to a batch.
+#ifdef DEBUG
+    uint32_t next_window_index_ = 5000;
+#else
+    uint32_t next_window_index_ = 0;
+#endif
 
     // Number of batches for POA processing.
     uint32_t cuda_batches_;
