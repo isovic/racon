@@ -36,6 +36,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
 #endif
 
     genomeworks::cudapoa::Init();
+    genomeworks::cudaaligner::Init();
 
     GW_CU_CHECK_ERR(cudaGetDeviceCount(&num_devices_));
 
@@ -61,6 +62,92 @@ CUDAPolisher::~CUDAPolisher()
 {
     cudaDeviceSynchronize();
     cudaProfilerStop();
+}
+
+void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
+{
+    std::cerr << "[CUDAPolisher] Finding overlaps on GPUs." << std::endl;
+    std::chrono::high_resolution_clock::time_point overlap_start = std::chrono::high_resolution_clock::now();
+
+    std::mutex mutex_overlaps;
+    uint32_t next_overlap_index = 0;
+
+    // Lambda expression for filling up next batch of alignments.
+    auto fill_next_batch = [&mutex_overlaps, &next_overlap_index, &overlaps, this](CUDABatchAligner* batch) -> void {
+        batch->reset();
+
+        // Use mutex to read the vector containing windows in a threadsafe manner.
+        std::lock_guard<std::mutex> guard(mutex_overlaps);
+
+        uint32_t initial_count = next_overlap_index;
+        uint32_t count = overlaps.size();
+        while(next_overlap_index < count)
+        {
+            if (batch->addOverlap(overlaps.at(next_overlap_index).get(), sequences_))
+            {
+                next_overlap_index++;
+            }
+            else
+            {
+                break;
+            }
+        }
+        if (next_overlap_index - initial_count > 0)
+        {
+            fprintf(stderr, "Processing overlaps %d - %d (of %d) in batch %d\n",
+                    initial_count,
+                    next_overlap_index ,
+                    count,
+                    batch->getBatchID());
+        }
+    };
+
+    // Lambda expression for processing a batch of alignments.
+    auto process_batch = [&fill_next_batch](CUDABatchAligner* batch) -> void {
+        while(true)
+        {
+            fill_next_batch(batch);
+            if (batch->hasOverlaps())
+            {
+                // Launch workload.
+                batch->alignAll();
+            }
+            else
+            {
+                break;
+            }
+        }
+    };
+
+    // Create batches based on arguments provided to program.
+    for(uint32_t batch = 0; batch < cuda_batches_; batch++)
+    {
+        batch_aligners_.emplace_back(createCUDABatchAligner(10000, 10000, 1000, 0));
+    }
+
+    // Run batched alignment.
+    std::vector<std::future<void>> thread_futures;
+    for(uint32_t i = 0; i < batch_aligners_.size(); i++)
+    {
+        thread_futures.emplace_back(std::async(std::launch::async,
+                                               process_batch,
+                                               batch_aligners_.at(i).get())
+                                   );
+    }
+
+    // Wait for threads to finish, and collect their results.
+    for (const auto& future : thread_futures) {
+        future.wait();
+    }
+
+    batch_aligners_.clear();
+
+    std::chrono::high_resolution_clock::time_point overlap_end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(overlap_end - overlap_start).count();
+    std::cerr << "[CUDAPolisher] Polished in " << ((double)duration / 1000) << " s." << std::endl;
+
+    // TODO: Kept CPU overlap alignment right now while GPU is a dummy implmentation.
+    Polisher::find_overlap_breaking_points(overlaps);
 }
 
 std::pair<uint32_t, uint32_t> CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
