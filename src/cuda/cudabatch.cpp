@@ -98,7 +98,17 @@ void CUDABatchProcessor::generateMemoryMap()
             // Add sequences to latest poa in batch.
             seq = window->sequences_.at(i);
             genomeworks::cudapoa::StatusType s = cudapoa_batch_->add_seq_to_poa(seq.first, seq.second);
-            if (s != genomeworks::cudapoa::StatusType::success)
+            if (s == genomeworks::cudapoa::StatusType::exceeded_maximum_sequence_size)
+            {
+                fprintf(stderr, "Sequence length exceeds allowed size, discarding this sequence.\n");
+                continue;
+            } 
+            else if (s == genomeworks::cudapoa::StatusType::exceeded_maximum_sequences_per_poa) 
+            {
+                fprintf(stderr, "More sequences than allowed size, discarding the extra sequences.\n");
+                break;
+            } 
+            else if (s != genomeworks::cudapoa::StatusType::success)
             {
                 fprintf(stderr, "Could not add sequence to POA in batch %d.\n",
                         cudapoa_batch_->batch_id());
