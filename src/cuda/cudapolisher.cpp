@@ -150,78 +150,89 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
     Polisher::find_overlap_breaking_points(overlaps);
 }
 
-std::pair<uint32_t, uint32_t> CUDAPolisher::fillNextBatchOfWindows(uint32_t batch_id)
-{
-    batch_processors_.at(batch_id)->reset();
-
-    // Use mutex to read the vector containing windows in a threadsafe manner.
-    std::lock_guard<std::mutex> guard(mutex_windows_);
-
-    // TODO: Reducing window wize by 10 for debugging.
-    uint32_t initial_count = next_window_index_;
-#ifdef DEBUG
-    uint32_t count = 5001;//windows_.size();
-#else
-    uint32_t count = windows_.size();
-#endif
-    while(next_window_index_ < count)
-    {
-        if (batch_processors_.at(batch_id)->addWindow(windows_.at(next_window_index_)))
-        {
-            next_window_index_++;
-        }
-        else
-        {
-            break;
-        }
-    }
-    if (next_window_index_ - initial_count > 0)
-    {
-        fprintf(stderr, "Processing windows %d - %d (of %d) in batch %d\n",
-                initial_count,
-                next_window_index_ ,
-                count,
-                batch_processors_.at(batch_id)->getBatchID());
-    }
-
-    return std::pair<uint32_t, uint32_t>(initial_count, next_window_index_);
-}
-
-void CUDAPolisher::processBatch(uint32_t batch_id)
-{
-    while(true)
-    {
-        std::pair<uint32_t, uint32_t> range = fillNextBatchOfWindows(batch_id);
-        if (batch_processors_.at(batch_id)->hasWindows())
-        {
-            // Launch workload.
-            const std::vector<bool>& results = batch_processors_.at(batch_id)->generateConsensus();
-
-            // Check if the number of batches processed is same as the range of
-            // of windows that were added.
-            if (results.size() != (range.second - range.first))
-            {
-                throw std::runtime_error("Windows processed doesn't match \
-                        range of windows passed to batch\n");
-            }
-
-            // Copy over the results from the batch into the per window
-            // result vector of the CUDAPolisher.
-            for(uint32_t i = 0; i < results.size(); i++)
-            {
-                window_consensus_status_.at(range.first + i) = results.at(i);
-            }
-        }
-        else
-        {
-            break;
-        }
-    }
-}
-
 void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     bool drop_unpolished_sequences)
 {
+    // Mutex for accessing the vector of windows.
+    std::mutex mutex_windows;
+
+    // Index of next window to be added to a batch.
+#ifdef DEBUG
+    uint32_t next_window_index = 5000;
+#else
+    uint32_t next_window_index = 0;
+#endif
+
+    // Lambda function for adding windows to batches.
+    auto fill_next_batch = [&mutex_windows, &next_window_index, this](CUDABatchProcessor* batch) -> std::pair<uint32_t, uint32_t> {
+        batch->reset();
+
+        // Use mutex to read the vector containing windows in a threadsafe manner.
+        std::lock_guard<std::mutex> guard(mutex_windows);
+
+        // TODO: Reducing window wize by 10 for debugging.
+        uint32_t initial_count = next_window_index;
+#ifdef DEBUG
+        uint32_t count = 5001;//windows_.size();
+#else
+        uint32_t count = windows_.size();
+#endif
+        while(next_window_index < count)
+        {
+            if (batch->addWindow(windows_.at(next_window_index)))
+            {
+                next_window_index++;
+            }
+            else
+            {
+                break;
+            }
+        }
+        if (next_window_index - initial_count > 0)
+        {
+            fprintf(stderr, "Processing windows %d - %d (of %d) in batch %d\n",
+                    initial_count,
+                    next_window_index ,
+                    count,
+                    batch->getBatchID());
+        }
+
+        return std::pair<uint32_t, uint32_t>(initial_count, next_window_index);
+    };
+
+    // Lambda function for processing each batch.
+    auto process_batch = [&fill_next_batch, this](CUDABatchProcessor* batch) -> void {
+        while(true)
+        {
+            std::pair<uint32_t, uint32_t> range = fill_next_batch(batch);
+            if (batch->hasWindows())
+            {
+                // Launch workload.
+                const std::vector<bool>& results = batch->generateConsensus();
+
+                // Check if the number of batches processed is same as the range of
+                // of windows that were added.
+                if (results.size() != (range.second - range.first))
+                {
+                    throw std::runtime_error("Windows processed doesn't match \
+                            range of windows passed to batch\n");
+                }
+
+                // Copy over the results from the batch into the per window
+                // result vector of the CUDAPolisher.
+                for(uint32_t i = 0; i < results.size(); i++)
+                {
+                    window_consensus_status_.at(range.first + i) = results.at(i);
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+    };
+
+    // Creation and use of batches.
     std::cerr << "[CUDAPolisher] Allocating memory on GPUs." << std::endl;
     std::chrono::high_resolution_clock::time_point alloc_start = std::chrono::high_resolution_clock::now();
     const uint32_t MAX_WINDOWS = 256;
@@ -262,16 +273,14 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     for(uint32_t i = 0; i < batch_processors_.size(); i++)
     {
         thread_futures.emplace_back(std::async(std::launch::async,
-                                               &CUDAPolisher::processBatch,
-                                               this,
-                                               i)
+                                               process_batch,
+                                               batch_processors_.at(i).get())
                                    );
     }
 
     // Wait for threads to finish, and collect their results.
-    for(uint32_t i = 0; i < thread_futures.size(); i++)
-    {
-        thread_futures.at(i).wait();
+    for (const auto& future : thread_futures) {
+        future.wait();
     }
 
     // Collect results from all windows into final output.
