@@ -16,7 +16,7 @@
 
 namespace racon {
 
-uint32_t CUDABatchProcessor::batches = 0;
+std::atomic<uint32_t> CUDABatchProcessor::batches;
 
 std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
 {
