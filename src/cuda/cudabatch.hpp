@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <cuda_runtime_api.h>
+#include <atomic>
 
 #include "window.hpp"
 #include "cudapoa/batch.hpp"
@@ -94,7 +95,7 @@ protected:
 
 protected:
     // Static batch count used to generate batch IDs.
-    static uint32_t batches;
+    static std::atomic<uint32_t> batches;
 
     // Batch ID.
     uint32_t bid_ = 0;
