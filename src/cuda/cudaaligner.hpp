@@ -49,6 +49,12 @@ class CUDABatchAligner
         virtual void alignAll();
 
         /**
+         * @brief Find breaking points in alignments.
+         *
+         */
+        virtual void find_breaking_points(uint32_t window_length);
+
+        /**
          * @brief Resets the state of the object, which includes
          *        resetting buffer states and counters.
          */
