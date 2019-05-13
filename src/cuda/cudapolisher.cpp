@@ -103,7 +103,7 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
     };
 
     // Lambda expression for processing a batch of alignments.
-    auto process_batch = [&fill_next_batch](CUDABatchAligner* batch) -> void {
+    auto process_batch = [&fill_next_batch, this](CUDABatchAligner* batch) -> void {
         while(true)
         {
             fill_next_batch(batch);
@@ -111,6 +111,7 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
             {
                 // Launch workload.
                 batch->alignAll();
+                batch->find_breaking_points(window_length_);
             }
             else
             {
@@ -122,7 +123,7 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
     // Create batches based on arguments provided to program.
     for(uint32_t batch = 0; batch < cuda_batches_; batch++)
     {
-        batch_aligners_.emplace_back(createCUDABatchAligner(10000, 10000, 1000, 0));
+        batch_aligners_.emplace_back(createCUDABatchAligner(20000, 20000, 1000, 0));
     }
 
     // Run batched alignment.

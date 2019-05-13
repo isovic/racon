@@ -76,6 +76,21 @@ void CUDABatchAligner::alignAll()
     aligner_->align_all();
 }
 
+void CUDABatchAligner::find_breaking_points(uint32_t window_length)
+{
+    const std::vector<std::shared_ptr<genomeworks::cudaaligner::Alignment>>& alignments = aligner_->get_alignments();
+    // Number of alignments should be the same as number of overlaps.
+    if (overlaps_.size() != alignments.size())
+    {
+        throw std::runtime_error("Number of alignments doesn't match number of overlaps in cudaaligner.");
+    }
+    for(std::size_t a = 0; a < alignments.size(); a++)
+    {
+        overlaps_[a]->cigar_ = alignments[a]->convert_to_cigar();
+        overlaps_[a]->find_breaking_points_from_cigar(window_length);
+    }
+}
+
 void CUDABatchAligner::reset()
 {
     overlaps_.clear();
