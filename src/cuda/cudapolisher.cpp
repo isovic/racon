@@ -29,6 +29,9 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
                 type, window_length, quality_threshold,
                 error_threshold, match, mismatch, gap, num_threads)
         , cuda_batches_(cuda_batches)
+        , gap_(gap)
+        , mismatch_(mismatch)
+        , match_(match)
 {
 #ifdef DEBUG
     window_length_ = 200;
@@ -256,7 +259,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     {
         for(uint32_t batch = 0; batch < batches_per_gpu.at(device); batch++)
         {
-            batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW, device));
+            batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW, device, gap_, mismatch_, match_));
         }
     }
 

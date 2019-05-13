@@ -18,14 +18,14 @@ namespace racon {
 
 std::atomic<uint32_t> CUDABatchProcessor::batches;
 
-std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
+std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match)
 {
-    return std::unique_ptr<CUDABatchProcessor>(new CUDABatchProcessor(max_windows, max_window_depth, device));
+    return std::unique_ptr<CUDABatchProcessor>(new CUDABatchProcessor(max_windows, max_window_depth, device, gap, mismatch, match));
 }
 
-CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device)
+CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match)
     : max_windows_(max_windows)
-    , cudapoa_batch_(genomeworks::cudapoa::create_batch(max_windows, max_window_depth, device))
+    , cudapoa_batch_(genomeworks::cudapoa::create_batch(max_windows, max_window_depth, device, gap, mismatch, match))
     , windows_()
 {
     bid_ = CUDABatchProcessor::batches++;
