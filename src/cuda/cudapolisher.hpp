@@ -52,6 +52,11 @@ protected:
 
     // Number of GPU devices to run with.
     int32_t num_devices_;
+
+    // State transition scores.
+    int8_t gap_;
+    int8_t mismatch_;
+    int8_t match_;
 };
 
 }
