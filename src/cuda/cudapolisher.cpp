@@ -24,7 +24,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     std::unique_ptr<bioparser::Parser<Sequence>> tparser,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-    uint32_t num_threads, uint32_t cuda_batches)
+    uint32_t num_threads, uint32_t cuda_batches, bool cuda_banded_alignment)
         : Polisher(std::move(sparser), std::move(oparser), std::move(tparser),
                 type, window_length, quality_threshold,
                 error_threshold, match, mismatch, gap, num_threads)
@@ -32,6 +32,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         , gap_(gap)
         , mismatch_(mismatch)
         , match_(match)
+        , cuda_banded_alignment_(cuda_banded_alignment)
 {
 #ifdef DEBUG
     window_length_ = 200;
@@ -259,7 +260,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     {
         for(uint32_t batch = 0; batch < batches_per_gpu.at(device); batch++)
         {
-            batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW, device, gap_, mismatch_, match_));
+            batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW, device, gap_, mismatch_, match_, cuda_banded_alignment_));
         }
     }
 

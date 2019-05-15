@@ -56,7 +56,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-    uint32_t num_threads, uint32_t cuda_batches) {
+    uint32_t num_threads, uint32_t cuda_batches, bool cuda_banded_alignment) {
 
     if (type != PolisherType::kC && type != PolisherType::kF) {
         fprintf(stderr, "[racon::createPolisher] error: invalid polisher type!\n");
@@ -134,7 +134,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         return std::unique_ptr<Polisher>(new CUDAPolisher(std::move(sparser),
                     std::move(oparser), std::move(tparser), type, window_length,
                     quality_threshold, error_threshold, match, mismatch, gap,
-                    num_threads, cuda_batches));
+                    num_threads, cuda_batches, cuda_banded_alignment));
 #else
         fprintf(stderr, "[racon::createPolisher] error: "
                 "Attemping to use CUDA when CUDA support is not available.\n"
@@ -145,6 +145,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     }
     else
     {
+        (void) cuda_banded_alignment;
         return std::unique_ptr<Polisher>(new Polisher(std::move(sparser),
                     std::move(oparser), std::move(tparser), type, window_length,
                     quality_threshold, error_threshold, match, mismatch, gap,
