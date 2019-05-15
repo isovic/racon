@@ -25,6 +25,7 @@ static struct option options[] = {
     {"gap", required_argument, 0, 'g'},
     {"threads", required_argument, 0, 't'},
     {"cuda-batches", optional_argument, 0, 'c'},
+    {"cuda-banded-alignment", no_argument, 0, 'b'},
     {"version", no_argument, 0, 'v'},
     {"help", no_argument, 0, 'h'},
     {0, 0, 0, 0}
@@ -49,10 +50,11 @@ int main(int argc, char** argv) {
     uint32_t num_threads = 1;
 
     uint32_t cuda_batches = 0;
+    bool cuda_banded_alignment = false;
 
     std::string optstring = "ufw:q:e:m:x:g:t:h";
 #ifdef CUDA_ENABLED
-    optstring += "c::";
+    optstring += "bc::";
 #endif
 
     char argument;
@@ -105,6 +107,10 @@ int main(int argc, char** argv) {
                     cuda_batches = atoi(optarg);
                 }
                 break;
+            case 'b':
+                cuda_banded_alignment = true;
+                break;
+
 #endif
             default:
                 exit(1);
@@ -124,7 +130,7 @@ int main(int argc, char** argv) {
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
         input_paths[2], type == 0 ? racon::PolisherType::kC :
         racon::PolisherType::kF, window_length, quality_threshold,
-        error_threshold, match, mismatch, gap, num_threads, cuda_batches);
+        error_threshold, match, mismatch, gap, num_threads, cuda_batches, cuda_banded_alignment);
 
     polisher->initialize();
 
@@ -189,6 +195,10 @@ void help() {
         "        -c, --cuda-batches\n"
         "            default: 1\n"
         "            number of batches for CUDA accelerated polishing\n"
+        "        -b, --cuda-banded-alignment\n"
+        "            default: 0\n"
+        "            use banding approximation for alignment on GPU\n"
+
 #endif
     );
 }

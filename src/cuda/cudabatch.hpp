@@ -18,7 +18,7 @@ namespace racon {
 class Window;
 
 class CUDABatchProcessor;
-std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match);
+std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment);
 
 class CUDABatchProcessor
 {
@@ -61,7 +61,7 @@ public:
 
     // Builder function to create a new CUDABatchProcessor object.
     friend std::unique_ptr<CUDABatchProcessor>
-    createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match);
+    createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment);
 
 protected:
     /**
@@ -69,8 +69,9 @@ protected:
      *
      * @param[in] max_windows      : Maximum number windows in batch
      * @param[in] max_window_depth : Maximum number of sequences per window
+     * @param[in] cuda_banded_alignment : Use banded POA alignment
      */
-    CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match);
+    CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment);
     CUDABatchProcessor(const CUDABatchProcessor&) = delete;
     const CUDABatchProcessor& operator=(const CUDABatchProcessor&) = delete;
 

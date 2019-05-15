@@ -25,7 +25,7 @@ public:
         const std::string& overlaps_path, const std::string& target_path,
         PolisherType type, uint32_t window_length, double quality_threshold,
         double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-        uint32_t num_threads, uint32_t cuda_batches);
+        uint32_t num_threads, uint32_t cuda_batches, bool cuda_banded_alignment);
 
 protected:
     CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
@@ -33,7 +33,7 @@ protected:
         std::unique_ptr<bioparser::Parser<Sequence>> tparser,
         PolisherType type, uint32_t window_length, double quality_threshold,
         double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-        uint32_t num_threads, uint32_t cuda_batches);
+        uint32_t num_threads, uint32_t cuda_batches, bool cuda_banded_alignment);
     CUDAPolisher(const CUDAPolisher&) = delete;
     const CUDAPolisher& operator=(const CUDAPolisher&) = delete;
     virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps) override;
@@ -57,6 +57,9 @@ protected:
     int8_t gap_;
     int8_t mismatch_;
     int8_t match_;
+
+    // Use banded POA alignment
+    bool cuda_banded_alignment_;
 };
 
 }
