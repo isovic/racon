@@ -94,6 +94,21 @@ protected:
      */
     void getConsensus();
 
+    /*
+     * @brief Convert PHRED quality scores to weights.
+     *
+     */
+    void convertPhredQualityToWeights(const char* qual,
+                                      uint32_t qual_length,
+                                      std::vector<uint8_t>& weights);
+
+    /*
+     * @brief Add sequence and qualities to cudapoa.
+     *
+     */
+    genomeworks::cudapoa::StatusType addSequenceToPoa(std::pair<const char*, uint32_t>& seq,
+                                                      std::pair<const char*, uint32_t>& quality);
+
 protected:
     // Static batch count used to generate batch IDs.
     static std::atomic<uint32_t> batches;

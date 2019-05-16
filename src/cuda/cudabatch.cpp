@@ -59,14 +59,43 @@ bool CUDABatchProcessor::hasWindows() const
     return (windows_.size() != 0);
 }
 
+void CUDABatchProcessor::convertPhredQualityToWeights(const char* qual,
+                                                      uint32_t qual_length,
+                                                      std::vector<uint8_t>& weights)
+{
+    weights.clear();
+    for(uint32_t i = 0; i < qual_length; i++)
+    {
+        weights.push_back(static_cast<uint8_t>(qual[i]) - 33); // PHRED quality
+    }
+}
+
+genomeworks::cudapoa::StatusType CUDABatchProcessor::addSequenceToPoa(std::pair<const char*, uint32_t>& seq,
+                                                                      std::pair<const char*, uint32_t>& qualities)
+{
+    // Add sequences to latest poa in batch.
+    std::vector<uint8_t> weights;
+    genomeworks::cudapoa::StatusType status = genomeworks::cudapoa::StatusType::success;
+    if (qualities.first == nullptr)
+    {
+        status = cudapoa_batch_->add_seq_to_poa(seq.first, nullptr, seq.second);
+    }
+    else
+    {
+        convertPhredQualityToWeights(qualities.first, qualities.second, weights);
+        status = cudapoa_batch_->add_seq_to_poa(seq.first, weights.data(), seq.second);
+    }
+    return status;
+}
+
 void CUDABatchProcessor::generateMemoryMap()
 {
     auto num_windows = windows_.size();
     for(uint32_t w = 0; w < num_windows; w++)
     {
         // Add new poa
-        genomeworks::cudapoa::StatusType s = cudapoa_batch_->add_poa();
-        if (s != genomeworks::cudapoa::StatusType::success)
+        genomeworks::cudapoa::StatusType status = cudapoa_batch_->add_poa();
+        if (status != genomeworks::cudapoa::StatusType::success)
         {
             fprintf(stderr, "Failed to add new to batch %d.\n",
                     cudapoa_batch_->batch_id());
@@ -75,10 +104,12 @@ void CUDABatchProcessor::generateMemoryMap()
 
         std::shared_ptr<Window> window = windows_.at(w);
         uint32_t num_seqs = window->sequences_.size();
+        std::vector<uint8_t> weights;
 
         // Add first sequence as backbone to graph.
         std::pair<const char*, uint32_t> seq = window->sequences_.front();
-        cudapoa_batch_->add_seq_to_poa(seq.first, seq.second);
+        std::pair<const char*, uint32_t> qualities = window->qualities_.front();
+        addSequenceToPoa(seq, qualities);
 
         // Add the rest of the sequences in sorted order of starting positions.
         std::vector<uint32_t> rank;
@@ -95,20 +126,21 @@ void CUDABatchProcessor::generateMemoryMap()
         for(uint32_t j = 1; j < num_seqs; j++)
         {
             uint32_t i = rank.at(j);
-            // Add sequences to latest poa in batch.
             seq = window->sequences_.at(i);
-            genomeworks::cudapoa::StatusType s = cudapoa_batch_->add_seq_to_poa(seq.first, seq.second);
-            if (s == genomeworks::cudapoa::StatusType::exceeded_maximum_sequence_size)
+            qualities = window->qualities_.at(i);
+            // Add sequences to latest poa in batch.
+            status = addSequenceToPoa(seq, qualities);
+            if (status == genomeworks::cudapoa::StatusType::exceeded_maximum_sequence_size)
             {
                 fprintf(stderr, "Sequence length exceeds allowed size, discarding this sequence.\n");
                 continue;
             } 
-            else if (s == genomeworks::cudapoa::StatusType::exceeded_maximum_sequences_per_poa) 
+            else if (status == genomeworks::cudapoa::StatusType::exceeded_maximum_sequences_per_poa) 
             {
                 fprintf(stderr, "More sequences than allowed size, discarding the extra sequences.\n");
                 break;
             } 
-            else if (s != genomeworks::cudapoa::StatusType::success)
+            else if (status != genomeworks::cudapoa::StatusType::success)
             {
                 fprintf(stderr, "Could not add sequence to POA in batch %d.\n",
                         cudapoa_batch_->batch_id());
