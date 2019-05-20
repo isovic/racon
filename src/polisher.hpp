@@ -73,6 +73,9 @@ protected:
     const Polisher& operator=(const Polisher&) = delete;
     virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps);
 
+    void log(std::string msg);
+    void bar(std::string msg);
+
     std::unique_ptr<bioparser::Parser<Sequence>> sparser_;
     std::unique_ptr<bioparser::Parser<Overlap>> oparser_;
     std::unique_ptr<bioparser::Parser<Sequence>> tparser_;

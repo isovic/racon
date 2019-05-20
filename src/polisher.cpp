@@ -552,4 +552,14 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     std::vector<std::unique_ptr<Sequence>>().swap(sequences_);
 }
 
+void Polisher::log(std::string msg)
+{
+    (*logger_)(msg);
+}
+
+void Polisher::bar(std::string msg)
+{
+    (*logger_)[msg];
+}
+
 }
