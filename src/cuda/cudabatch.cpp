@@ -27,6 +27,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     : max_windows_(max_windows)
     , cudapoa_batch_(genomeworks::cudapoa::create_batch(max_windows, max_window_depth, device, gap, mismatch, match, cuda_banded_alignment))
     , windows_()
+    , seqs_added_per_window_()
 {
     bid_ = CUDABatchProcessor::batches++;
     
@@ -46,6 +47,7 @@ bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
     if (windows_.size() < max_windows_)
     {
         windows_.push_back(window);
+        seqs_added_per_window_.push_back(0);
         return true;
     }
     else
@@ -97,7 +99,7 @@ void CUDABatchProcessor::generateMemoryMap()
         genomeworks::cudapoa::StatusType status = cudapoa_batch_->add_poa();
         if (status != genomeworks::cudapoa::StatusType::success)
         {
-            fprintf(stderr, "Failed to add new to batch %d.\n",
+            fprintf(stderr, "Failed to add new POA to batch %d.\n",
                     cudapoa_batch_->batch_id());
             exit(1);
         }
@@ -109,7 +111,12 @@ void CUDABatchProcessor::generateMemoryMap()
         // Add first sequence as backbone to graph.
         std::pair<const char*, uint32_t> seq = window->sequences_.front();
         std::pair<const char*, uint32_t> qualities = window->qualities_.front();
-        addSequenceToPoa(seq, qualities);
+        status = addSequenceToPoa(seq, qualities);
+        if (status != genomeworks::cudapoa::StatusType::success)
+        {
+            fprintf(stderr, "Could not add backbone to window. Fatal error.\n");
+            exit(1);
+        }
 
         // Add the rest of the sequences in sorted order of starting positions.
         std::vector<uint32_t> rank;
@@ -123,6 +130,8 @@ void CUDABatchProcessor::generateMemoryMap()
                 return window->positions_[lhs].first < window->positions_[rhs].first; });
 
         // Start from index 1 since first sequence has already been added as backbone.
+        uint32_t long_seq = 0;
+        uint32_t skipped_seq = 0;
         for(uint32_t j = 1; j < num_seqs; j++)
         {
             uint32_t i = rank.at(j);
@@ -132,13 +141,13 @@ void CUDABatchProcessor::generateMemoryMap()
             status = addSequenceToPoa(seq, qualities);
             if (status == genomeworks::cudapoa::StatusType::exceeded_maximum_sequence_size)
             {
-                fprintf(stderr, "Sequence length exceeds allowed size, discarding this sequence.\n");
+                long_seq++;
                 continue;
             } 
             else if (status == genomeworks::cudapoa::StatusType::exceeded_maximum_sequences_per_poa) 
             {
-                fprintf(stderr, "More sequences than allowed size, discarding the extra sequences.\n");
-                break;
+                skipped_seq++;
+                continue;
             } 
             else if (status != genomeworks::cudapoa::StatusType::success)
             {
@@ -146,7 +155,19 @@ void CUDABatchProcessor::generateMemoryMap()
                         cudapoa_batch_->batch_id());
                 exit(1);
             }
+
+            seqs_added_per_window_[w] = seqs_added_per_window_[w] + 1;
         }
+#ifdef DEBUG
+        if (long_seq > 0)
+        {
+            fprintf(stderr, "Too long (%d / %d)\n", long_seq, num_seqs);
+        }
+        if (skipped_seq > 0)
+        {
+            fprintf(stderr, "Skipped (%d / %d)\n", skipped_seq, num_seqs);
+        }
+#endif
     }
 }
 
@@ -182,7 +203,8 @@ void CUDABatchProcessor::getConsensus()
             window->consensus_ = consensuses.at(i);
             if (window->type_ ==  WindowType::kTGS)
             {
-                uint32_t average_coverage = (window->sequences_.size() - 1) / 2;
+                uint32_t num_seqs_in_window = seqs_added_per_window_[i];
+                uint32_t average_coverage = num_seqs_in_window / 2;
 
                 int32_t begin = 0, end =  window->consensus_.size() - 1;
                 for (; begin < static_cast<int32_t>( window->consensus_.size()); ++begin) {
@@ -225,6 +247,7 @@ void CUDABatchProcessor::reset()
 {
     windows_.clear();
     window_consensus_status_.clear();
+    seqs_added_per_window_.clear();
     cudapoa_batch_->reset();
 }
 

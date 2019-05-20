@@ -129,6 +129,9 @@ protected:
 
     // Consensus generation status for each window.
     std::vector<bool> window_consensus_status_;
+
+    // Number of sequences actually added per window.
+    std::vector<uint32_t> seqs_added_per_window_;
 };
 
 } // namespace racon
