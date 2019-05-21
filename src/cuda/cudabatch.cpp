@@ -12,6 +12,7 @@
 #include "cudabatch.hpp"
 #include "cudautils.hpp"
 
+#include "spoa/spoa.hpp"
 #include <cudautils/cudautils.hpp>
 
 namespace racon {
@@ -28,6 +29,7 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     , cudapoa_batch_(genomeworks::cudapoa::create_batch(max_windows, max_window_depth, device, gap, mismatch, match, cuda_banded_alignment))
     , windows_()
     , seqs_added_per_window_()
+    , alignment_engine_(spoa::createAlignmentEngine(spoa::AlignmentType::kNW, match, mismatch, gap))
 {
     bid_ = CUDABatchProcessor::batches++;
     
@@ -189,52 +191,54 @@ void CUDABatchProcessor::getConsensus()
         auto window = windows_.at(i);
         if (output_status.at(i) != genomeworks::cudapoa::StatusType::success)
         {
-            window_consensus_status_.emplace_back(false);
-            continue;
-        }
-
-        // This is a special case borrowed from the CPU version.
-        // TODO: We still run this case through the GPU, but could take it out.
-        if (window->sequences_.size() < 3)
-        {
-            window->consensus_ = std::string(window->sequences_.front().first,
-                                             window->sequences_.front().second);
-
-            // This status is borrowed from the CPU version which considers this
-            // a failed consensus. All other cases are true.
-            window_consensus_status_.emplace_back(false);
+            // If GPU consensus failed, run CPU consensus instead.
+            window_consensus_status_.emplace_back(window->generate_consensus(alignment_engine_));
         }
         else
         {
-            window->consensus_ = consensuses.at(i);
-            if (window->type_ ==  WindowType::kTGS)
+            // This is a special case borrowed from the CPU version.
+            // TODO: We still run this case through the GPU, but could take it out.
+            if (window->sequences_.size() < 3)
             {
-                uint32_t num_seqs_in_window = seqs_added_per_window_[i];
-                uint32_t average_coverage = num_seqs_in_window / 2;
+                window->consensus_ = std::string(window->sequences_.front().first,
+                        window->sequences_.front().second);
 
-                int32_t begin = 0, end =  window->consensus_.size() - 1;
-                for (; begin < static_cast<int32_t>( window->consensus_.size()); ++begin) {
-                    if (coverages.at(i).at(begin) >= average_coverage) {
-                        break;
-                    }
-                }
-                for (; end >= 0; --end) {
-                    if (coverages.at(i).at(end) >= average_coverage) {
-                        break;
-                    }
-                }
-
-                if (begin >= end) {
-                    fprintf(stderr, "[CUDABatchProcessor] warning: "
-                            "contig might be chimeric in window %lu!\n", window->id_);
-                } else {
-                    window->consensus_ =  window->consensus_.substr(begin, end - begin + 1);
-                }
+                // This status is borrowed from the CPU version which considers this
+                // a failed consensus. All other cases are true.
+                window_consensus_status_.emplace_back(false);
             }
-            window_consensus_status_.emplace_back(true);
+            else
+            {
+                window->consensus_ = consensuses.at(i);
+                if (window->type_ ==  WindowType::kTGS)
+                {
+                    uint32_t num_seqs_in_window = seqs_added_per_window_[i];
+                    uint32_t average_coverage = num_seqs_in_window / 2;
+
+                    int32_t begin = 0, end =  window->consensus_.size() - 1;
+                    for (; begin < static_cast<int32_t>( window->consensus_.size()); ++begin) {
+                        if (coverages.at(i).at(begin) >= average_coverage) {
+                            break;
+                        }
+                    }
+                    for (; end >= 0; --end) {
+                        if (coverages.at(i).at(end) >= average_coverage) {
+                            break;
+                        }
+                    }
+
+                    if (begin >= end) {
+                        fprintf(stderr, "[CUDABatchProcessor] warning: "
+                                "contig might be chimeric in window %lu!\n", window->id_);
+                    } else {
+                        window->consensus_ =  window->consensus_.substr(begin, end - begin + 1);
+                    }
+                }
+                window_consensus_status_.emplace_back(true);
 #ifdef DEBUG
-            printf("%s\n", window->consensus_.c_str());
+                printf("%s\n", window->consensus_.c_str());
 #endif
+            }
         }
     }
 }
