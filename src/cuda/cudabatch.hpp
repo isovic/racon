@@ -13,6 +13,10 @@
 #include "window.hpp"
 #include "cudapoa/batch.hpp"
 
+namespace spoa {
+    class AlignmentEngine;
+}
+
 namespace racon {
 
 class Window;
@@ -132,6 +136,9 @@ protected:
 
     // Number of sequences actually added per window.
     std::vector<uint32_t> seqs_added_per_window_;
+
+    // Alignment engine for CPU POAs.
+    std::shared_ptr<spoa::AlignmentEngine> alignment_engine_;
 };
 
 } // namespace racon
