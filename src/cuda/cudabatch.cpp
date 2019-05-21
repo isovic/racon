@@ -181,11 +181,17 @@ void CUDABatchProcessor::getConsensus()
 {
     std::vector<std::string> consensuses;
     std::vector<std::vector<uint16_t>> coverages;
-    cudapoa_batch_->get_consensus(consensuses, coverages);
+    std::vector<genomeworks::cudapoa::StatusType> output_status;
+    cudapoa_batch_->get_consensus(consensuses, coverages, output_status);
 
     for(uint32_t i = 0; i < windows_.size(); i++)
     {
         auto window = windows_.at(i);
+        if (output_status.at(i) != genomeworks::cudapoa::StatusType::success)
+        {
+            window_consensus_status_.emplace_back(false);
+            continue;
+        }
 
         // This is a special case borrowed from the CPU version.
         // TODO: We still run this case through the GPU, but could take it out.
