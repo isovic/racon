@@ -29,7 +29,6 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window
     , cudapoa_batch_(genomeworks::cudapoa::create_batch(max_windows, max_window_depth, device, gap, mismatch, match, cuda_banded_alignment))
     , windows_()
     , seqs_added_per_window_()
-    , alignment_engine_(spoa::createAlignmentEngine(spoa::AlignmentType::kNW, match, mismatch, gap))
 {
     bid_ = CUDABatchProcessor::batches++;
     
@@ -191,8 +190,8 @@ void CUDABatchProcessor::getConsensus()
         auto window = windows_.at(i);
         if (output_status.at(i) != genomeworks::cudapoa::StatusType::success)
         {
-            // If GPU consensus failed, run CPU consensus instead.
-            window_consensus_status_.emplace_back(window->generate_consensus(alignment_engine_));
+            // leave the failure cases to CPU polisher
+            window_consensus_status_.emplace_back(false);
         }
         else
         {

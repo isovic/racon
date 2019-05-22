@@ -284,6 +284,28 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         future.wait();
     }
 
+    // Process each failed windows in parallel on CPU
+    std::vector<std::future<bool>> thread_failed_windows;
+    for (uint64_t i = 0; i < windows_.size(); ++i) {
+        if (window_consensus_status_.at(i) == false){
+            thread_failed_windows.emplace_back(thread_pool_->submit_task(
+                [&](uint64_t j) -> bool {
+                    auto it = thread_to_id_.find(std::this_thread::get_id());
+                    if (it == thread_to_id_.end()) {
+                        fprintf(stderr, "[racon::Polisher::polish] error: "
+                            "thread identifier not present!\n");
+                        exit(1);
+                    }
+                    return window_consensus_status_.at(j) = windows_[j]->generate_consensus(
+                        alignment_engines_[it->second]);
+                }, i));
+        }
+    }
+    // Wait for threads to finish, and collect their results.
+    for (const auto& t : thread_failed_windows) {
+        t.wait();
+    }
+
     if (logger_step != 0) {
         bar(std::string("[racon::CUDAPolisher::polish] generating consensus"));
     } else {
