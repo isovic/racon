@@ -158,7 +158,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 {
     // Creation and use of batches.
     const uint32_t MAX_WINDOWS = 256;
-    const uint32_t MAX_DEPTH_PER_WINDOW = 500;
+    const uint32_t MAX_DEPTH_PER_WINDOW = 200;
 
     // Bin batches into each GPU.
     std::vector<uint32_t> batches_per_gpu(num_devices_, 0);
