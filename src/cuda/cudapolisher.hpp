@@ -11,6 +11,8 @@
 #include "polisher.hpp"
 #include "cudabatch.hpp"
 #include "cudaaligner.hpp"
+#include "thread_pool/thread_pool.hpp"
+
 
 namespace racon {
 
