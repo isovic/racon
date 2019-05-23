@@ -73,6 +73,7 @@ CUDAPolisher::~CUDAPolisher()
 
 void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
 {
+#if 0
     std::mutex mutex_overlaps;
     uint32_t next_overlap_index = 0;
 
@@ -148,6 +149,7 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
     batch_aligners_.clear();
 
     log(std::string("[racon::CUDAPolisher::initialize] aligned overlaps"));
+#endif
 
     // TODO: Kept CPU overlap alignment right now while GPU is a dummy implmentation.
     Polisher::find_overlap_breaking_points(overlaps);
