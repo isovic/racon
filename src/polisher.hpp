@@ -75,6 +75,7 @@ protected:
 
     void log(std::string msg);
     void bar(std::string msg);
+    void log_reset();
 
     std::unique_ptr<bioparser::Parser<Sequence>> sparser_;
     std::unique_ptr<bioparser::Parser<Overlap>> oparser_;

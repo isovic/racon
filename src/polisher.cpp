@@ -562,4 +562,9 @@ void Polisher::bar(std::string msg)
     (*logger_)[msg];
 }
 
+void Polisher::log_reset()
+{
+    (*logger_)();
+}
+
 }

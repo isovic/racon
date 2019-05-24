@@ -228,19 +228,15 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
             }
         }
 
-        uint32_t logger_count = initial_count / logger_step;
-        if (next_window_index - initial_count > 0 && logger_count > last_logger_count)
-        {
-            bar(std::string("[racon::CUDAPolisher::polish] generating consensus"));
-            last_logger_count++;
-        }
-
-
         return std::pair<uint32_t, uint32_t>(initial_count, next_window_index);
     };
-
+    
+    log_reset();
+    int32_t log_bar_idx = 0, log_bar_idx_prev = -1; 
+    uint32_t window_idx = 0;
+    std::mutex mutex_log_bar_idx;
     // Lambda function for processing each batch.
-    auto process_batch = [&fill_next_batch, this](CUDABatchProcessor* batch) -> void {
+    auto process_batch = [&fill_next_batch, &logger_step, &log_bar_idx, &mutex_log_bar_idx, &window_idx, &log_bar_idx_prev, this](CUDABatchProcessor* batch) -> void {
         while(true)
         {
             std::pair<uint32_t, uint32_t> range = fill_next_batch(batch);
@@ -262,6 +258,19 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                 for(uint32_t i = 0; i < results.size(); i++)
                 {
                     window_consensus_status_.at(range.first + i) = results.at(i);
+                }
+
+                // logging bar
+                std::lock_guard<std::mutex> guard(mutex_log_bar_idx);
+                window_idx += results.size();
+                log_bar_idx = window_idx / logger_step;
+                if (log_bar_idx == log_bar_idx_prev) {
+                    continue;
+                }
+                else if (logger_step != 0 && log_bar_idx < static_cast<int32_t>(RACON_LOGGER_BIN_SIZE)) {
+                    bar(std::string("[racon::CUDAPolisher::polish] generating consensus"));
+                    std::cerr<<std::endl;
+                    log_bar_idx_prev = log_bar_idx;
                 }
             }
             else
@@ -286,6 +295,8 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         future.wait();
     }
 
+    // Start timing CPU time for failed windows on GPU
+    log_reset();
     // Process each failed windows in parallel on CPU
     std::vector<std::future<bool>> thread_failed_windows;
     for (uint64_t i = 0; i < windows_.size(); ++i) {
@@ -303,16 +314,12 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                 }, i));
         }
     }
+
     // Wait for threads to finish, and collect their results.
     for (const auto& t : thread_failed_windows) {
         t.wait();
     }
-
-    if (logger_step != 0) {
-        bar(std::string("[racon::CUDAPolisher::polish] generating consensus"));
-    } else {
-        log(std::string("[racon::CUDAPolisher::polish] generating consensus"));
-    }
+    log(std::string("[racon::Polisher::polish] generated consensus for failed GPU windows"));
 
     // Collect results from all windows into final output.
     std::string polished_data = "";
