@@ -99,7 +99,7 @@ TEST_F(RaconPolishingTest, ConsensusWithQualities) {
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
         racon_test_data_path + "sample_reference.fasta.gz");
-    parser->parse_objects(polished_sequences, -1);
+    parser->parse(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
     EXPECT_EQ(calculateEditDistance(polished_sequences[0]->reverse_complement(),
@@ -121,7 +121,7 @@ TEST_F(RaconPolishingTest, ConsensusWithoutQualities) {
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
         racon_test_data_path + "sample_reference.fasta.gz");
-    parser->parse_objects(polished_sequences, -1);
+    parser->parse(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
     EXPECT_EQ(calculateEditDistance(polished_sequences[0]->reverse_complement(),
@@ -143,7 +143,7 @@ TEST_F(RaconPolishingTest, ConsensusWithQualitiesAndAlignments) {
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
         racon_test_data_path + "sample_reference.fasta.gz");
-    parser->parse_objects(polished_sequences, -1);
+    parser->parse(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
     EXPECT_EQ(calculateEditDistance(polished_sequences[0]->reverse_complement(),
@@ -165,7 +165,7 @@ TEST_F(RaconPolishingTest, ConsensusWithoutQualitiesAndWithAlignments) {
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
         racon_test_data_path + "sample_reference.fasta.gz");
-    parser->parse_objects(polished_sequences, -1);
+    parser->parse(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
     EXPECT_EQ(calculateEditDistance(polished_sequences[0]->reverse_complement(),
@@ -187,7 +187,7 @@ TEST_F(RaconPolishingTest, ConsensusWithQualitiesLargerWindow) {
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
         racon_test_data_path + "sample_reference.fasta.gz");
-    parser->parse_objects(polished_sequences, -1);
+    parser->parse(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
     EXPECT_EQ(calculateEditDistance(polished_sequences[0]->reverse_complement(),
@@ -209,7 +209,7 @@ TEST_F(RaconPolishingTest, ConsensusWithQualitiesEditDistance) {
 
     auto parser = bioparser::createParser<bioparser::FastaParser, racon::Sequence>(
         racon_test_data_path + "sample_reference.fasta.gz");
-    parser->parse_objects(polished_sequences, -1);
+    parser->parse(polished_sequences, -1);
     EXPECT_EQ(polished_sequences.size(), 2);
 
     EXPECT_EQ(calculateEditDistance(polished_sequences[0]->reverse_complement(),

@@ -170,7 +170,7 @@ void Polisher::initialize() {
     (*logger_)();
 
     tparser_->reset();
-    tparser_->parse_objects(sequences_, -1);
+    tparser_->parse(sequences_, -1);
 
     uint64_t targets_size = sequences_.size();
     if (targets_size == 0) {
@@ -198,7 +198,7 @@ void Polisher::initialize() {
     sparser_->reset();
     while (true) {
         uint64_t l = sequences_.size();
-        auto status = sparser_->parse_objects(sequences_, kChunkSize);
+        auto status = sparser_->parse(sequences_, kChunkSize);
 
         uint64_t n = 0;
         for (uint64_t i = l; i < sequences_.size(); ++i, ++sequences_size) {
@@ -280,7 +280,7 @@ void Polisher::initialize() {
     oparser_->reset();
     uint64_t l = 0;
     while (true) {
-        auto status = oparser_->parse_objects(overlaps, kChunkSize);
+        auto status = oparser_->parse(overlaps, kChunkSize);
 
         uint64_t c = l;
         for (uint64_t i = l; i < overlaps.size(); ++i) {
