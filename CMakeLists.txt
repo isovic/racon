@@ -8,6 +8,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(racon_build_tests "Build racon unit tests" OFF)
 option(racon_build_wrapper "Build racon wrapper" OFF)
@@ -35,7 +36,7 @@ if (NOT TARGET logger)
     add_subdirectory(vendor/logger EXCLUDE_FROM_ALL)
 endif()
 
-target_link_libraries(racon bioparser spoa thread_pool pthread edlib_static logger)
+target_link_libraries(racon bioparser spoa thread_pool edlib_static logger)
 
 install(TARGETS racon DESTINATION bin)
 
@@ -53,11 +54,12 @@ if (racon_build_tests)
         src/sequence.cpp
         src/window.cpp)
 
-    add_subdirectory(vendor/googletest/googletest EXCLUDE_FROM_ALL)
+    if (NOT TARGET gtest_main)
+        add_subdirectory(vendor/googletest/googletest EXCLUDE_FROM_ALL)
+    endif()
 
-    target_link_libraries(racon_test bioparser spoa thread_pool pthread
-        edlib_static logger gtest_main)
-endif(racon_build_tests)
+    target_link_libraries(racon_test bioparser spoa thread_pool edlib_static logger gtest_main)
+endif()
 
 if (racon_build_wrapper)
     set(racon_path ${PROJECT_BINARY_DIR}/bin/racon)
@@ -69,5 +71,7 @@ if (racon_build_wrapper)
         FILE_PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
         WORLD_READ WORLD_EXECUTE)
 
-    add_subdirectory(vendor/rampler)
-endif(racon_build_wrapper)
+    if (NOT TARGET rampler)
+        add_subdirectory(vendor/rampler)
+    endif()
+endif()

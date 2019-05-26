@@ -338,7 +338,7 @@ void Polisher::initialize() {
 
     std::vector<std::future<void>> thread_futures;
     for (uint64_t i = 0; i < sequences_.size(); ++i) {
-        thread_futures.emplace_back(thread_pool_->submit_task(
+        thread_futures.emplace_back(thread_pool_->submit(
             [&](uint64_t j) -> void {
                 sequences_[j]->transmute(has_name[j], has_data[j], has_reverse_data[j]);
             }, i));
@@ -349,7 +349,7 @@ void Polisher::initialize() {
 
     thread_futures.clear();
     for (uint64_t i = 0; i < overlaps.size(); ++i) {
-        thread_futures.emplace_back(thread_pool_->submit_task(
+        thread_futures.emplace_back(thread_pool_->submit(
             [&](uint64_t j) -> void {
                 overlaps[j]->find_breaking_points(sequences_, window_length_);
             }, i));
@@ -455,7 +455,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
     std::vector<std::future<bool>> thread_futures;
     for (uint64_t i = 0; i < windows_.size(); ++i) {
-        thread_futures.emplace_back(thread_pool_->submit_task(
+        thread_futures.emplace_back(thread_pool_->submit(
             [&](uint64_t j) -> bool {
                 auto it = thread_to_id_.find(std::this_thread::get_id());
                 if (it == thread_to_id_.end()) {
