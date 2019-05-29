@@ -11,7 +11,7 @@ Racon is intended as a standalone consensus module to correct raw contigs genera
 
 Racon can be used as a polishing tool after the assembly with **either Illumina data or data produced by third generation of sequencing**. The type of data inputed is automatically detected.
 
-Racon takes as input only three files: contigs in FASTA/FASTQ format, reads in FASTA/FASTQ format and overlaps/alignments between the reads and the contigs in MHAP/PAF/SAM format. Output is a set of polished contigs in FASTA format printed to stdout. All input files **can be compressed with gzip**.
+Racon takes as input only three files: contigs in FASTA/FASTQ format, reads in FASTA/FASTQ format and overlaps/alignments between the reads and the contigs in MHAP/PAF/SAM format. Output is a set of polished contigs in FASTA format printed to stdout. All input files **can be compressed with gzip** (which will have impact on parsing time).
 
 Racon can also be used as a read error-correction tool. In this scenario, the MHAP/PAF/SAM file needs to contain pairwise overlaps between reads **including dual overlaps**.
 
