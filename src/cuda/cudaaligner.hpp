@@ -74,9 +74,14 @@ class CUDABatchAligner
         CUDABatchAligner(const CUDABatchAligner&) = delete;
         const CUDABatchAligner& operator=(const CUDABatchAligner&) = delete;
 
+        void compute_cpu_overlaps();
+
         std::unique_ptr<genomeworks::cudaaligner::Aligner> aligner_;
 
         std::vector<Overlap*> overlaps_;
+
+        std::vector<Overlap*> cpu_overlaps_;
+        std::vector<std::pair<std::string, std::string>> cpu_overlap_data_;
 
         // Static batch count used to generate batch IDs.
         static std::atomic<uint32_t> batches;

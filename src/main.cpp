@@ -13,6 +13,7 @@
 #endif
 
 static const char* version = "v1.3.3";
+static const int32_t CUDAALIGNER_INPUT_CODE = 10000;
 
 static struct option options[] = {
     {"include-unpolished", no_argument, 0, 'u'},
@@ -24,10 +25,13 @@ static struct option options[] = {
     {"mismatch", required_argument, 0, 'x'},
     {"gap", required_argument, 0, 'g'},
     {"threads", required_argument, 0, 't'},
-    {"cuda-batches", optional_argument, 0, 'c'},
-    {"cuda-banded-alignment", no_argument, 0, 'b'},
     {"version", no_argument, 0, 'v'},
     {"help", no_argument, 0, 'h'},
+#ifdef CUDA_ENABLED
+    {"cudapoa-batches", optional_argument, 0, 'c'},
+    {"cuda-banded-alignment", no_argument, 0, 'b'},
+    {"cudaaligner-batches", required_argument, 0, CUDAALIGNER_INPUT_CODE},
+#endif
     {0, 0, 0, 0}
 };
 
@@ -49,7 +53,8 @@ int main(int argc, char** argv) {
     bool drop_unpolished_sequences = true;
     uint32_t num_threads = 1;
 
-    uint32_t cuda_batches = 0;
+    uint32_t cudapoa_batches = 0;
+    uint32_t cudaaligner_batches = 0;
     bool cuda_banded_alignment = false;
 
     std::string optstring = "ufw:q:e:m:x:g:t:h";
@@ -57,7 +62,7 @@ int main(int argc, char** argv) {
     optstring += "bc::";
 #endif
 
-    char argument;
+    int32_t argument;
     while ((argument = getopt_long(argc, argv, optstring.c_str(), options, nullptr)) != -1) {
         switch (argument) {
             case 'u':
@@ -95,22 +100,24 @@ int main(int argc, char** argv) {
                 exit(0);
 #ifdef CUDA_ENABLED
             case 'c':
-                //if option c encountered, cuda_batches initialized with a default value of 1.
-                cuda_batches = 1;
+                //if option c encountered, cudapoa_batches initialized with a default value of 1.
+                cudapoa_batches = 1;
                 // next text entry is not an option, assuming it's the arg for option 'c'
                 if (optarg == NULL && argv[optind] != NULL
                     && argv[optind][0] != '-') {
-                    cuda_batches = atoi(argv[optind++]);
+                    cudapoa_batches = atoi(argv[optind++]);
                 } 
                 // optional argument provided in the ususal way
                 if (optarg != NULL) {
-                    cuda_batches = atoi(optarg);
+                    cudapoa_batches = atoi(optarg);
                 }
                 break;
             case 'b':
                 cuda_banded_alignment = true;
                 break;
-
+            case CUDAALIGNER_INPUT_CODE: // cudaaligner-batches
+                cudaaligner_batches = atoi(optarg);
+                break;
 #endif
             default:
                 exit(1);
@@ -130,7 +137,8 @@ int main(int argc, char** argv) {
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
         input_paths[2], type == 0 ? racon::PolisherType::kC :
         racon::PolisherType::kF, window_length, quality_threshold,
-        error_threshold, match, mismatch, gap, num_threads, cuda_batches, cuda_banded_alignment);
+        error_threshold, match, mismatch, gap, num_threads,
+        cudapoa_batches, cuda_banded_alignment, cudaaligner_batches);
 
     polisher->initialize();
 
@@ -192,7 +200,7 @@ void help() {
         "        -h, --help\n"
         "            prints the usage\n"
 #ifdef CUDA_ENABLED
-        "        -c, --cuda-batches\n"
+        "        -c, --cudapoa-batches\n"
         "            default: 1\n"
         "            number of batches for CUDA accelerated polishing\n"
         "        -b, --cuda-banded-alignment\n"
