@@ -13,14 +13,6 @@ option(racon_build_tests "Build racon unit tests" OFF)
 option(racon_build_wrapper "Build racon wrapper" OFF)
 option(racon_enable_cuda "Build racon with NVIDIA CUDA support" OFF)
 option(debug "Add debug prints to cudapoa and cudapolisher" OFF)
-# The spoa_accurate option runs a different (and slower) version of
-# the topological sort in cudapoa which exactly matches the output
-# of the topological sort implementation in the SPOA library. This is
-# useful for validation. When the option is turned off, a faster
-# custom top sort function is run which outputs a correct but different
-# ordering of the graph. This leads to subtle differences in the
-# overall consensus generated, and hence makes it harder to validate and debug.
-option(spoa_accurate "Run cudapoa code in mode that matches spoa" OFF)
 
 # Check CUDA compatibility.
 if(racon_enable_cuda)
@@ -146,17 +138,9 @@ endif(racon_build_wrapper)
 set(test_script "${PROJECT_SOURCE_DIR}/test/cuda_end2end/cuda_test.sh")
 set(test_golden_file "")
 if(debug)
-    if (spoa_accurate)
-        set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-output-id-5000-window-200-spoa-topsort.txt")
-    else()
-        set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-output-id-5000-window-200-custom-topsort.txt")
-    endif()
+    set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-output-id-5000-window-200-custom-topsort.txt")
 else()
-    if (spoa_accurate)
-        set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-value-all-window-500-spoa-topsort.fasta")
-    else()
-        set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-value-all-window-500-custom-topsort.fasta")
-    endif()
+    set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-value-all-window-500-custom-topsort.fasta")
 endif()
 configure_file(${test_script} ${PROJECT_BINARY_DIR}/bin/cuda_test.sh COPYONLY)
 configure_file(${test_golden_file} ${PROJECT_BINARY_DIR}/bin/golden-output.txt COPYONLY)
