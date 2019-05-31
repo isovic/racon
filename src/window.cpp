@@ -84,12 +84,6 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         uint32_t i = rank[j];
 
         spoa::Alignment alignment;
-#ifdef CUDA_ENABLED
-#pragma message("TODO: In CUDA mode, ignore subgraph")
-        (void) offset;
-        alignment = alignment_engine->align_sequence_with_graph(
-                sequences_[i].first, sequences_[i].second, graph);
-#else
         if (positions_[i].first < offset && positions_[i].second >
             sequences_.front().second - offset) {
             alignment = alignment_engine->align_sequence_with_graph(
@@ -102,7 +96,6 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
                 sequences_[i].first, sequences_[i].second, subgraph);
             subgraph->update_alignment(alignment, mapping);
         }
-#endif
 
         if (qualities_[i].first == nullptr) {
             graph->add_alignment(alignment, sequences_[i].first,
@@ -139,11 +132,6 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
             consensus_ = consensus_.substr(begin, end - begin + 1);
         }
     }
-
-#ifdef DEBUG
-#pragma message("TODO: Remove consensus print")
-    printf("%s\n", consensus_.c_str());
-#endif
 
     return true;
 }

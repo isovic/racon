@@ -159,7 +159,7 @@ void CUDABatchProcessor::generateMemoryMap()
 
             seqs_added_per_window_[w] = seqs_added_per_window_[w] + 1;
         }
-#ifdef DEBUG
+#ifndef NDEBUG
         if (long_seq > 0)
         {
             fprintf(stderr, "Too long (%d / %d)\n", long_seq, num_seqs);
@@ -234,9 +234,6 @@ void CUDABatchProcessor::getConsensus()
                     }
                 }
                 window_consensus_status_.emplace_back(true);
-#ifdef DEBUG
-                printf("%s\n", window->consensus_.c_str());
-#endif
             }
         }
     }
