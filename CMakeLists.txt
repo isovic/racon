@@ -12,7 +12,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(racon_build_tests "Build racon unit tests" OFF)
 option(racon_build_wrapper "Build racon wrapper" OFF)
 option(racon_enable_cuda "Build racon with NVIDIA CUDA support" OFF)
-option(debug "Add debug prints to cudapoa and cudapolisher" OFF)
 
 # Check CUDA compatibility.
 if(racon_enable_cuda)
@@ -40,10 +39,6 @@ if(racon_enable_cuda)
     target_compile_definitions(racon PRIVATE CUDA_ENABLED)
 else()
     add_executable(racon ${racon_sources})
-endif()
-
-if(debug)
-    target_compile_definitions(racon PUBLIC DEBUG)
 endif()
 
 if (NOT TARGET bioparser)
@@ -136,11 +131,6 @@ endif(racon_build_wrapper)
 
 # Add end to end tests for CUDA accelerated racon
 set(test_script "${PROJECT_SOURCE_DIR}/test/cuda_end2end/cuda_test.sh")
-set(test_golden_file "")
-if(debug)
-    set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-output-id-5000-window-200-custom-topsort.txt")
-else()
-    set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-value-all-window-500-custom-topsort.fasta")
-endif()
+set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-value-all-window-500-custom-topsort.fasta")
 configure_file(${test_script} ${PROJECT_BINARY_DIR}/bin/cuda_test.sh COPYONLY)
 configure_file(${test_golden_file} ${PROJECT_BINARY_DIR}/bin/golden-output.txt COPYONLY)

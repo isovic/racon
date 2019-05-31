@@ -168,12 +168,6 @@ Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         thread_pool_(thread_pool::createThreadPool(num_threads)),
         thread_to_id_(), logger_(logger::createLogger()) {
 
-#ifdef DEBUG
-#pragma message("TODO: Remove fixed window length debug mode")
-    fprintf(stderr, "Running in DEBUG mode. Using window size 200.");
-    window_length_ = 200;
-#endif
-
     uint32_t id = 0;
     for (const auto& it: thread_pool_->thread_identifiers()) {
         thread_to_id_[it] = id++;
@@ -490,12 +484,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     (*logger_)();
 
     std::vector<std::future<bool>> thread_futures;
-#ifdef DEBUG
-#pragma message("TODO: Remove fixed window ID processing in debug mode")
-    for (uint64_t i = 5000; i < 5001; ++i) {
-#else
     for (uint64_t i = 0; i < windows_.size(); ++i) {
-#endif
         thread_futures.emplace_back(thread_pool_->submit_task(
             [&](uint64_t j) -> bool {
                 auto it = thread_to_id_.find(std::this_thread::get_id());

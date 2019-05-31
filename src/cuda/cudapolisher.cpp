@@ -39,11 +39,6 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         , match_(match)
         , cuda_banded_alignment_(cuda_banded_alignment)
 {
-#ifdef DEBUG
-    window_length_ = 200;
-    std::cerr << "In DEBUG mode. Using window size of " << window_length_ << std::endl;
-#endif
-
     genomeworks::cudapoa::Init();
     genomeworks::cudaaligner::Init();
 
@@ -209,11 +204,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         const uint32_t MAX_DEPTH_PER_WINDOW = 200;
 
         // Bin batches into each GPU.
-#ifdef DEBUG
-        std::vector<uint32_t> batches_per_gpu = calculate_batches_per_gpu(1, num_devices_);
-#else
         std::vector<uint32_t> batches_per_gpu = calculate_batches_per_gpu(cudapoa_batches_, num_devices_);
-#endif
 
         for(int32_t device = 0; device < num_devices_; device++)
         {
@@ -232,11 +223,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         window_consensus_status_.resize(windows_.size(), false);
 
         // Index of next window to be added to a batch.
-#ifdef DEBUG
-        uint32_t next_window_index = 5000;
-#else
         uint32_t next_window_index = 0;
-#endif
 
         // Lambda function for adding windows to batches.
         auto fill_next_batch = [&mutex_windows, &next_window_index, this](CUDABatchProcessor* batch) -> std::pair<uint32_t, uint32_t> {
@@ -247,11 +234,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
             // TODO: Reducing window wize by 10 for debugging.
             uint32_t initial_count = next_window_index;
-#ifdef DEBUG
-            uint32_t count = 5001;//windows_.size();
-#else
             uint32_t count = windows_.size();
-#endif
             while(next_window_index < count)
             {
                 if (batch->addWindow(windows_.at(next_window_index)))
