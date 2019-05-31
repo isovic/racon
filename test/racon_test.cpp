@@ -4,14 +4,14 @@
  * @brief Racon unit test source file
  */
 
-#include "racon_test_config.h"
+#include <racon_test_config.h>
 
-#include "sequence.hpp"
-#include "polisher.hpp"
+#include <sequence.hpp>
+#include <polisher.hpp>
 
-#include "edlib.h"
-#include "bioparser/bioparser.hpp"
-#include "gtest/gtest.h"
+#include <edlib.h>
+#include <bioparser/bioparser.hpp>
+#include <gtest/gtest.h>
 
 uint32_t calculateEditDistance(const std::string& query, const std::string& target) {
 

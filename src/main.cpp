@@ -9,7 +9,9 @@
 #include "sequence.hpp"
 #include "polisher.hpp"
 
-static const char* version = "v1.3.3";
+#include <version.hpp>
+
+static const char* version = RACON_VERSION_STRING.c_str();
 
 static struct option options[] = {
     {"include-unpolished", no_argument, 0, 'u'},

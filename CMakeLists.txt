@@ -1,6 +1,22 @@
 cmake_minimum_required(VERSION 3.2)
 project(racon)
 
+# The version number.
+set (RACON_VERSION_MAJOR 1)
+set (RACON_VERSION_MINOR 3)
+set (RACON_VERSION_PATCH 4)
+# Get the commit ID.
+execute_process(
+  COMMAND git log -1 --pretty=%h
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE RACON_VERSION_COMMIT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+# Configure the version file.
+configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/generated/version.hpp")
+# Add the include directory for the generated file.
+include_directories(${PROJECT_BINARY_DIR}/generated)
+
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
