@@ -25,8 +25,8 @@ A **wrapper script** is also available to enable easier usage to the end-user fo
 To install Racon run the following commands:
 
 ```bash
-git clone --recursive ssh://git@gitlab-master.nvidia.com:12051/genomics/racon-gpu.git
-cd racon
+git clone --recursive git@github.com:clara-genomics/racon-gpu.git
+cd racon-gpu
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
