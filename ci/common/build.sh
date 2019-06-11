@@ -14,10 +14,6 @@ function logger() {
 export PATH=/conda/bin:/usr/local/cuda/bin:$PATH
 export PARALLEL_LEVEL=4
 
-export GW_REPO="ssh://git@gitlab-master.nvidia.com:12051/genomics/GenomeWorks.git"
-export GW_NAME=GenomeWorks
-export GW_DIR=$WORKSPACE/${GW_NAME}
-
 # Set home to the job's workspace
 export HOME=$WORKSPACE
 
@@ -54,64 +50,7 @@ export LOCAL_BUILD_ROOT=${WORKSPACE}
 CMAKE_COMMON_VARIABLES="-DCMAKE_BUILD_TYPE=Release"
 
 if [ "${BUILD_FOR_GPU}" == '1' ]; then
-  cd ${WORKSPACE}
-
-  logger "Build racon-gpu for CUDA..."
-
-  if [ ! -d "GenomeWorks" ]; then
-    git clone ssh://git@gitlab-master.nvidia.com:12051/genomics/GenomeWorks.git
-  fi
-  cd GenomeWorks
-  logger "Pull racon-gpu..."
-
-  # pull from scratch each time
-  cd ${WORKSPACE}
-  rm -rf GenomeWorks
-  mkdir ${GW_NAME}
-
-  # is this is a merge request and there a branch with a name matching the MR branch in the
-  # other repo, pull that
-  export BRANCH_FOUND=""
-  if [ "${BUILD_CAUSE_SCMTRIGGER}" == "true" ]; then
-    logger "This is an SCM-caused build"
-    if [ "${gitlabActionType}" == 'MERGE' ]; then
-    logger "This is a merge-request-caused build"
-      if [ "${gitlabSourceBranch}" != "" ]; then
-        logger "The specified branch is: ${gitlabSourceBranch}"
-        export BRANCH_FOUND=`git ls-remote -h ${GW_REPO} | grep "refs/heads/${gitlabSourceBranch}$"`
-        logger "Branch found test ${BRANCH_FOUND}"
-      fi
-    fi
-  fi
-
-  if [ "${BRANCH_FOUND}" == "" ]; then
-    logger "No specified branch - is there a target branch?: ${gitlabTargetBranch}"
-    if [ "${gitlabTargetBranch}" != "" ]; then
-      logger "A target branch is specified: ${gitlabTargetBranch}"
-      export BRANCH_FOUND=`git ls-remote -h ${GW_REPO} | grep "refs/heads/${gitlabTargetBranch}$"`
-      logger "Branch found test ${BRANCH_FOUND}"
-      if [ "${BRANCH_FOUND}" != "" ]; then
-        export MR_BRANCH=${gitlabTargetBranch}
-      else
-        export MR_BRANCH=master
-      fi
-    else
-      export MR_BRANCH=master
-    fi
-  else
-      export MR_BRANCH=${gitlabSourceBranch}
-  fi
-
-  git clone --branch ${MR_BRANCH} --single-branch --depth 1 ${GW_REPO}
-
-  # Switch to project root; also root of repo checkout
-  cd ${GW_DIR}
-
-  git pull
-  git submodule update --init --recursive
-
-
-  CMAKE_BUILD_GPU="-Dracon_enable_cuda=ON -DGENOMEWORKS_SRC_PATH=${GW_DIR}"
+  CMAKE_BUILD_GPU="-Dracon_enable_cuda=ON -Dracon_build_tests=OFF"
 else
   CMAKE_BUILD_GPU="-Dracon_enable_cuda=OFF -Dracon_build_tests=ON"
 fi
