@@ -64,7 +64,7 @@ bool CUDABatchProcessor::hasWindows() const
 
 void CUDABatchProcessor::convertPhredQualityToWeights(const char* qual,
                                                       uint32_t qual_length,
-                                                      std::vector<uint8_t>& weights)
+                                                      std::vector<int8_t>& weights)
 {
     weights.clear();
     for(uint32_t i = 0; i < qual_length; i++)
@@ -77,7 +77,7 @@ genomeworks::cudapoa::StatusType CUDABatchProcessor::addSequenceToPoa(std::pair<
                                                                       std::pair<const char*, uint32_t>& qualities)
 {
     // Add sequences to latest poa in batch.
-    std::vector<uint8_t> weights;
+    std::vector<int8_t> weights;
     genomeworks::cudapoa::StatusType status = genomeworks::cudapoa::StatusType::success;
     if (qualities.first == nullptr)
     {
