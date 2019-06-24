@@ -26,7 +26,7 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32
 
 CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment)
     : max_windows_(max_windows)
-    , cudapoa_batch_(genomeworks::cudapoa::create_batch(max_windows, max_window_depth, device, gap, mismatch, match, cuda_banded_alignment))
+    , cudapoa_batch_(genomeworks::cudapoa::create_batch(max_windows, max_window_depth, device, genomeworks::cudapoa::OutputType::consensus, gap, mismatch, match, cuda_banded_alignment))
     , windows_()
     , seqs_added_per_window_()
 {
@@ -64,7 +64,7 @@ bool CUDABatchProcessor::hasWindows() const
 
 void CUDABatchProcessor::convertPhredQualityToWeights(const char* qual,
                                                       uint32_t qual_length,
-                                                      std::vector<uint8_t>& weights)
+                                                      std::vector<int8_t>& weights)
 {
     weights.clear();
     for(uint32_t i = 0; i < qual_length; i++)
@@ -77,7 +77,7 @@ genomeworks::cudapoa::StatusType CUDABatchProcessor::addSequenceToPoa(std::pair<
                                                                       std::pair<const char*, uint32_t>& qualities)
 {
     // Add sequences to latest poa in batch.
-    std::vector<uint8_t> weights;
+    std::vector<int8_t> weights;
     genomeworks::cudapoa::StatusType status = genomeworks::cudapoa::StatusType::success;
     if (qualities.first == nullptr)
     {

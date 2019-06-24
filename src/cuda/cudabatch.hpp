@@ -104,7 +104,7 @@ protected:
      */
     void convertPhredQualityToWeights(const char* qual,
                                       uint32_t qual_length,
-                                      std::vector<uint8_t>& weights);
+                                      std::vector<int8_t>& weights);
 
     /*
      * @brief Add sequence and qualities to cudapoa.
