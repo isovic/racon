@@ -175,9 +175,11 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
         std::vector<std::future<void>> thread_futures;
         for(auto& aligner : batch_aligners_)
         {
-            thread_futures.emplace_back(std::async(std::launch::async,
+            thread_futures.emplace_back(
+                    thread_pool_->submit_task(
                         process_batch,
-                        aligner.get())
+                        aligner.get()
+                        )
                     );
         }
 
@@ -309,9 +311,11 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         std::vector<std::future<void>> thread_futures;
         for(auto& batch_processor : batch_processors_)
         {
-            thread_futures.emplace_back(std::async(std::launch::async,
+            thread_futures.emplace_back(
+                    thread_pool_->submit_task(
                         process_batch,
-                        batch_processor.get())
+                        batch_processor.get()
+                        )
                     );
         }
 
