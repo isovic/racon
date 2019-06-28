@@ -27,24 +27,24 @@ CUDABatchAligner::CUDABatchAligner(uint32_t max_query_size,
                                    uint32_t max_target_size,
                                    uint32_t max_alignments,
                                    uint32_t device_id)
-    : aligner_(genomeworks::cudaaligner::create_aligner(max_query_size,
+    : aligner_(cga::cudaaligner::create_aligner(max_query_size,
                                                         max_target_size,
                                                         max_alignments,
-                                                        genomeworks::cudaaligner::AlignmentType::global,
+                                                        cga::cudaaligner::AlignmentType::global,
                                                         device_id))
     , overlaps_()
     , stream_(0)
 {
     bid_ = CUDABatchAligner::batches++;
 
-    GW_CU_CHECK_ERR(cudaStreamCreate(&stream_));
+    CGA_CU_CHECK_ERR(cudaStreamCreate(&stream_));
 
     aligner_->set_cuda_stream(stream_);
 }
 
 CUDABatchAligner::~CUDABatchAligner()
 {
-    GW_CU_CHECK_ERR(cudaStreamDestroy(stream_));
+    CGA_CU_CHECK_ERR(cudaStreamDestroy(stream_));
 }
 
 bool CUDABatchAligner::addOverlap(Overlap* overlap, std::vector<std::unique_ptr<Sequence>>& sequences)
@@ -53,21 +53,21 @@ bool CUDABatchAligner::addOverlap(Overlap* overlap, std::vector<std::unique_ptr<
         &(sequences[overlap->q_id_]->reverse_complement()[overlap->q_length_ - overlap->q_end_]);
     const char* t = &(sequences[overlap->t_id_]->data()[overlap->t_begin_]);
 
-    genomeworks::cudaaligner::StatusType s = 
+    cga::cudaaligner::StatusType s = 
         aligner_->add_alignment(q, overlap->q_end_ - overlap->q_begin_,
                                 t, overlap->t_end_ - overlap->t_begin_);
-    if (s == genomeworks::cudaaligner::StatusType::exceeded_max_alignments)
+    if (s == cga::cudaaligner::StatusType::exceeded_max_alignments)
     {
         return false;
     }
-    else if (s == genomeworks::cudaaligner::StatusType::exceeded_max_alignment_difference
-             || s == genomeworks::cudaaligner::StatusType::exceeded_max_length)
+    else if (s == cga::cudaaligner::StatusType::exceeded_max_alignment_difference
+             || s == cga::cudaaligner::StatusType::exceeded_max_length)
     {
         cpu_overlap_data_.emplace_back(std::make_pair<std::string, std::string>(std::string(q, q + overlap->q_end_ - overlap->q_begin_),
                                                                                 std::string(t, t + overlap->t_end_ - overlap->t_begin_)));
         cpu_overlaps_.push_back(overlap);
     }
-    else if (s != genomeworks::cudaaligner::StatusType::success)
+    else if (s != cga::cudaaligner::StatusType::success)
     {
         fprintf(stderr, "Unknown error in cuda aligner!\n");
     }
@@ -99,7 +99,7 @@ void CUDABatchAligner::find_breaking_points(uint32_t window_length)
 {
     aligner_->sync_alignments();
 
-    const std::vector<std::shared_ptr<genomeworks::cudaaligner::Alignment>>& alignments = aligner_->get_alignments();
+    const std::vector<std::shared_ptr<cga::cudaaligner::Alignment>>& alignments = aligner_->get_alignments();
     // Number of alignments should be the same as number of overlaps.
     if (overlaps_.size() != alignments.size())
     {
