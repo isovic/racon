@@ -19,6 +19,6 @@
 [submodule "vendor/logger"]
 	path = vendor/logger
 	url = https://github.com/rvaser/logger
-[submodule "vendor/GenomeWorks"]
-	path = vendor/GenomeWorks
-	url = git@github.com:clara-genomics/GenomeWorks.git
+[submodule "vendor/ClaraGenomicsAnalysis"]
+	path = vendor/ClaraGenomicsAnalysis
+	url = git@github.com:clara-genomics/ClaraGenomicsAnalysis.git

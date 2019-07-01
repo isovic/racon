@@ -39,10 +39,10 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         , match_(match)
         , cuda_banded_alignment_(cuda_banded_alignment)
 {
-    genomeworks::cudapoa::Init();
-    genomeworks::cudaaligner::Init();
+    cga::cudapoa::Init();
+    cga::cudaaligner::Init();
 
-    GW_CU_CHECK_ERR(cudaGetDeviceCount(&num_devices_));
+    CGA_CU_CHECK_ERR(cudaGetDeviceCount(&num_devices_));
 
     if (num_devices_ < 1)
     {
@@ -55,8 +55,8 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     for(int32_t dev_id = 0; dev_id < num_devices_; dev_id++)
     {
         std::cerr << "Initialize device " << dev_id << std::endl;
-        GW_CU_CHECK_ERR(cudaSetDevice(dev_id));
-        GW_CU_CHECK_ERR(cudaFree(0));
+        CGA_CU_CHECK_ERR(cudaSetDevice(dev_id));
+        CGA_CU_CHECK_ERR(cudaFree(0));
     }
 
     std::cerr << "[CUDAPolisher] Constructed." << std::endl;
