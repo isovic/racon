@@ -26,7 +26,7 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32
 
 CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment)
     : max_windows_(max_windows)
-    , cudapoa_batch_(cga::cudapoa::create_batch(max_windows, max_window_depth, device, cga::cudapoa::OutputType::consensus, gap, mismatch, match, cuda_banded_alignment))
+    , cudapoa_batch_(claragenomics::cudapoa::create_batch(max_windows, max_window_depth, device, claragenomics::cudapoa::OutputType::consensus, gap, mismatch, match, cuda_banded_alignment))
     , windows_()
     , seqs_added_per_window_()
 {
@@ -73,12 +73,12 @@ void CUDABatchProcessor::convertPhredQualityToWeights(const char* qual,
     }
 }
 
-cga::cudapoa::StatusType CUDABatchProcessor::addSequenceToPoa(std::pair<const char*, uint32_t>& seq,
+claragenomics::cudapoa::StatusType CUDABatchProcessor::addSequenceToPoa(std::pair<const char*, uint32_t>& seq,
                                                                       std::pair<const char*, uint32_t>& qualities)
 {
     // Add sequences to latest poa in batch.
     std::vector<int8_t> weights;
-    cga::cudapoa::StatusType status = cga::cudapoa::StatusType::success;
+    claragenomics::cudapoa::StatusType status = claragenomics::cudapoa::StatusType::success;
     if (qualities.first == nullptr)
     {
         status = cudapoa_batch_->add_seq_to_poa(seq.first, nullptr, seq.second);
@@ -97,8 +97,8 @@ void CUDABatchProcessor::generateMemoryMap()
     for(uint32_t w = 0; w < num_windows; w++)
     {
         // Add new poa
-        cga::cudapoa::StatusType status = cudapoa_batch_->add_poa();
-        if (status != cga::cudapoa::StatusType::success)
+        claragenomics::cudapoa::StatusType status = cudapoa_batch_->add_poa();
+        if (status != claragenomics::cudapoa::StatusType::success)
         {
             fprintf(stderr, "Failed to add new POA to batch %d.\n",
                     cudapoa_batch_->batch_id());
@@ -113,7 +113,7 @@ void CUDABatchProcessor::generateMemoryMap()
         std::pair<const char*, uint32_t> seq = window->sequences_.front();
         std::pair<const char*, uint32_t> qualities = window->qualities_.front();
         status = addSequenceToPoa(seq, qualities);
-        if (status != cga::cudapoa::StatusType::success)
+        if (status != claragenomics::cudapoa::StatusType::success)
         {
             fprintf(stderr, "Could not add backbone to window. Fatal error.\n");
             exit(1);
@@ -140,17 +140,17 @@ void CUDABatchProcessor::generateMemoryMap()
             qualities = window->qualities_.at(i);
             // Add sequences to latest poa in batch.
             status = addSequenceToPoa(seq, qualities);
-            if (status == cga::cudapoa::StatusType::exceeded_maximum_sequence_size)
+            if (status == claragenomics::cudapoa::StatusType::exceeded_maximum_sequence_size)
             {
                 long_seq++;
                 continue;
             } 
-            else if (status == cga::cudapoa::StatusType::exceeded_maximum_sequences_per_poa) 
+            else if (status == claragenomics::cudapoa::StatusType::exceeded_maximum_sequences_per_poa)
             {
                 skipped_seq++;
                 continue;
             } 
-            else if (status != cga::cudapoa::StatusType::success)
+            else if (status != claragenomics::cudapoa::StatusType::success)
             {
                 fprintf(stderr, "Could not add sequence to POA in batch %d.\n",
                         cudapoa_batch_->batch_id());
@@ -182,13 +182,13 @@ void CUDABatchProcessor::getConsensus()
 {
     std::vector<std::string> consensuses;
     std::vector<std::vector<uint16_t>> coverages;
-    std::vector<cga::cudapoa::StatusType> output_status;
+    std::vector<claragenomics::cudapoa::StatusType> output_status;
     cudapoa_batch_->get_consensus(consensuses, coverages, output_status);
 
     for(uint32_t i = 0; i < windows_.size(); i++)
     {
         auto window = windows_.at(i);
-        if (output_status.at(i) != cga::cudapoa::StatusType::success)
+        if (output_status.at(i) != claragenomics::cudapoa::StatusType::success)
         {
             // leave the failure cases to CPU polisher
             window_consensus_status_.emplace_back(false);

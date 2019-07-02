@@ -39,8 +39,8 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         , match_(match)
         , cuda_banded_alignment_(cuda_banded_alignment)
 {
-    cga::cudapoa::Init();
-    cga::cudaaligner::Init();
+    claragenomics::cudapoa::Init();
+    claragenomics::cudaaligner::Init();
 
     CGA_CU_CHECK_ERR(cudaGetDeviceCount(&num_devices_));
 

@@ -110,7 +110,7 @@ protected:
      * @brief Add sequence and qualities to cudapoa.
      *
      */
-    cga::cudapoa::StatusType addSequenceToPoa(std::pair<const char*, uint32_t>& seq,
+    claragenomics::cudapoa::StatusType addSequenceToPoa(std::pair<const char*, uint32_t>& seq,
                                                       std::pair<const char*, uint32_t>& quality);
 
 protected:
@@ -124,7 +124,7 @@ protected:
     uint32_t max_windows_;
 
     // CUDA-POA library object that manages POA batch.
-    std::unique_ptr<cga::cudapoa::Batch> cudapoa_batch_;
+    std::unique_ptr<claragenomics::cudapoa::Batch> cudapoa_batch_;
 
     // Stream for running POA batch.
     cudaStream_t stream_;
