@@ -176,7 +176,7 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
         for(auto& aligner : batch_aligners_)
         {
             thread_futures.emplace_back(
-                    thread_pool_->submit_task(
+                    thread_pool_->submit(
                         process_batch,
                         aligner.get()
                         )
@@ -312,7 +312,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         for(auto& batch_processor : batch_processors_)
         {
             thread_futures.emplace_back(
-                    thread_pool_->submit_task(
+                    thread_pool_->submit(
                         process_batch,
                         batch_processor.get()
                         )
@@ -333,7 +333,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         for (uint64_t i = 0; i < windows_.size(); ++i) {
             if (window_consensus_status_.at(i) == false)
             {
-                thread_failed_windows.emplace_back(thread_pool_->submit_task(
+                thread_failed_windows.emplace_back(thread_pool_->submit(
                             [&](uint64_t j) -> bool {
                             auto it = thread_to_id_.find(std::this_thread::get_id());
                             if (it == thread_to_id_.end()) {

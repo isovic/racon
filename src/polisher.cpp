@@ -195,7 +195,7 @@ void Polisher::initialize() {
     (*logger_)();
 
     tparser_->reset();
-    tparser_->parse_objects(sequences_, -1);
+    tparser_->parse(sequences_, -1);
 
     uint64_t targets_size = sequences_.size();
     if (targets_size == 0) {
@@ -223,7 +223,7 @@ void Polisher::initialize() {
     sparser_->reset();
     while (true) {
         uint64_t l = sequences_.size();
-        auto status = sparser_->parse_objects(sequences_, kChunkSize);
+        auto status = sparser_->parse(sequences_, kChunkSize);
 
         uint64_t n = 0;
         for (uint64_t i = l; i < sequences_.size(); ++i, ++sequences_size) {
@@ -305,7 +305,7 @@ void Polisher::initialize() {
     oparser_->reset();
     uint64_t l = 0;
     while (true) {
-        auto status = oparser_->parse_objects(overlaps, kChunkSize);
+        auto status = oparser_->parse(overlaps, kChunkSize);
 
         uint64_t c = l;
         for (uint64_t i = l; i < overlaps.size(); ++i) {
@@ -363,7 +363,7 @@ void Polisher::initialize() {
 
     std::vector<std::future<void>> thread_futures;
     for (uint64_t i = 0; i < sequences_.size(); ++i) {
-        thread_futures.emplace_back(thread_pool_->submit_task(
+        thread_futures.emplace_back(thread_pool_->submit(
             [&](uint64_t j) -> void {
                 sequences_[j]->transmute(has_name[j], has_data[j], has_reverse_data[j]);
             }, i));
@@ -458,7 +458,7 @@ void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>
 {
     std::vector<std::future<void>> thread_futures;
     for (uint64_t i = 0; i < overlaps.size(); ++i) {
-        thread_futures.emplace_back(thread_pool_->submit_task(
+        thread_futures.emplace_back(thread_pool_->submit(
             [&](uint64_t j) -> void {
                 overlaps[j]->find_breaking_points(sequences_, window_length_);
             }, i));
@@ -485,7 +485,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
     std::vector<std::future<bool>> thread_futures;
     for (uint64_t i = 0; i < windows_.size(); ++i) {
-        thread_futures.emplace_back(thread_pool_->submit_task(
+        thread_futures.emplace_back(thread_pool_->submit(
             [&](uint64_t j) -> bool {
                 auto it = thread_to_id_.find(std::this_thread::get_id());
                 if (it == thread_to_id_.end()) {
