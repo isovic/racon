@@ -76,7 +76,7 @@ class CUDABatchAligner
 
         void compute_cpu_overlaps();
 
-        std::unique_ptr<cga::cudaaligner::Aligner> aligner_;
+        std::unique_ptr<claragenomics::cudaaligner::Aligner> aligner_;
 
         std::vector<Overlap*> overlaps_;
 
