@@ -47,12 +47,12 @@ git clean -xdf
 
 export LOCAL_BUILD_ROOT=${WORKSPACE}
 
-CMAKE_COMMON_VARIABLES="-DCMAKE_BUILD_TYPE=Release"
+CMAKE_COMMON_VARIABLES="-DCMAKE_BUILD_TYPE=Release -Dracon_build_tests=ON"
 
 if [ "${BUILD_FOR_GPU}" == '1' ]; then
-  CMAKE_BUILD_GPU="-Dracon_enable_cuda=ON -Dracon_build_tests=OFF"
+  CMAKE_BUILD_GPU="-Dracon_enable_cuda=ON"
 else
-  CMAKE_BUILD_GPU="-Dracon_enable_cuda=OFF -Dracon_build_tests=ON"
+  CMAKE_BUILD_GPU="-Dracon_enable_cuda=OFF"
 fi
 
 export LOCAL_BUILD_ROOT=${WORKSPACE}
@@ -71,8 +71,9 @@ make -j${PARALLEL_LEVEL} VERBOSE=1 all
 
 if [ "${TEST_ON_CPU}" == '1' ]; then
   logger "Running CPU-based test..."
-  logger "Test results..."
   cd ${LOCAL_BUILD_DIR}/bin
+
+  logger "Test results..."
   ./racon_test
 fi
 
@@ -87,10 +88,12 @@ if [ "${TEST_ON_GPU}" == '1' ]; then
   fi
 
   logger "Running GPU-based test..."
+  cd ${LOCAL_BUILD_DIR}/bin
+
   logger "GPU config..."
   nvidia-smi
 
   logger "Test results..."
-  cd ${LOCAL_BUILD_DIR}/bin
+  ./racon_test
   ./cuda_test.sh
 fi
