@@ -19,7 +19,12 @@ A **wrapper script** is also available to enable easier usage to the end-user fo
 
 ## Dependencies
 1. gcc 4.8+ or clang 3.4+
-2. cmake 3.2+ (cmake 3.10+ for CUDA support)
+2. cmake 3.2+
+
+### CUDA Support
+1. gcc 5.0+
+2. cmake 3.10+
+4. CUDA 10.0+
 
 ## Installation
 To install Racon run the following commands:
@@ -44,20 +49,7 @@ To build unit tests add `-Dracon_build_tests=ON` while running `cmake`. After in
 To build the wrapper script add `-Dracon_build_wrapper=ON` while running `cmake`. After installation, an executable named `racon_wrapper` (python script) will be created in `build/bin`.
 
 ### CUDA Support
-To prepare to use `racon` with CUDA support, clone NVIDIA GenomeWorks to a sibling directory of racon-gpu:
-
-```
-git clone ssh://git@gitlab-master.nvidia.com:12051/genomics/GenomeWorks.git
-```
-
-So there should be a directory with these repos as siblings:
-
-```
-GenomeWorks/
-racon-gpu/
-```
-
-(It is possible to build if the directories are not siblings, but the racon-gpu cmake line must be different)
+Racon makes use of [NVIDIA's ClaraGenomicsAnalysis SDK](https://github.com/clara-genomics/ClaraGenomicsAnalysis) for CUDA accelerated polishing and alignment.
 
 To build `racon` with CUDA support, add `-Dracon_enable_cuda=ON` while running `cmake`. If CUDA support is unavailable, the `cmake` step will error out. 
 Note that the CUDA support flag does not produce a new binary target. Instead it augments the existing `racon` binary itself.
@@ -67,28 +59,6 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON ..
 make
 ```
-
-To use a non-sibling GenomeWorks location, you must use the cmake line (note path must be absolute):
-```
-cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON -DGENOMEWORKS_SRC_PATH=<abs path to GenomeWorks>..
-```
-
-
-To run a faster version that only runs CUDA consensus generation on a single window, add `-Ddebug=ON` to the CMake command.
-
-#### CUDA Testing
-
-To test the CUDA implementation, a few end 2 end tests have been added.
-
-To use the tests, first download the raw dataset from https://drive.google.com/open?id=1laLky0kPANSSB9SFIVAMyCYvXD7ZqR6c .
-Extract this to your $HOME folder. After extraction, ensure that the following directories are readable
-`${HOME}/ont-racon-data/nvidia` and `${HOME}/ont-racon-data/nvidia/iterated_racon`.
-
-The test scripts have been added to tests/cuda_end2end folder. The correct golden value files and
-test scripts are automatically to the `bin` folder based on the CMake settings. Don't forget to
-run `make` after the updating CMake flags.
-
-To run the tests, simply navigate to `bin` and execute `./cuda_test.sh`
 
 ## Usage
 Usage of `racon` is as following:
@@ -138,9 +108,13 @@ Usage of `racon` is as following:
             prints the usage
 
     only available when built with CUDA:
-        -c, --cuda-batches
+        -c, --cudapoa-batches
             default: 1
             number of batches for CUDA accelerated polishing
+        -b, --cuda-banded-alignment
+            use banding approximation for polishing on GPU. Only applicable when -c is used.
+        --cudaaligner-batches (experimental)
+            Number of batches for CUDA accelerated alignment
 
 `racon_test` is run without any parameters.
 
