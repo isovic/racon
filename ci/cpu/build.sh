@@ -12,4 +12,15 @@ function logger() {
 
 cd ${WORKSPACE}
 
-. ci/common/build.sh
+LOCAL_BUILD_DIR=${WORKSPACE}/build
+
+. ci/common/build.sh ${LOCAL_BUILD_DIR}
+
+if [ "${TEST_ON_CPU}" == '1' ]; then
+  logger "Running CPU-based test..."
+  cd ${LOCAL_BUILD_DIR}/bin
+
+  logger "Test results..."
+  ./racon_test
+fi
+

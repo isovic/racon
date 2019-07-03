@@ -5,6 +5,9 @@
 ######################################
 set -e
 
+# Get commandline arguments
+LOCAL_BUILD_DIR=$1
+
 # Logger function for build status output
 function logger() {
   echo -e "\n>>>> $@\n"
@@ -45,8 +48,6 @@ fi
 
 git clean -xdf
 
-export LOCAL_BUILD_ROOT=${WORKSPACE}
-
 CMAKE_COMMON_VARIABLES="-DCMAKE_BUILD_TYPE=Release -Dracon_build_tests=ON"
 
 if [ "${BUILD_FOR_GPU}" == '1' ]; then
@@ -54,11 +55,6 @@ if [ "${BUILD_FOR_GPU}" == '1' ]; then
 else
   CMAKE_BUILD_GPU="-Dracon_enable_cuda=OFF"
 fi
-
-export LOCAL_BUILD_ROOT=${WORKSPACE}
-
-cd ${LOCAL_BUILD_ROOT}
-export LOCAL_BUILD_DIR=${LOCAL_BUILD_ROOT}/build
 
 # Use CMake-based build procedure
 mkdir --parents ${LOCAL_BUILD_DIR}
@@ -68,32 +64,3 @@ cd ${LOCAL_BUILD_DIR}
 cmake $CMAKE_COMMON_VARIABLES ${CMAKE_BUILD_GPU} ..
 # build
 make -j${PARALLEL_LEVEL} VERBOSE=1 all
-
-if [ "${TEST_ON_CPU}" == '1' ]; then
-  logger "Running CPU-based test..."
-  cd ${LOCAL_BUILD_DIR}/bin
-
-  logger "Test results..."
-  ./racon_test
-fi
-
-if [ "${TEST_ON_GPU}" == '1' ]; then
-  logger "Pulling GPU test data..."
-  cd ${WORKSPACE}
-  if [ ! -d "ont-racon-data" ]; then
-    if [ ! -f "${ont-racon-data.tar.gz}" ]; then
-      wget -q -L https://s3.us-east-2.amazonaws.com/racon-data/ont-racon-data.tar.gz
-    fi
-    tar xvzf ont-racon-data.tar.gz
-  fi
-
-  logger "Running GPU-based test..."
-  cd ${LOCAL_BUILD_DIR}/bin
-
-  logger "GPU config..."
-  nvidia-smi
-
-  logger "Test results..."
-  ./racon_test
-  ./cuda_test.sh
-fi

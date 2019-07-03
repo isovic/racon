@@ -139,9 +139,3 @@ if (racon_build_wrapper)
         add_subdirectory(vendor/rampler)
     endif()
 endif()
-
-# Add end to end tests for CUDA accelerated racon
-set(test_script "${PROJECT_SOURCE_DIR}/test/cuda_end2end/cuda_test.sh")
-set(test_golden_file "${PROJECT_SOURCE_DIR}/test/cuda_end2end/golden-value-all-window-500-custom-topsort.fasta")
-configure_file(${test_script} ${PROJECT_BINARY_DIR}/bin/cuda_test.sh COPYONLY)
-configure_file(${test_golden_file} ${PROJECT_BINARY_DIR}/bin/golden-output.txt COPYONLY)
