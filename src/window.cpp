@@ -59,7 +59,8 @@ void Window::add_layer(const char* sequence, uint32_t sequence_length,
     positions_.emplace_back(begin, end);
 }
 
-bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine) {
+bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine,
+    bool trim) {
 
     if (sequences_.size() < 3) {
         consensus_ = std::string(sequences_.front().first, sequences_.front().second);
@@ -111,7 +112,7 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
     std::vector<uint32_t> coverages;
     consensus_ = graph->generate_consensus(coverages);
 
-    if (type_ == WindowType::kTGS) {
+    if (type_ == WindowType::kTGS && trim) {
         uint32_t average_coverage = (sequences_.size() - 1) / 2;
 
         int32_t begin = 0, end = consensus_.size() - 1;

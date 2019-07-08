@@ -17,6 +17,7 @@ static struct option options[] = {
     {"window-length", required_argument, 0, 'w'},
     {"quality-threshold", required_argument, 0, 'q'},
     {"error-threshold", required_argument, 0, 'e'},
+    {"no-trimming", no_argument, 0, 'T'},
     {"match", required_argument, 0, 'm'},
     {"mismatch", required_argument, 0, 'x'},
     {"gap", required_argument, 0, 'g'},
@@ -35,6 +36,7 @@ int main(int argc, char** argv) {
     uint32_t window_length = 500;
     double quality_threshold = 10.0;
     double error_threshold = 0.3;
+    bool trim = true;
 
     int8_t match = 5;
     int8_t mismatch = -4;
@@ -45,7 +47,7 @@ int main(int argc, char** argv) {
     uint32_t num_threads = 1;
 
     char argument;
-    while ((argument = getopt_long(argc, argv, "ufw:q:e:m:x:g:t:h", options, nullptr)) != -1) {
+    while ((argument = getopt_long(argc, argv, "Tufw:q:e:m:x:g:t:h", options, nullptr)) != -1) {
         switch (argument) {
             case 'u':
                 drop_unpolished_sequences = false;
@@ -61,6 +63,9 @@ int main(int argc, char** argv) {
                 break;
             case 'e':
                 error_threshold = atof(optarg);
+                break;
+            case 'T':
+                trim = false;
                 break;
             case 'm':
                 match = atoi(optarg);
@@ -98,7 +103,7 @@ int main(int argc, char** argv) {
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
         input_paths[2], type == 0 ? racon::PolisherType::kC :
         racon::PolisherType::kF, window_length, quality_threshold,
-        error_threshold, match, mismatch, gap, num_threads);
+        error_threshold, trim, match, mismatch, gap, num_threads);
 
     polisher->initialize();
 
@@ -141,6 +146,8 @@ void help() {
         "        -e, --error-threshold <float>\n"
         "            default: 0.3\n"
         "            maximum allowed error rate used for filtering overlaps\n"
+        "        --no-trimming\n"
+        "            disables consensus trimming\n"
         "        -m, --match <int>\n"
         "            default: 5\n"
         "            score for matching bases\n"
