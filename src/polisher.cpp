@@ -372,13 +372,13 @@ void Polisher::initialize() {
 
     std::vector<uint64_t> id_to_first_window_id(targets_size + 1, 0);
     for (uint64_t i = 0; i < targets_size; ++i) {
-        uint32_t k = 0;
+        uint32_t k = 0, mk = ceil(sequences_[i]->data().size() / static_cast<double>(window_length_)) - 1;
         for (uint32_t j = 0; j < sequences_[i]->data().size(); j += window_length_, ++k) {
 
             uint32_t length = std::min(j + window_length_,
                 static_cast<uint32_t>(sequences_[i]->data().size())) - j;
 
-            windows_.emplace_back(createWindow(i, k, window_type,
+            windows_.emplace_back(createWindow(i, k, mk, window_type,
                 &(sequences_[i]->data()[j]), length,
                 sequences_[i]->quality().empty() ? &(dummy_quality_[0]) :
                 &(sequences_[i]->quality()[j]), length));

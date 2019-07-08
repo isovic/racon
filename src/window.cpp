@@ -12,9 +12,9 @@
 
 namespace racon {
 
-std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
-    const char* backbone, uint32_t backbone_length, const char* quality,
-    uint32_t quality_length) {
+std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank, uint32_t max_rank,
+    WindowType type, const char* backbone, uint32_t backbone_length,
+    const char* quality, uint32_t quality_length) {
 
     if (backbone_length == 0 || backbone_length != quality_length) {
         fprintf(stderr, "[racon::createWindow] error: "
@@ -22,14 +22,15 @@ std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type
         exit(1);
     }
 
-    return std::unique_ptr<Window>(new Window(id, rank, type, backbone,
+    return std::unique_ptr<Window>(new Window(id, rank, max_rank, type, backbone,
         backbone_length, quality, quality_length));
 }
 
-Window::Window(uint64_t id, uint32_t rank, WindowType type, const char* backbone,
-    uint32_t backbone_length, const char* quality, uint32_t quality_length)
-        : id_(id), rank_(rank), type_(type), consensus_(), sequences_(),
-        qualities_(), positions_() {
+Window::Window(uint64_t id, uint32_t rank, uint32_t max_rank, WindowType type,
+    const char* backbone, uint32_t backbone_length, const char* quality,
+    uint32_t quality_length)
+        : id_(id), rank_(rank), max_rank_(max_rank), type_(type), consensus_(),
+        sequences_(), qualities_(), positions_() {
 
     sequences_.emplace_back(backbone, backbone_length);
     qualities_.emplace_back(quality, quality_length);
@@ -114,14 +115,18 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         uint32_t average_coverage = (sequences_.size() - 1) / 2;
 
         int32_t begin = 0, end = consensus_.size() - 1;
-        for (; begin < static_cast<int32_t>(consensus_.size()); ++begin) {
-            if (coverages[begin] >= average_coverage) {
-                break;
+        if (rank_ != 0) {
+            for (; begin < static_cast<int32_t>(consensus_.size()); ++begin) {
+                if (coverages[begin] >= average_coverage) {
+                    break;
+                }
             }
         }
-        for (; end >= 0; --end) {
-            if (coverages[end] >= average_coverage) {
-                break;
+        if (rank_ != max_rank_) {
+            for (; end >= 0; --end) {
+                if (coverages[end] >= average_coverage) {
+                    break;
+                }
             }
         }
 
