@@ -60,6 +60,8 @@ cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON ..
 make
 ```
 
+***Note***: Short read polishing with CUDA is still in development!
+
 ## Usage
 Usage of `racon` is as following:
 
