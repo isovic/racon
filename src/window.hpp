@@ -24,11 +24,12 @@ enum class WindowType {
 };
 
 class Window;
-std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
+std::shared_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
     const char* backbone, uint32_t backbone_length, const char* quality,
     uint32_t quality_length);
 
 class Window {
+
 public:
     ~Window();
 
@@ -49,9 +50,13 @@ public:
         const char* quality, uint32_t quality_length, uint32_t begin,
         uint32_t end);
 
-    friend std::unique_ptr<Window> createWindow(uint64_t id, uint32_t rank,
+    friend std::shared_ptr<Window> createWindow(uint64_t id, uint32_t rank,
         WindowType type, const char* backbone, uint32_t backbone_length,
         const char* quality, uint32_t quality_length);
+
+#ifdef CUDA_ENABLED
+    friend class CUDABatchProcessor;
+#endif
 private:
     Window(uint64_t id, uint32_t rank, WindowType type, const char* backbone,
         uint32_t backbone_length, const char* quality, uint32_t quality_length);

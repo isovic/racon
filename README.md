@@ -21,6 +21,11 @@ A **wrapper script** is also available to enable easier usage to the end-user fo
 1. gcc 4.8+ or clang 3.4+
 2. cmake 3.2+
 
+### CUDA Support
+1. gcc 5.0+
+2. cmake 3.10+
+4. CUDA 10.0+
+
 ## Installation
 To install Racon run the following commands:
 
@@ -42,6 +47,18 @@ Optionally, you can run `sudo make install` to install racon executable to your 
 To build unit tests add `-Dracon_build_tests=ON` while running `cmake`. After installation, an executable named `racon_test` will be created in `build/bin`.
 
 To build the wrapper script add `-Dracon_build_wrapper=ON` while running `cmake`. After installation, an executable named `racon_wrapper` (python script) will be created in `build/bin`.
+
+### CUDA Support
+Racon makes use of [NVIDIA's ClaraGenomicsAnalysis SDK](https://github.com/clara-genomics/ClaraGenomicsAnalysis) for CUDA accelerated polishing and alignment.
+
+To build `racon` with CUDA support, add `-Dracon_enable_cuda=ON` while running `cmake`. If CUDA support is unavailable, the `cmake` step will error out. 
+Note that the CUDA support flag does not produce a new binary target. Instead it augments the existing `racon` binary itself.
+
+```bash
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -Dracon_enable_cuda=ON ..
+make
+```
 
 ## Usage
 Usage of `racon` is as following:
@@ -89,6 +106,15 @@ Usage of `racon` is as following:
             prints the version number
         -h, --help
             prints the usage
+
+    only available when built with CUDA:
+        -c, --cudapoa-batches
+            default: 1
+            number of batches for CUDA accelerated polishing
+        -b, --cuda-banded-alignment
+            use banding approximation for polishing on GPU. Only applicable when -c is used.
+        --cudaaligner-batches (experimental)
+            Number of batches for CUDA accelerated alignment
 
 `racon_test` is run without any parameters.
 

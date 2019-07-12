@@ -6,11 +6,15 @@
 
 #include <algorithm>
 #include <unordered_set>
+#include <iostream>
 
 #include "overlap.hpp"
 #include "sequence.hpp"
 #include "window.hpp"
 #include "polisher.hpp"
+#ifdef CUDA_ENABLED
+#include "cuda/cudapolisher.hpp"
+#endif
 
 #include "bioparser/bioparser.hpp"
 #include "thread_pool/thread_pool.hpp"
@@ -52,7 +56,8 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-    uint32_t num_threads) {
+    uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
+    uint32_t cudaaligner_batches) {
 
     if (type != PolisherType::kC && type != PolisherType::kF) {
         fprintf(stderr, "[racon::createPolisher] error: invalid polisher type!\n");
@@ -123,10 +128,30 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         exit(1);
     }
 
-    return std::unique_ptr<Polisher>(new Polisher(std::move(sparser),
-        std::move(oparser), std::move(tparser), type, window_length,
-        quality_threshold, error_threshold, match, mismatch, gap,
-        num_threads));
+    if (cudapoa_batches > 0 || cudaaligner_batches > 0)
+    {
+#ifdef CUDA_ENABLED
+        // If CUDA is enabled, return an instance of the CUDAPolisher object.
+        return std::unique_ptr<Polisher>(new CUDAPolisher(std::move(sparser),
+                    std::move(oparser), std::move(tparser), type, window_length,
+                    quality_threshold, error_threshold, match, mismatch, gap,
+                    num_threads, cudapoa_batches, cuda_banded_alignment, cudaaligner_batches));
+#else
+        fprintf(stderr, "[racon::createPolisher] error: "
+                "Attemping to use CUDA when CUDA support is not available.\n"
+                "Please check logic in %s:%s\n",
+                __FILE__, __func__);
+        exit(1);
+#endif
+    }
+    else
+    {
+        (void) cuda_banded_alignment;
+        return std::unique_ptr<Polisher>(new Polisher(std::move(sparser),
+                    std::move(oparser), std::move(tparser), type, window_length,
+                    quality_threshold, error_threshold, match, mismatch, gap,
+                    num_threads));
+    }
 }
 
 Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
@@ -347,26 +372,7 @@ void Polisher::initialize() {
         it.wait();
     }
 
-    thread_futures.clear();
-    for (uint64_t i = 0; i < overlaps.size(); ++i) {
-        thread_futures.emplace_back(thread_pool_->submit(
-            [&](uint64_t j) -> void {
-                overlaps[j]->find_breaking_points(sequences_, window_length_);
-            }, i));
-    }
-
-    uint32_t logger_step = thread_futures.size() / 20;
-    for (uint64_t i = 0; i < thread_futures.size(); ++i) {
-        thread_futures[i].wait();
-        if (logger_step != 0 && (i + 1) % logger_step == 0 && (i + 1) / logger_step < 20) {
-            (*logger_)["[racon::Polisher::initialize] aligning overlaps"];
-        }
-    }
-    if (logger_step != 0) {
-        (*logger_)["[racon::Polisher::initialize] aligning overlaps"];
-    } else {
-        (*logger_)("[racon::Polisher::initialize] aligned overlaps");
-    }
+    find_overlap_breaking_points(overlaps);
 
     (*logger_)();
 
@@ -448,6 +454,30 @@ void Polisher::initialize() {
     (*logger_)("[racon::Polisher::initialize] transformed data into windows");
 }
 
+void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
+{
+    std::vector<std::future<void>> thread_futures;
+    for (uint64_t i = 0; i < overlaps.size(); ++i) {
+        thread_futures.emplace_back(thread_pool_->submit(
+            [&](uint64_t j) -> void {
+                overlaps[j]->find_breaking_points(sequences_, window_length_);
+            }, i));
+    }
+
+    uint32_t logger_step = thread_futures.size() / 20;
+    for (uint64_t i = 0; i < thread_futures.size(); ++i) {
+        thread_futures[i].wait();
+        if (logger_step != 0 && (i + 1) % logger_step == 0 && (i + 1) / logger_step < 20) {
+            (*logger_)["[racon::Polisher::initialize] aligning overlaps"];
+        }
+    }
+    if (logger_step != 0) {
+        (*logger_)["[racon::Polisher::initialize] aligning overlaps"];
+    } else {
+        (*logger_)("[racon::Polisher::initialize] aligned overlaps");
+    }
+}
+
 void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     bool drop_unpolished_sequences) {
 
@@ -508,8 +538,23 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         (*logger_)("[racon::Polisher::polish] generated consensus");
     }
 
-    std::vector<std::unique_ptr<Window>>().swap(windows_);
+    std::vector<std::shared_ptr<Window>>().swap(windows_);
     std::vector<std::unique_ptr<Sequence>>().swap(sequences_);
+}
+
+void Polisher::log(std::string msg)
+{
+    (*logger_)(msg);
+}
+
+void Polisher::bar(std::string msg)
+{
+    (*logger_)[msg];
+}
+
+void Polisher::log_reset()
+{
+    (*logger_)();
 }
 
 }

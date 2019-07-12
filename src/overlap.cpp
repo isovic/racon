@@ -190,29 +190,41 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
     }
 
     if (cigar_.empty()) {
-        // align overlaps with edlib
         const char* q = !strand_ ? &(sequences[q_id_]->data()[q_begin_]) :
             &(sequences[q_id_]->reverse_complement()[q_length_ - q_end_]);
         const char* t = &(sequences[t_id_]->data()[t_begin_]);
 
-        EdlibAlignResult result = edlibAlign(q, q_end_ - q_begin_, t, t_end_ -
-            t_begin_, edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH,
-            nullptr, 0));
-
-        if (result.status == EDLIB_STATUS_OK) {
-            char* cigar = edlibAlignmentToCigar(result.alignment,
-                result.alignmentLength, EDLIB_CIGAR_STANDARD);
-            cigar_ = cigar;
-            free(cigar);
-        } else {
-            fprintf(stderr, "[racon::Overlap::find_breaking_points] error: "
-                "edlib unable to align pair (%zu x %zu)!\n", q_id_, t_id_);
-            exit(1);
-        }
-
-        edlibFreeAlignResult(result);
+        align_overlaps(q, q_end_ - q_begin_, t, t_end_ - t_begin_);
     }
 
+    find_breaking_points_from_cigar(window_length);
+
+    std::string().swap(cigar_);
+}
+
+void Overlap::align_overlaps(const char* q, uint32_t q_length, const char* t, uint32_t t_length)
+{
+    // align overlaps with edlib
+    EdlibAlignResult result = edlibAlign(q, q_length, t, t_length,
+            edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH,
+                nullptr, 0));
+
+    if (result.status == EDLIB_STATUS_OK) {
+        char* cigar = edlibAlignmentToCigar(result.alignment,
+                result.alignmentLength, EDLIB_CIGAR_STANDARD);
+        cigar_ = cigar;
+        free(cigar);
+    } else {
+        fprintf(stderr, "[racon::Overlap::find_breaking_points] error: "
+                "edlib unable to align pair (%zu x %zu)!\n", q_id_, t_id_);
+        exit(1);
+    }
+
+    edlibFreeAlignResult(result);
+}
+
+void Overlap::find_breaking_points_from_cigar(uint32_t window_length)
+{
     // find breaking points from cigar
     std::vector<int32_t> window_ends;
     for (uint32_t i = 0; i < t_end_; i += window_length) {
@@ -277,8 +289,6 @@ void Overlap::find_breaking_points(const std::vector<std::unique_ptr<Sequence>>&
             j = i + 1;
         }
     }
-
-    std::string().swap(cigar_);
 }
 
 }

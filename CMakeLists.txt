@@ -12,13 +12,35 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(racon_build_tests "Build racon unit tests" OFF)
 option(racon_build_wrapper "Build racon wrapper" OFF)
+option(racon_enable_cuda "Build racon with NVIDIA CUDA support" OFF)
 
-add_executable(racon
+# Check CUDA compatibility.
+if(racon_enable_cuda)
+    find_package(CUDA 9.0 QUIET REQUIRED)
+    if(NOT ${CUDA_FOUND})
+        message(FATAL_ERROR "CUDA not detected on system. Please install")
+    else()
+        message(STATUS "Using CUDA ${CUDA_VERSION} from ${CUDA_TOOLKIT_ROOT_DIR}")
+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -lineinfo")
+    endif()
+endif()
+
+include_directories(${PROJECT_SOURCE_DIR}/src)
+
+set(racon_sources
     src/main.cpp
     src/polisher.cpp
     src/overlap.cpp
     src/sequence.cpp
     src/window.cpp)
+
+if(racon_enable_cuda)
+    list(APPEND racon_sources src/cuda/cudapolisher.cpp src/cuda/cudabatch.cpp src/cuda/cudaaligner.cpp)
+    cuda_add_executable(racon ${racon_sources})
+    target_compile_definitions(racon PRIVATE CUDA_ENABLED)
+else()
+    add_executable(racon ${racon_sources})
+endif()
 
 if (NOT TARGET bioparser)
     add_subdirectory(vendor/bioparser EXCLUDE_FROM_ALL)
@@ -35,8 +57,39 @@ endif()
 if (NOT TARGET logger)
     add_subdirectory(vendor/logger EXCLUDE_FROM_ALL)
 endif()
+if (racon_enable_cuda)
+    if (DEFINED CLARAGENOMICSANALYSIS_SDK_PATH)
+        list(APPEND CMAKE_PREFIX_PATH "${CLARAGENOMICSANALYSIS_SDK_PATH}/cmake")
+        find_package(cudapoa REQUIRED)
+        find_package(cudaaligner REQUIRED)
+    elseif (DEFINED CLARAGENOMICSANALYSIS_SRC_PATH)
+        if (NOT TARGET cudapoa)
+            add_subdirectory(${CLARAGENOMICSANALYSIS_SRC_PATH} ${CMAKE_CURRENT_BINARY_DIR}/ClaraGenomicsAnalysis EXCLUDE_FROM_ALL)
+        endif()
+        if (NOT TARGET cudaaligner)
+            add_subdirectory(${CLARAGENOMICSANALYSIS_SRC_PATH} ${CMAKE_CURRENT_BINARY_DIR}/ClaraGenomicsAnalysis EXCLUDE_FROM_ALL)
+        endif()
+    elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/vendor/ClaraGenomicsAnalysis)
+        if (NOT TARGET cudapoa)
+            add_subdirectory(vendor/ClaraGenomicsAnalysis ${CMAKE_CURRENT_BINARY_DIR}/ClaraGenomicsAnalysis EXCLUDE_FROM_ALL)
+        endif()
+        if (NOT TARGET cudaaligner)
+            add_subdirectory(vendor/ClaraGenomicsAnalysis ${CMAKE_CURRENT_BINARY_DIR}/ClaraGenomicsAnalysis EXCLUDE_FROM_ALL)
+        endif()
+    else()
+        if (NOT TARGET cudapoa)
+            add_subdirectory(../ClaraGenomicsAnalysis ${CMAKE_CURRENT_BINARY_DIR}/ClaraGenomicsAnalysis EXCLUDE_FROM_ALL)
+        endif()
+        if (NOT TARGET cudaaligner)
+            add_subdirectory(../ClaraGenomicsAnalysis ${CMAKE_CURRENT_BINARY_DIR}/ClaraGenomicsAnalysis EXCLUDE_FROM_ALL)
+        endif()
+    endif()
+endif()
 
 target_link_libraries(racon bioparser spoa thread_pool edlib_static logger)
+if (racon_enable_cuda)
+    target_link_libraries(racon cudapoa cudaaligner)
+endif()
 
 install(TARGETS racon DESTINATION bin)
 
@@ -47,18 +100,29 @@ if (racon_build_tests)
     include_directories(${PROJECT_BINARY_DIR}/config)
     include_directories(${PROJECT_SOURCE_DIR}/src)
 
-    add_executable(racon_test
+    set(racon_test_sources
         test/racon_test.cpp
         src/polisher.cpp
         src/overlap.cpp
         src/sequence.cpp
         src/window.cpp)
 
+    if (racon_enable_cuda)
+        list(APPEND racon_test_sources src/cuda/cudapolisher.cpp src/cuda/cudabatch.cpp src/cuda/cudaaligner.cpp)
+        cuda_add_executable(racon_test ${racon_test_sources})
+        target_compile_definitions(racon_test PRIVATE CUDA_ENABLED)
+    else()
+        add_executable(racon_test ${racon_test_sources})
+    endif()
+
     if (NOT TARGET gtest_main)
         add_subdirectory(vendor/googletest/googletest EXCLUDE_FROM_ALL)
     endif()
 
     target_link_libraries(racon_test bioparser spoa thread_pool edlib_static logger gtest_main)
+    if (racon_enable_cuda)
+        target_link_libraries(racon_test cudapoa cudaaligner)
+    endif()
 endif()
 
 if (racon_build_wrapper)

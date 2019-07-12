@@ -45,23 +45,26 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-    uint32_t num_threads);
+    uint32_t num_threads, uint32_t cuda_batches = 0,
+    bool cuda_banded_alignment = false, uint32_t cudaaligner_batches = 0);
 
 class Polisher {
 public:
-    ~Polisher();
+    virtual ~Polisher();
 
-    void initialize();
+    virtual void initialize();
 
-    void polish(std::vector<std::unique_ptr<Sequence>>& dst,
+    virtual void polish(std::vector<std::unique_ptr<Sequence>>& dst,
         bool drop_unpolished_sequences);
 
     friend std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         const std::string& overlaps_path, const std::string& target_path,
         PolisherType type, uint32_t window_length, double quality_threshold,
         double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
-        uint32_t num_threads);
-private:
+        uint32_t num_threads, uint32_t cuda_batches, bool cuda_banded_alignment,
+        uint32_t cudaaligner_batches);
+
+protected:
     Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         std::unique_ptr<bioparser::Parser<Overlap>> oparser,
         std::unique_ptr<bioparser::Parser<Sequence>> tparser,
@@ -70,6 +73,11 @@ private:
         uint32_t num_threads);
     Polisher(const Polisher&) = delete;
     const Polisher& operator=(const Polisher&) = delete;
+    virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps);
+
+    void log(std::string msg);
+    void bar(std::string msg);
+    void log_reset();
 
     std::unique_ptr<bioparser::Parser<Sequence>> sparser_;
     std::unique_ptr<bioparser::Parser<Overlap>> oparser_;
@@ -85,7 +93,7 @@ private:
     std::string dummy_quality_;
 
     uint32_t window_length_;
-    std::vector<std::unique_ptr<Window>> windows_;
+    std::vector<std::shared_ptr<Window>> windows_;
 
     std::unique_ptr<thread_pool::ThreadPool> thread_pool_;
     std::unordered_map<std::thread::id, uint32_t> thread_to_id_;
