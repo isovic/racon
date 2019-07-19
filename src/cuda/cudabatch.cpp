@@ -19,14 +19,14 @@ namespace racon {
 
 std::atomic<uint32_t> CUDABatchProcessor::batches;
 
-std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment)
+std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, size_t avail_mem, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment)
 {
-    return std::unique_ptr<CUDABatchProcessor>(new CUDABatchProcessor(max_windows, max_window_depth, device, gap, mismatch, match, cuda_banded_alignment));
+    return std::unique_ptr<CUDABatchProcessor>(new CUDABatchProcessor(max_windows, max_window_depth, device, avail_mem, gap, mismatch, match, cuda_banded_alignment));
 }
 
-CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment)
+CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, size_t avail_mem, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment)
     : max_windows_(max_windows)
-    , cudapoa_batch_(claragenomics::cudapoa::create_batch(max_windows, max_window_depth, device, claragenomics::cudapoa::OutputType::consensus, gap, mismatch, match, cuda_banded_alignment))
+    , cudapoa_batch_(claragenomics::cudapoa::create_batch(max_windows, max_window_depth, device, avail_mem, claragenomics::cudapoa::OutputType::consensus, gap, mismatch, match, cuda_banded_alignment))
     , windows_()
     , seqs_added_per_window_()
 {
@@ -45,8 +45,14 @@ CUDABatchProcessor::~CUDABatchProcessor()
 
 bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
 {
-    if (windows_.size() < max_windows_)
-    {
+    uint32_t num_seqs = window->sequences_.size();
+    uint32_t max_seq_length = 0;
+    for(uint32_t j = 0; j < num_seqs; j++){
+	std::pair<const char*, uint32_t> seq = window->sequences_[j];
+	if(seq.second > max_seq_length) max_seq_length = seq.second;
+    }
+
+    if(windows_.size() < max_windows_ && cudapoa_batch_->reserve_buf(max_seq_length)){ 
         windows_.push_back(window);
         seqs_added_per_window_.push_back(0);
         return true;
