@@ -30,8 +30,8 @@ A **wrapper script** is also available to enable easier usage to the end-user fo
 To install Racon run the following commands:
 
 ```bash
-git clone --recursive https://github.com/clara-genomics/racon-gpu.git
-cd racon-gpu
+git clone --recursive https://github.com/isovic/racon.git racon
+cd racon
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
