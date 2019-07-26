@@ -12,7 +12,7 @@
 #include "cuda/cudapolisher.hpp"
 #endif
 
-static const char* version = "v1.4.0";
+static const char* version = "v1.4.1";
 static const int32_t CUDAALIGNER_INPUT_CODE = 10000;
 
 static struct option options[] = {
