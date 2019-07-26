@@ -35,12 +35,11 @@ CUDABatchAligner::CUDABatchAligner(uint32_t max_query_size,
     CGA_CU_CHECK_ERR(cudaStreamCreate(&stream_));
 
     aligner_ = claragenomics::cudaaligner::create_aligner(max_query_size,
-							  max_target_size,
-							  max_alignments,
-							  claragenomics::cudaaligner::AlignmentType::global,
-							  stream_,
-							  device_id);
-    aligner_->set_cuda_stream(stream_);
+                                                          max_target_size,
+                                                          max_alignments,
+                                                          claragenomics::cudaaligner::AlignmentType::global,
+                                                          stream_,
+                                                          device_id);
 }
 
 CUDABatchAligner::~CUDABatchAligner()
