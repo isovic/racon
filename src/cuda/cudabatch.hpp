@@ -80,13 +80,6 @@ protected:
     const CUDABatchProcessor& operator=(const CUDABatchProcessor&) = delete;
 
     /*
-     * @brief Process all the windows and re-map them into
-     *        memory for more efficient processing in the CUDA
-     *        kernels.
-     */
-    void generateMemoryMap();
-
-    /*
      * @brief Run the CUDA kernel for generating POA on the batch.
      *        This call is asynchronous.
      */
@@ -105,13 +98,6 @@ protected:
     void convertPhredQualityToWeights(const char* qual,
                                       uint32_t qual_length,
                                       std::vector<int8_t>& weights);
-
-    /*
-     * @brief Add sequence and qualities to cudapoa.
-     *
-     */
-    claragenomics::cudapoa::StatusType addSequenceToPoa(std::pair<const char*, uint32_t>& seq,
-                                                      std::pair<const char*, uint32_t>& quality);
 
 protected:
     // Static batch count used to generate batch IDs.
