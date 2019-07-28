@@ -166,7 +166,7 @@ Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         alignment_engines_(), sequences_(), dummy_quality_(window_length, '!'),
         window_length_(window_length), windows_(),
         thread_pool_(thread_pool::createThreadPool(num_threads)),
-        thread_to_id_(), logger_(logger::createLogger()) {
+        thread_to_id_(), logger_(new logger::Logger()) {
 
     uint32_t id = 0;
     for (const auto& it: thread_pool_->thread_identifiers()) {
@@ -181,7 +181,7 @@ Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
 }
 
 Polisher::~Polisher() {
-    (*logger_).total("[racon::Polisher::] total =");
+    logger_->total("[racon::Polisher::] total =");
 }
 
 void Polisher::initialize() {
@@ -192,7 +192,7 @@ void Polisher::initialize() {
         return;
     }
 
-    (*logger_)();
+    logger_->log();
 
     tparser_->reset();
     tparser_->parse(sequences_, -1);
@@ -215,8 +215,8 @@ void Polisher::initialize() {
     std::vector<bool> has_data(targets_size, true);
     std::vector<bool> has_reverse_data(targets_size, false);
 
-    (*logger_)("[racon::Polisher::initialize] loaded target sequences");
-    (*logger_)();
+    logger_->log("[racon::Polisher::initialize] loaded target sequences");
+    logger_->log();
 
     uint64_t sequences_size = 0, total_sequences_length = 0;
 
@@ -271,8 +271,8 @@ void Polisher::initialize() {
     WindowType window_type = static_cast<double>(total_sequences_length) /
         sequences_size <= 1000 ? WindowType::kNGS : WindowType::kTGS;
 
-    (*logger_)("[racon::Polisher::initialize] loaded sequences");
-    (*logger_)();
+    logger_->log("[racon::Polisher::initialize] loaded sequences");
+    logger_->log();
 
     std::vector<std::unique_ptr<Overlap>> overlaps;
 
@@ -358,8 +358,8 @@ void Polisher::initialize() {
         exit(1);
     }
 
-    (*logger_)("[racon::Polisher::initialize] loaded overlaps");
-    (*logger_)();
+    logger_->log("[racon::Polisher::initialize] loaded overlaps");
+    logger_->log();
 
     std::vector<std::future<void>> thread_futures;
     for (uint64_t i = 0; i < sequences_.size(); ++i) {
@@ -374,7 +374,7 @@ void Polisher::initialize() {
 
     find_overlap_breaking_points(overlaps);
 
-    (*logger_)();
+    logger_->log();
 
     std::vector<uint64_t> id_to_first_window_id(targets_size + 1, 0);
     for (uint64_t i = 0; i < targets_size; ++i) {
@@ -451,7 +451,7 @@ void Polisher::initialize() {
         overlaps[i].reset();
     }
 
-    (*logger_)("[racon::Polisher::initialize] transformed data into windows");
+    logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
 
 void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
@@ -468,20 +468,20 @@ void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>
     for (uint64_t i = 0; i < thread_futures.size(); ++i) {
         thread_futures[i].wait();
         if (logger_step != 0 && (i + 1) % logger_step == 0 && (i + 1) / logger_step < 20) {
-            (*logger_)["[racon::Polisher::initialize] aligning overlaps"];
+            logger_->bar("[racon::Polisher::initialize] aligning overlaps");
         }
     }
     if (logger_step != 0) {
-        (*logger_)["[racon::Polisher::initialize] aligning overlaps"];
+        logger_->bar("[racon::Polisher::initialize] aligning overlaps");
     } else {
-        (*logger_)("[racon::Polisher::initialize] aligned overlaps");
+        logger_->log("[racon::Polisher::initialize] aligned overlaps");
     }
 }
 
 void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     bool drop_unpolished_sequences) {
 
-    (*logger_)();
+    logger_->log();
 
     std::vector<std::future<bool>> thread_futures;
     for (uint64_t i = 0; i < windows_.size(); ++i) {
@@ -528,33 +528,18 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         windows_[i].reset();
 
         if (logger_step != 0 && (i + 1) % logger_step == 0 && (i + 1) / logger_step < 20) {
-            (*logger_)["[racon::Polisher::polish] generating consensus"];
+            logger_->bar("[racon::Polisher::polish] generating consensus");
         }
     }
 
     if (logger_step != 0) {
-        (*logger_)["[racon::Polisher::polish] generating consensus"];
+        logger_->bar("[racon::Polisher::polish] generating consensus");
     } else {
-        (*logger_)("[racon::Polisher::polish] generated consensus");
+        logger_->log("[racon::Polisher::polish] generated consensus");
     }
 
     std::vector<std::shared_ptr<Window>>().swap(windows_);
     std::vector<std::unique_ptr<Sequence>>().swap(sequences_);
-}
-
-void Polisher::log(std::string msg)
-{
-    (*logger_)(msg);
-}
-
-void Polisher::bar(std::string msg)
-{
-    (*logger_)[msg];
-}
-
-void Polisher::log_reset()
-{
-    (*logger_)();
 }
 
 }
