@@ -14,6 +14,7 @@
 #include <cudautils/cudautils.hpp>
 
 #include "bioparser/bioparser.hpp"
+#include "logger/logger.hpp"
 
 namespace racon {
 
