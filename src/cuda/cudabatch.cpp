@@ -19,8 +19,7 @@ namespace racon {
 
 std::atomic<uint32_t> CUDABatchProcessor::batches;
 
-std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows,
-                                                    uint32_t max_window_depth,
+std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_window_depth,
                                                     uint32_t device,
                                                     size_t avail_mem,
                                                     int8_t gap,
@@ -28,8 +27,7 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows,
                                                     int8_t match,
                                                     bool cuda_banded_alignment)
 {
-    return std::unique_ptr<CUDABatchProcessor>(new CUDABatchProcessor(max_windows,
-                                                                      max_window_depth,
+    return std::unique_ptr<CUDABatchProcessor>(new CUDABatchProcessor(max_window_depth,
                                                                       device,
                                                                       avail_mem,
                                                                       gap,
@@ -38,17 +36,14 @@ std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows,
                                                                       cuda_banded_alignment));
 }
 
-CUDABatchProcessor::CUDABatchProcessor(uint32_t max_windows,
-                                       uint32_t max_window_depth,
+CUDABatchProcessor::CUDABatchProcessor(uint32_t max_window_depth,
                                        uint32_t device,
                                        size_t avail_mem,
                                        int8_t gap,
                                        int8_t mismatch,
                                        int8_t match,
                                        bool cuda_banded_alignment)
-    : max_windows_(max_windows)
-    , cudapoa_batch_(claragenomics::cudapoa::create_batch(max_windows,
-                                                          max_window_depth,
+    : cudapoa_batch_(claragenomics::cudapoa::create_batch(max_window_depth,
                                                           device,
                                                           avail_mem,
                                                           claragenomics::cudapoa::OutputType::consensus,
