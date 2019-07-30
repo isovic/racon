@@ -11,7 +11,7 @@
 #include <atomic>
 
 #include "window.hpp"
-#include "cudapoa/batch.hpp"
+#include <claragenomics/cudapoa/batch.hpp>
 
 namespace spoa {
     class AlignmentEngine;

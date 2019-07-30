@@ -7,7 +7,7 @@ RESULT_FILE="test-output.txt"
 GOLDEN_FILE="$SCRIPT_DIRECTORY/golden-output.txt"
 
 if [ $# -eq 0 ]; then
-    BATCHES=7
+    BATCHES=2
 else
     BATCHES=$1
 fi

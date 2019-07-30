@@ -3,9 +3,9 @@
  *
  * @brief CUDA aligner class header file
  */
-#include "cudaaligner/cudaaligner.hpp"
-#include "cudaaligner/aligner.hpp"
-#include "cudaaligner/alignment.hpp"
+#include <claragenomics/cudaaligner/cudaaligner.hpp>
+#include <claragenomics/cudaaligner/aligner.hpp>
+#include <claragenomics/cudaaligner/alignment.hpp>
 
 #include "overlap.hpp"
 #include "sequence.hpp"

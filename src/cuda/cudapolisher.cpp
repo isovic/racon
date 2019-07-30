@@ -11,7 +11,7 @@
 
 #include "sequence.hpp"
 #include "cudapolisher.hpp"
-#include <cudautils/cudautils.hpp>
+#include <claragenomics/utils/cudautils.hpp>
 
 #include "bioparser/bioparser.hpp"
 

@@ -13,7 +13,7 @@
 #include "cudautils.hpp"
 
 #include "spoa/spoa.hpp"
-#include <cudautils/cudautils.hpp>
+#include <claragenomics/utils/cudautils.hpp>
 
 namespace racon {
 
