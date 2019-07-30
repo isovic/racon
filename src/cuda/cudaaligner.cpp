@@ -4,7 +4,7 @@
  * @brief CUDABatchAligner class source file
  */
 
-#include <cudautils/cudautils.hpp>
+#include <claragenomics/utils/cudautils.hpp>
 
 #include "cudaaligner.hpp"
 
