@@ -22,7 +22,7 @@ namespace racon {
 class Window;
 
 class CUDABatchProcessor;
-std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment);
+std::unique_ptr<CUDABatchProcessor> createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, size_t avail_mem, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment);
 
 class CUDABatchProcessor
 {
@@ -65,7 +65,7 @@ public:
 
     // Builder function to create a new CUDABatchProcessor object.
     friend std::unique_ptr<CUDABatchProcessor>
-    createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment);
+    createCUDABatch(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, size_t avail_mem, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment);
 
 protected:
     /**
@@ -75,16 +75,9 @@ protected:
      * @param[in] max_window_depth : Maximum number of sequences per window
      * @param[in] cuda_banded_alignment : Use banded POA alignment
      */
-    CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment);
+    CUDABatchProcessor(uint32_t max_windows, uint32_t max_window_depth, uint32_t device, size_t avail_mem, int8_t gap, int8_t mismatch, int8_t match, bool cuda_banded_alignment);
     CUDABatchProcessor(const CUDABatchProcessor&) = delete;
     const CUDABatchProcessor& operator=(const CUDABatchProcessor&) = delete;
-
-    /*
-     * @brief Process all the windows and re-map them into
-     *        memory for more efficient processing in the CUDA
-     *        kernels.
-     */
-    void generateMemoryMap();
 
     /*
      * @brief Run the CUDA kernel for generating POA on the batch.
@@ -105,13 +98,6 @@ protected:
     void convertPhredQualityToWeights(const char* qual,
                                       uint32_t qual_length,
                                       std::vector<int8_t>& weights);
-
-    /*
-     * @brief Add sequence and qualities to cudapoa.
-     *
-     */
-    claragenomics::cudapoa::StatusType addSequenceToPoa(std::pair<const char*, uint32_t>& seq,
-                                                      std::pair<const char*, uint32_t>& quality);
 
 protected:
     // Static batch count used to generate batch IDs.
