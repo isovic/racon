@@ -52,14 +52,14 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_window_depth,
     CGA_CU_CHECK_ERR(cudaStreamCreate(&stream_));
 
     cudapoa_batch_ = claragenomics::cudapoa::create_batch(max_window_depth,
-                                                        device,
-                                                        stream_,
-                                                        avail_mem,
-                                                        claragenomics::cudapoa::OutputType::consensus,
-                                                        gap,
-                                                        mismatch,
-                                                        match,
-                                                        cuda_banded_alignment);
+                                                          device,
+                                                          stream_,
+                                                          avail_mem,
+                                                          claragenomics::cudapoa::OutputType::consensus,
+                                                          gap,
+                                                          mismatch,
+                                                          match,
+                                                          cuda_banded_alignment);
 }
 
 CUDABatchProcessor::~CUDABatchProcessor()

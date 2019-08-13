@@ -56,7 +56,7 @@ bool CUDABatchAligner::addOverlap(Overlap* overlap, std::vector<std::unique_ptr<
     int32_t t_len = overlap->t_end_ - overlap->t_begin_;
 
     // NOTE: The cudaaligner API for adding alignments is the opposite of edlib. Hence, what is
-    // treated as target in edlib is query inc udaaligner and vice versa.
+    // treated as target in edlib is query in cudaaligner and vice versa.
     claragenomics::cudaaligner::StatusType s = aligner_->add_alignment(t, t_len,
                                                                        q, q_len);
     if (s == claragenomics::cudaaligner::StatusType::exceeded_max_alignments)
