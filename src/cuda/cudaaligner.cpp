@@ -32,6 +32,8 @@ CUDABatchAligner::CUDABatchAligner(uint32_t max_query_size,
 {
     bid_ = CUDABatchAligner::batches++;
 
+    CGA_CU_CHECK_ERR(cudaSetDevice(device_id));
+
     CGA_CU_CHECK_ERR(cudaStreamCreate(&stream_));
 
     aligner_ = claragenomics::cudaaligner::create_aligner(max_query_size,
