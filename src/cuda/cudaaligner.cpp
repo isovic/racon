@@ -51,11 +51,14 @@ bool CUDABatchAligner::addOverlap(Overlap* overlap, std::vector<std::unique_ptr<
 {
     const char* q = !overlap->strand_ ? &(sequences[overlap->q_id_]->data()[overlap->q_begin_]) :
         &(sequences[overlap->q_id_]->reverse_complement()[overlap->q_length_ - overlap->q_end_]);
+    int32_t q_len = overlap->q_end_ - overlap->q_begin_;
     const char* t = &(sequences[overlap->t_id_]->data()[overlap->t_begin_]);
+    int32_t t_len = overlap->t_end_ - overlap->t_begin_;
 
-    claragenomics::cudaaligner::StatusType s =
-        aligner_->add_alignment(q, overlap->q_end_ - overlap->q_begin_,
-                                t, overlap->t_end_ - overlap->t_begin_);
+    // NOTE: The cudaaligner API for adding alignments is the opposite of edlib. Hence, what is
+    // treated as target in edlib is query inc udaaligner and vice versa.
+    claragenomics::cudaaligner::StatusType s = aligner_->add_alignment(t, t_len,
+                                                                       q, q_len);
     if (s == claragenomics::cudaaligner::StatusType::exceeded_max_alignments)
     {
         return false;
@@ -63,8 +66,8 @@ bool CUDABatchAligner::addOverlap(Overlap* overlap, std::vector<std::unique_ptr<
     else if (s == claragenomics::cudaaligner::StatusType::exceeded_max_alignment_difference
              || s == claragenomics::cudaaligner::StatusType::exceeded_max_length)
     {
-        cpu_overlap_data_.emplace_back(std::make_pair<std::string, std::string>(std::string(q, q + overlap->q_end_ - overlap->q_begin_),
-                                                                                std::string(t, t + overlap->t_end_ - overlap->t_begin_)));
+        cpu_overlap_data_.emplace_back(std::make_pair<std::string, std::string>(std::string(q, q + q_len),
+                                                                                std::string(t, t + t_len)));
         cpu_overlaps_.push_back(overlap);
     }
     else if (s != claragenomics::cudaaligner::StatusType::success)

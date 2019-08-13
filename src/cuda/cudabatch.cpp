@@ -43,22 +43,23 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_window_depth,
                                        int8_t mismatch,
                                        int8_t match,
                                        bool cuda_banded_alignment)
-    : cudapoa_batch_(claragenomics::cudapoa::create_batch(max_window_depth,
-                                                          device,
-                                                          avail_mem,
-                                                          claragenomics::cudapoa::OutputType::consensus,
-                                                          gap,
-                                                          mismatch,
-                                                          match,
-                                                          cuda_banded_alignment))
-    , windows_()
+    : windows_()
     , seqs_added_per_window_()
 {
     bid_ = CUDABatchProcessor::batches++;
     
     // Create new CUDA stream.
     CGA_CU_CHECK_ERR(cudaStreamCreate(&stream_));
-    cudapoa_batch_->set_cuda_stream(stream_);
+
+    cudapoa_batch_ = claragenomics::cudapoa::create_batch(max_window_depth,
+                                                        device,
+                                                        stream_,
+                                                        avail_mem,
+                                                        claragenomics::cudapoa::OutputType::consensus,
+                                                        gap,
+                                                        mismatch,
+                                                        match,
+                                                        cuda_banded_alignment);
 }
 
 CUDABatchProcessor::~CUDABatchProcessor()
@@ -209,6 +210,7 @@ void CUDABatchProcessor::getConsensus()
         {
             // This is a special case borrowed from the CPU version.
             // TODO: We still run this case through the GPU, but could take it out.
+            bool consensus_status = false;
             if (window->sequences_.size() < 3)
             {
                 window->consensus_ = std::string(window->sequences_.front().first,
@@ -216,11 +218,11 @@ void CUDABatchProcessor::getConsensus()
 
                 // This status is borrowed from the CPU version which considers this
                 // a failed consensus. All other cases are true.
-                window_consensus_status_.emplace_back(false);
+                consensus_status = false;
             }
             else
             {
-                window->consensus_ = consensuses.at(i);
+                window->consensus_ = consensuses[i];
                 if (window->type_ ==  WindowType::kTGS)
                 {
                     uint32_t num_seqs_in_window = seqs_added_per_window_[i];
@@ -228,25 +230,27 @@ void CUDABatchProcessor::getConsensus()
 
                     int32_t begin = 0, end =  window->consensus_.size() - 1;
                     for (; begin < static_cast<int32_t>( window->consensus_.size()); ++begin) {
-                        if (coverages.at(i).at(begin) >= average_coverage) {
+                        if (coverages[i][begin] >= average_coverage) {
                             break;
                         }
                     }
                     for (; end >= 0; --end) {
-                        if (coverages.at(i).at(end) >= average_coverage) {
+                        if (coverages[i][end] >= average_coverage) {
                             break;
                         }
                     }
 
                     if (begin >= end) {
-                        fprintf(stderr, "[CUDABatchProcessor] warning: "
+                        fprintf(stdout, "[CUDABatchProcessor] warning: "
                                 "contig might be chimeric in window %lu!\n", window->id_);
+                        consensus_status = false;
                     } else {
                         window->consensus_ =  window->consensus_.substr(begin, end - begin + 1);
+                        consensus_status = true;
                     }
                 }
-                window_consensus_status_.emplace_back(true);
             }
+            window_consensus_status_.emplace_back(consensus_status);
         }
     }
 }
