@@ -11,7 +11,7 @@
 
 #include "sequence.hpp"
 #include "cudapolisher.hpp"
-#include <cudautils/cudautils.hpp>
+#include <claragenomics/utils/cudautils.hpp>
 
 #include "bioparser/bioparser.hpp"
 
@@ -81,6 +81,7 @@ std::vector<uint32_t> CUDAPolisher::calculate_batches_per_gpu(uint32_t batches, 
     return batches_per_gpu;
 }
 
+
 void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
 {
     if (cudaaligner_batches_ < 1)
@@ -91,7 +92,7 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
     else
     {
         // TODO: Experimentally this is giving decent perf
-        const uint32_t MAX_ALIGNMENTS = 50;
+        const uint32_t MAX_ALIGNMENTS = 200;
 
         log_reset();
         std::mutex mutex_overlaps;
@@ -148,7 +149,6 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
                         else if (logger_step != 0 && log_bar_idx < static_cast<int32_t>(RACON_LOGGER_BIN_SIZE))
                         {
                             bar(std::string("[racon::CUDAPolisher::initialize] aligning overlaps"));
-                            std::cerr<<std::endl;
                             log_bar_idx_prev = log_bar_idx;
                         }
                     }
@@ -170,6 +170,8 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
                 batch_aligners_.emplace_back(createCUDABatchAligner(10000, 10000, MAX_ALIGNMENTS, device));
             }
         }
+
+        log(std::string("[racon::CUDAPolisher::initialize] allocated memory on GPUs for alignment"));
 
         // Run batched alignment.
         std::vector<std::future<void>> thread_futures;
@@ -202,7 +204,6 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     else
     {
         // Creation and use of batches.
-        const uint32_t MAX_WINDOWS = 256;
         const uint32_t MAX_DEPTH_PER_WINDOW = 200;
 
         // Bin batches into each GPU.
@@ -210,13 +211,19 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
         for(int32_t device = 0; device < num_devices_; device++)
         {
+            size_t total = 0, free = 0;
+            CGA_CU_CHECK_ERR(cudaSetDevice(device));
+            CGA_CU_CHECK_ERR(cudaMemGetInfo(&free, &total));
+            // Using 90% of available memory as heuristic since not all available memory can be used
+            // due to fragmentation.
+            size_t mem_per_batch = 0.9 * free/batches_per_gpu.at(device);
             for(uint32_t batch = 0; batch < batches_per_gpu.at(device); batch++)
             {
-                batch_processors_.emplace_back(createCUDABatch(MAX_WINDOWS, MAX_DEPTH_PER_WINDOW, device, gap_, mismatch_, match_, cuda_banded_alignment_));
+                batch_processors_.emplace_back(createCUDABatch(MAX_DEPTH_PER_WINDOW, device, mem_per_batch, gap_, mismatch_, match_, cuda_banded_alignment_));
             }
         }
 
-        log(std::string("[racon::CUDAPolisher::polish] allocated memory on GPUs"));
+        log(std::string("[racon::CUDAPolisher::polish] allocated memory on GPUs for polishing"));
 
         // Mutex for accessing the vector of windows.
         std::mutex mutex_windows;
@@ -294,9 +301,11 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                         }
                         else if (logger_step != 0 && log_bar_idx < static_cast<int32_t>(RACON_LOGGER_BIN_SIZE))
                         {
-                            bar(std::string("[racon::CUDAPolisher::polish] generating consensus"));
-                            std::cerr<<std::endl;
-                            log_bar_idx_prev = log_bar_idx;
+                            while(log_bar_idx_prev <= log_bar_idx)
+                            {
+                                bar(std::string("[racon::CUDAPolisher::polish] generating consensus"));
+                                log_bar_idx_prev++;
+                            }
                         }
                     }
                 }
