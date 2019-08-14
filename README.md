@@ -24,7 +24,7 @@ A **wrapper script** is also available to enable easier usage to the end-user fo
 ### CUDA Support
 1. gcc 5.0+
 2. cmake 3.10+
-4. CUDA 10.0+
+4. CUDA 9.0+
 
 ## Installation
 To install Racon run the following commands:
@@ -115,7 +115,7 @@ Usage of `racon` is as following:
             number of batches for CUDA accelerated polishing
         -b, --cuda-banded-alignment
             use banding approximation for polishing on GPU. Only applicable when -c is used.
-        --cudaaligner-batches (experimental)
+        --cudaaligner-batches
             Number of batches for CUDA accelerated alignment
 
 `racon_test` is run without any parameters.
