@@ -149,7 +149,6 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
                         else if (logger_step != 0 && log_bar_idx < static_cast<int32_t>(RACON_LOGGER_BIN_SIZE))
                         {
                             bar(std::string("[racon::CUDAPolisher::initialize] aligning overlaps"));
-                            std::cerr<<std::endl;
                             log_bar_idx_prev = log_bar_idx;
                         }
                     }
@@ -171,6 +170,8 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
                 batch_aligners_.emplace_back(createCUDABatchAligner(10000, 10000, MAX_ALIGNMENTS, device));
             }
         }
+
+        log(std::string("[racon::CUDAPolisher::initialize] allocated memory on GPUs for alignment"));
 
         // Run batched alignment.
         std::vector<std::future<void>> thread_futures;
@@ -222,7 +223,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
             }
         }
 
-        log(std::string("[racon::CUDAPolisher::polish] allocated memory on GPUs"));
+        log(std::string("[racon::CUDAPolisher::polish] allocated memory on GPUs for polishing"));
 
         // Mutex for accessing the vector of windows.
         std::mutex mutex_windows;
