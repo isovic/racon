@@ -92,7 +92,7 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
     else
     {
         // TODO: Experimentally this is giving decent perf
-        const uint32_t MAX_ALIGNMENTS = 50;
+        const uint32_t MAX_ALIGNMENTS = 200;
 
         log_reset();
         std::mutex mutex_overlaps;

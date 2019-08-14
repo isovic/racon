@@ -115,7 +115,7 @@ Usage of `racon` is as following:
             number of batches for CUDA accelerated polishing
         -b, --cuda-banded-alignment
             use banding approximation for polishing on GPU. Only applicable when -c is used.
-        --cudaaligner-batches (experimental)
+        --cudaaligner-batches
             Number of batches for CUDA accelerated alignment
 
 `racon_test` is run without any parameters.
