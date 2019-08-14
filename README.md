@@ -24,7 +24,7 @@ A **wrapper script** is also available to enable easier usage to the end-user fo
 ### CUDA Support
 1. gcc 5.0+
 2. cmake 3.10+
-4. CUDA 10.0+
+4. CUDA 9.0+
 
 ## Installation
 To install Racon run the following commands:
