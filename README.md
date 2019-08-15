@@ -1,7 +1,7 @@
 # Racon
 
-[![Latest GitHub release](https://img.shields.io/github/release/isovic/racon.svg)](https://github.com/isovic/racon/releases/latest)
-[![Build status for gcc/clang](https://travis-ci.org/isovic/racon.svg?branch=master)](https://travis-ci.org/isovic/racon)
+[![Latest GitHub release](https://img.shields.io/github/release/lbcb-sci/racon.svg)](https://github.com/lbcb-sci/racon/releases/latest)
+[![Build status for gcc/clang](https://travis-ci.org/lbcb-sci/racon.svg?branch=master)](https://travis-ci.org/lbcb-sci/racon)
 [![Published in Genome Research](https://img.shields.io/badge/published%20in-Genome%20Research-blue.svg)](https://doi.org/10.1101/gr.214270.116)
 
 Consensus module for raw de novo DNA assembly of long uncorrected reads.
@@ -51,7 +51,7 @@ To build the wrapper script add `-Dracon_build_wrapper=ON` while running `cmake`
 ### CUDA Support
 Racon makes use of [NVIDIA's ClaraGenomicsAnalysis SDK](https://github.com/clara-genomics/ClaraGenomicsAnalysis) for CUDA accelerated polishing and alignment.
 
-To build `racon` with CUDA support, add `-Dracon_enable_cuda=ON` while running `cmake`. If CUDA support is unavailable, the `cmake` step will error out. 
+To build `racon` with CUDA support, add `-Dracon_enable_cuda=ON` while running `cmake`. If CUDA support is unavailable, the `cmake` step will error out.
 Note that the CUDA support flag does not produce a new binary target. Instead it augments the existing `racon` binary itself.
 
 ```bash

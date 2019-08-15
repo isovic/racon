@@ -12,7 +12,7 @@
 #include "cuda/cudapolisher.hpp"
 #endif
 
-static const char* version = "v1.4.1";
+static const char* version = "v1.4.4";
 static const int32_t CUDAALIGNER_INPUT_CODE = 10000;
 
 static struct option options[] = {
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
                 if (optarg == NULL && argv[optind] != NULL
                     && argv[optind][0] != '-') {
                     cudapoa_batches = atoi(argv[optind++]);
-                } 
+                }
                 // optional argument provided in the ususal way
                 if (optarg != NULL) {
                     cudapoa_batches = atoi(optarg);
