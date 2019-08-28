@@ -168,7 +168,7 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
         {
             for(uint32_t batch = 0; batch < batches_per_gpu.at(device); batch++)
             {
-                batch_aligners_.emplace_back(createCUDABatchAligner(10000, 10000, MAX_ALIGNMENTS, device));
+                batch_aligners_.emplace_back(createCUDABatchAligner(15000, 15000, MAX_ALIGNMENTS, device));
             }
         }
 
