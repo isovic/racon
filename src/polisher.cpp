@@ -55,7 +55,7 @@ uint64_t shrinkToFit(std::vector<std::unique_ptr<T>>& src, uint64_t begin) {
 std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
-    double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
+    double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
     uint32_t cudaaligner_batches) {
 
@@ -80,18 +80,20 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         return src.compare(src.size() - suffix.size(), suffix.size(), suffix) == 0;
     };
 
-    if (is_suffix(sequences_path, ".fasta") || is_suffix(sequences_path, ".fa") ||
-        is_suffix(sequences_path, ".fasta.gz") || is_suffix(sequences_path, ".fa.gz")) {
+    if (is_suffix(sequences_path, ".fasta") || is_suffix(sequences_path, ".fasta.gz") ||
+        is_suffix(sequences_path, ".fna") || is_suffix(sequences_path, ".fna.gz") ||
+        is_suffix(sequences_path, ".fa") || is_suffix(sequences_path, ".fa.gz")) {
         sparser = bioparser::createParser<bioparser::FastaParser, Sequence>(
             sequences_path);
-    } else if (is_suffix(sequences_path, ".fastq") || is_suffix(sequences_path, ".fq") ||
-        is_suffix(sequences_path, ".fastq.gz") || is_suffix(sequences_path, ".fq.gz")) {
+    } else if (is_suffix(sequences_path, ".fastq") || is_suffix(sequences_path, ".fastq.gz") ||
+        is_suffix(sequences_path, ".fq") || is_suffix(sequences_path, ".fq.gz")) {
         sparser = bioparser::createParser<bioparser::FastqParser, Sequence>(
             sequences_path);
     } else {
         fprintf(stderr, "[racon::createPolisher] error: "
             "file %s has unsupported format extension (valid extensions: "
-            ".fasta, .fasta.gz, .fa, .fa.gz, .fastq, .fastq.gz, .fq, .fq.gz)!\n",
+            ".fasta, .fasta.gz, .fna, .fna.gz, .fa, .fa.gz, .fastq, .fastq.gz, "
+            ".fq, .fq.gz)!\n",
             sequences_path.c_str());
         exit(1);
     }
@@ -112,18 +114,20 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         exit(1);
     }
 
-    if (is_suffix(target_path, ".fasta") || is_suffix(target_path, ".fa") ||
-        is_suffix(target_path, ".fasta.gz") || is_suffix(target_path, ".fa.gz")) {
+    if (is_suffix(target_path, ".fasta") || is_suffix(target_path, ".fasta.gz") ||
+        is_suffix(target_path, ".fna") || is_suffix(target_path, ".fna.gz") ||
+        is_suffix(target_path, ".fa") || is_suffix(target_path, ".fa.gz")) {
         tparser = bioparser::createParser<bioparser::FastaParser, Sequence>(
             target_path);
-    } else if (is_suffix(target_path, ".fastq") || is_suffix(target_path, ".fq") ||
-        is_suffix(target_path, ".fastq.gz") || is_suffix(target_path, ".fq.gz")) {
+    } else if (is_suffix(target_path, ".fastq") || is_suffix(target_path, ".fastq.gz") ||
+        is_suffix(target_path, ".fq") || is_suffix(target_path, ".fq.gz")) {
         tparser = bioparser::createParser<bioparser::FastqParser, Sequence>(
             target_path);
     } else {
         fprintf(stderr, "[racon::createPolisher] error: "
             "file %s has unsupported format extension (valid extensions: "
-            ".fasta, .fasta.gz, .fa, .fa.gz, .fastq, .fastq.gz, .fq, .fq.gz)!\n",
+            ".fasta, .fasta.gz, .fna, .fna.gz, .fa, .fa.gz, .fastq, .fastq.gz, "
+            ".fq, .fq.gz)!\n",
             target_path.c_str());
         exit(1);
     }
@@ -134,7 +138,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         // If CUDA is enabled, return an instance of the CUDAPolisher object.
         return std::unique_ptr<Polisher>(new CUDAPolisher(std::move(sparser),
                     std::move(oparser), std::move(tparser), type, window_length,
-                    quality_threshold, error_threshold, match, mismatch, gap,
+                    quality_threshold, error_threshold, trim, match, mismatch, gap,
                     num_threads, cudapoa_batches, cuda_banded_alignment, cudaaligner_batches));
 #else
         fprintf(stderr, "[racon::createPolisher] error: "
@@ -149,7 +153,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         (void) cuda_banded_alignment;
         return std::unique_ptr<Polisher>(new Polisher(std::move(sparser),
                     std::move(oparser), std::move(tparser), type, window_length,
-                    quality_threshold, error_threshold, match, mismatch, gap,
+                    quality_threshold, error_threshold, trim, match, mismatch, gap,
                     num_threads));
     }
 }
@@ -158,11 +162,11 @@ Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     std::unique_ptr<bioparser::Parser<Overlap>> oparser,
     std::unique_ptr<bioparser::Parser<Sequence>> tparser,
     PolisherType type, uint32_t window_length, double quality_threshold,
-    double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
+    double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads)
         : sparser_(std::move(sparser)), oparser_(std::move(oparser)),
         tparser_(std::move(tparser)), type_(type), quality_threshold_(
-        quality_threshold), error_threshold_(error_threshold),
+        quality_threshold), error_threshold_(error_threshold), trim_(trim),
         alignment_engines_(), sequences_(), dummy_quality_(window_length, '!'),
         window_length_(window_length), windows_(),
         thread_pool_(thread_pool::createThreadPool(num_threads)),
@@ -494,7 +498,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                     exit(1);
                 }
                 return windows_[j]->generate_consensus(
-                    alignment_engines_[it->second]);
+                    alignment_engines_[it->second], trim_);
             }, i));
     }
 

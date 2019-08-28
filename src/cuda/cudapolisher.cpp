@@ -27,12 +27,12 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     std::unique_ptr<bioparser::Parser<Overlap>> oparser,
     std::unique_ptr<bioparser::Parser<Sequence>> tparser,
     PolisherType type, uint32_t window_length, double quality_threshold,
-    double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
+    double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
     uint32_t cudaaligner_batches)
         : Polisher(std::move(sparser), std::move(oparser), std::move(tparser),
-                type, window_length, quality_threshold,
-                error_threshold, match, mismatch, gap, num_threads)
+                type, window_length, quality_threshold, error_threshold, trim,
+                match, mismatch, gap, num_threads)
         , cudapoa_batches_(cudapoa_batches)
         , cudaaligner_batches_(cudaaligner_batches)
         , gap_(gap)
@@ -352,7 +352,7 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                             exit(1);
                             }
                             return window_consensus_status_.at(j) = windows_[j]->generate_consensus(
-                                    alignment_engines_[it->second]);
+                                    alignment_engines_[it->second], trim_);
                             }, i));
             }
         }

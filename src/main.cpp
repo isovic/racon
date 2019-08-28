@@ -12,7 +12,7 @@
 #include "cuda/cudapolisher.hpp"
 #endif
 
-static const char* version = "v1.4.5";
+static const char* version = "v1.4.7";
 static const int32_t CUDAALIGNER_INPUT_CODE = 10000;
 
 static struct option options[] = {
@@ -21,6 +21,7 @@ static struct option options[] = {
     {"window-length", required_argument, 0, 'w'},
     {"quality-threshold", required_argument, 0, 'q'},
     {"error-threshold", required_argument, 0, 'e'},
+    {"no-trimming", no_argument, 0, 'T'},
     {"match", required_argument, 0, 'm'},
     {"mismatch", required_argument, 0, 'x'},
     {"gap", required_argument, 0, 'g'},
@@ -44,10 +45,11 @@ int main(int argc, char** argv) {
     uint32_t window_length = 500;
     double quality_threshold = 10.0;
     double error_threshold = 0.3;
+    bool trim = true;
 
-    int8_t match = 5;
-    int8_t mismatch = -4;
-    int8_t gap = -8;
+    int8_t match = 3;
+    int8_t mismatch = -5;
+    int8_t gap = -4;
     uint32_t type = 0;
 
     bool drop_unpolished_sequences = true;
@@ -79,6 +81,9 @@ int main(int argc, char** argv) {
                 break;
             case 'e':
                 error_threshold = atof(optarg);
+                break;
+            case 'T':
+                trim = false;
                 break;
             case 'm':
                 match = atoi(optarg);
@@ -137,7 +142,7 @@ int main(int argc, char** argv) {
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
         input_paths[2], type == 0 ? racon::PolisherType::kC :
         racon::PolisherType::kF, window_length, quality_threshold,
-        error_threshold, match, mismatch, gap, num_threads,
+        error_threshold, trim, match, mismatch, gap, num_threads,
         cudapoa_batches, cuda_banded_alignment, cudaaligner_batches);
 
     polisher->initialize();
@@ -181,14 +186,16 @@ void help() {
         "        -e, --error-threshold <float>\n"
         "            default: 0.3\n"
         "            maximum allowed error rate used for filtering overlaps\n"
+        "        --no-trimming\n"
+        "            disables consensus trimming at window ends\n"
         "        -m, --match <int>\n"
-        "            default: 5\n"
+        "            default: 3\n"
         "            score for matching bases\n"
         "        -x, --mismatch <int>\n"
-        "            default: -4\n"
+        "            default: -5\n"
         "            score for mismatching bases\n"
         "        -g, --gap <int>\n"
-        "            default: -8\n"
+        "            default: -4\n"
         "            gap penalty (must be negative)\n"
         "        -t, --threads <int>\n"
         "            default: 1\n"

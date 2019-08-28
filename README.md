@@ -92,6 +92,8 @@ Usage of `racon` is as following:
         -e, --error-threshold <float>
             default: 0.3
             maximum allowed error rate used for filtering overlaps
+        --no-trimming
+            disables consensus trimming at window ends
         -m, --match <int>
             default: 5
             score for matching bases
