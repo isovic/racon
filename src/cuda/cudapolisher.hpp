@@ -26,7 +26,7 @@ public:
     friend std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         const std::string& overlaps_path, const std::string& target_path,
         PolisherType type, uint32_t window_length, double quality_threshold,
-        double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
+        double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
         uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
         uint32_t cudaaligner_batches);
 
@@ -35,7 +35,7 @@ protected:
         std::unique_ptr<bioparser::Parser<Overlap>> oparser,
         std::unique_ptr<bioparser::Parser<Sequence>> tparser,
         PolisherType type, uint32_t window_length, double quality_threshold,
-        double error_threshold, int8_t match, int8_t mismatch, int8_t gap,
+        double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
         uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
         uint32_t cudaaligner_batches);
     CUDAPolisher(const CUDAPolisher&) = delete;
