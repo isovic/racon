@@ -12,7 +12,11 @@
 #include "cuda/cudapolisher.hpp"
 #endif
 
-static const char* version = "v1.4.7";
+#ifndef RACON_VERSION
+#error "Undefined version for Racon. Please pass version using -DRACON_VERSION macro."
+#endif
+
+static const char* version = RACON_VERSION;
 static const int32_t CUDAALIGNER_INPUT_CODE = 10000;
 
 static struct option options[] = {
