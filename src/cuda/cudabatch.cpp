@@ -241,7 +241,7 @@ void CUDABatchProcessor::getConsensus()
                     }
 
                     if (begin >= end) {
-                        fprintf(stdout, "[CUDABatchProcessor] warning: "
+                        fprintf(stderr, "[CUDABatchProcessor] warning: "
                                 "contig might be chimeric in window %lu!\n", window->id_);
                         consensus_status = false;
                     } else {
