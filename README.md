@@ -62,6 +62,13 @@ make
 
 ***Note***: Short read polishing with CUDA is still in development!
 
+### Packaging
+To generate a Debian package for `racon`, run the following command from the build folder -
+
+```bash
+make package
+```
+
 ## Usage
 Usage of `racon` is as following:
 
