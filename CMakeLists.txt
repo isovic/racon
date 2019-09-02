@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 project(racon)
+set(racon_version 1.4.6)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
@@ -41,6 +42,9 @@ if(racon_enable_cuda)
 else()
     add_executable(racon ${racon_sources})
 endif()
+
+# Add version information to bibary.
+target_compile_definitions(racon PRIVATE RACON_VERSION="v${racon_version}")
 
 if (NOT TARGET bioparser)
     add_subdirectory(vendor/bioparser EXCLUDE_FROM_ALL)
@@ -139,3 +143,9 @@ if (racon_build_wrapper)
         add_subdirectory(vendor/rampler)
     endif()
 endif()
+
+# Add Debian packaging
+SET(CPACK_GENERATOR "DEB")
+SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Robert Vaser")
+set(CPACK_PACKAGE_VERSION "${racon_version}")
+include(CPack)
