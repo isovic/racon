@@ -214,7 +214,7 @@ void help() {
         "            number of batches for CUDA accelerated polishing\n"
         "        -b, --cuda-banded-alignment\n"
         "            use banding approximation for alignment on GPU\n"
-        "        --cudaaligner-batches (experimental)\n"
+        "        --cudaaligner-batches\n"
         "            Number of batches for CUDA accelerated alignment\n"
 
 #endif
