@@ -87,14 +87,14 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         spoa::Alignment alignment;
         if (positions_[i].first < offset && positions_[i].second >
             sequences_.front().second - offset) {
-            alignment = alignment_engine->align_sequence_with_graph(
-                sequences_[i].first, sequences_[i].second, graph);
+            alignment = alignment_engine->align(sequences_[i].first,
+                sequences_[i].second, graph);
         } else {
             std::vector<int32_t> mapping;
             auto subgraph = graph->subgraph(positions_[i].first,
                 positions_[i].second, mapping);
-            alignment = alignment_engine->align_sequence_with_graph(
-                sequences_[i].first, sequences_[i].second, subgraph);
+            alignment = alignment_engine->align( sequences_[i].first,
+                sequences_[i].second, subgraph);
             subgraph->update_alignment(alignment, mapping);
         }
 
