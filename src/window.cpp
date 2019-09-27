@@ -42,6 +42,10 @@ Window::~Window() {
 void Window::add_layer(const char* sequence, uint32_t sequence_length,
     const char* quality, uint32_t quality_length, uint32_t begin, uint32_t end) {
 
+    if (sequence_length == 0 || begin == end) {
+        return;
+    }
+
     if (quality != nullptr && sequence_length != quality_length) {
         fprintf(stderr, "[racon::Window::add_layer] error: "
             "unequal quality size!\n");
