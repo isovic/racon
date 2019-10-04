@@ -37,6 +37,14 @@ g++ --version
 # FIX Added to deal with Anancoda SSL verification issues during conda builds
 conda config --set ssl_verify False
 
+conda install \
+    -c conda-forge \
+    -c sarcasm \
+    -c bioconda \
+    doxygen \
+    ninja \
+    cmake
+
 CUDA_REL=${CUDA:0:3}
 if [ "${CUDA:0:2}" == '10' ]; then
   # CUDA 10 release

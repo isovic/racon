@@ -85,12 +85,7 @@ std::vector<uint32_t> CUDAPolisher::calculate_batches_per_gpu(uint32_t batches, 
 
 void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
 {
-    if (cudaaligner_batches_ < 1)
-    {
-        // TODO: Kept CPU overlap alignment right now while GPU is a dummy implmentation.
-        Polisher::find_overlap_breaking_points(overlaps);
-    }
-    else
+    if (cudaaligner_batches_ >= 1)
     {
         // TODO: Experimentally this is giving decent perf
         const uint32_t MAX_ALIGNMENTS = 200;
@@ -137,7 +132,10 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
                 {
                     // Launch workload.
                     batch->alignAll();
-                    batch->find_breaking_points(window_length_);
+
+                    // Generate CIGAR strings for successful alignments. The actual breaking points
+                    // will be calculate by the overlap object.
+                    batch->generate_cigar_strings();
 
                     // logging bar
                     {
@@ -193,6 +191,12 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
 
         batch_aligners_.clear();
     }
+
+    // This call runs the breaking point detection code for all alignments.
+    // Any overlaps that couldn't be processed by the GPU are also handled here
+    // by the CPU aligner.
+    logger_->log();
+    Polisher::find_overlap_breaking_points(overlaps);
 }
 
 void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,

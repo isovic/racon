@@ -49,10 +49,11 @@ class CUDABatchAligner
         virtual void alignAll();
 
         /**
-         * @brief Find breaking points in alignments.
+         * @brief Generate cigar strings for overlaps that were successfully
+         *        copmuted on the GPU.
          *
          */
-        virtual void find_breaking_points(uint32_t window_length);
+        virtual void generate_cigar_strings();
 
         /**
          * @brief Resets the state of the object, which includes
@@ -74,13 +75,10 @@ class CUDABatchAligner
         CUDABatchAligner(const CUDABatchAligner&) = delete;
         const CUDABatchAligner& operator=(const CUDABatchAligner&) = delete;
 
-        void compute_cpu_overlaps();
-
         std::unique_ptr<claragenomics::cudaaligner::Aligner> aligner_;
 
         std::vector<Overlap*> overlaps_;
 
-        std::vector<Overlap*> cpu_overlaps_;
         std::vector<std::pair<std::string, std::string>> cpu_overlap_data_;
 
         // Static batch count used to generate batch IDs.
