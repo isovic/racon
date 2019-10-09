@@ -102,13 +102,13 @@ Usage of `racon` is as following:
         --no-trimming
             disables consensus trimming at window ends
         -m, --match <int>
-            default: 5
+            default: 3
             score for matching bases
         -x, --mismatch <int>
-            default: -4
+            default: -5
             score for mismatching bases
         -g, --gap <int>
-            default: -8
+            default: -4
             gap penalty (must be negative)
         -t, --threads <int>
             default: 1
