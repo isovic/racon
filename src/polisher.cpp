@@ -11,6 +11,7 @@
 #include "overlap.hpp"
 #include "sequence.hpp"
 #include "window.hpp"
+#include "logger.hpp"
 #include "polisher.hpp"
 #ifdef CUDA_ENABLED
 #include "cuda/cudapolisher.hpp"
@@ -19,7 +20,6 @@
 #include "bioparser/bioparser.hpp"
 #include "thread_pool/thread_pool.hpp"
 #include "spoa/spoa.hpp"
-#include "logger/logger.hpp"
 
 namespace racon {
 
@@ -170,7 +170,7 @@ Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         alignment_engines_(), sequences_(), dummy_quality_(window_length, '!'),
         window_length_(window_length), windows_(),
         thread_pool_(thread_pool::createThreadPool(num_threads)),
-        thread_to_id_(), logger_(new logger::Logger()) {
+        thread_to_id_(), logger_(new Logger()) {
 
     uint32_t id = 0;
     for (const auto& it: thread_pool_->thread_identifiers()) {

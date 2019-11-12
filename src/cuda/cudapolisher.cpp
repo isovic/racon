@@ -10,11 +10,11 @@
 #include <cuda_profiler_api.h>
 
 #include "sequence.hpp"
+#include "logger.hpp"
 #include "cudapolisher.hpp"
 #include <claragenomics/utils/cudautils.hpp>
 
 #include "bioparser/bioparser.hpp"
-#include "logger/logger.hpp"
 
 namespace racon {
 
