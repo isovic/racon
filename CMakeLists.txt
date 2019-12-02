@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 project(racon)
-set(racon_version 1.4.9)
+set(racon_version 1.4.10)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
@@ -30,6 +30,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 
 set(racon_sources
     src/main.cpp
+    src/logger.cpp
     src/polisher.cpp
     src/overlap.cpp
     src/sequence.cpp
@@ -57,9 +58,6 @@ if (NOT TARGET thread_pool)
 endif()
 if (NOT TARGET edlib)
     add_subdirectory(vendor/edlib EXCLUDE_FROM_ALL)
-endif()
-if (NOT TARGET logger)
-    add_subdirectory(vendor/logger EXCLUDE_FROM_ALL)
 endif()
 if (racon_enable_cuda)
     if (DEFINED CLARAGENOMICSANALYSIS_SDK_PATH)
@@ -90,7 +88,7 @@ if (racon_enable_cuda)
     endif()
 endif()
 
-target_link_libraries(racon bioparser spoa thread_pool edlib_static logger)
+target_link_libraries(racon bioparser spoa thread_pool edlib_static)
 if (racon_enable_cuda)
     target_link_libraries(racon cudapoa cudaaligner)
 endif()
@@ -106,6 +104,7 @@ if (racon_build_tests)
 
     set(racon_test_sources
         test/racon_test.cpp
+        src/logger.cpp
         src/polisher.cpp
         src/overlap.cpp
         src/sequence.cpp
@@ -123,7 +122,7 @@ if (racon_build_tests)
         add_subdirectory(vendor/googletest/googletest EXCLUDE_FROM_ALL)
     endif()
 
-    target_link_libraries(racon_test bioparser spoa thread_pool edlib_static logger gtest_main)
+    target_link_libraries(racon_test bioparser spoa thread_pool edlib_static gtest_main)
     if (racon_enable_cuda)
         target_link_libraries(racon_test cudapoa cudaaligner)
     endif()
