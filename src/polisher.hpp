@@ -25,15 +25,13 @@ namespace spoa {
     class AlignmentEngine;
 }
 
-namespace logger {
-    class Logger;
-}
 
 namespace racon {
 
 class Sequence;
 class Overlap;
 class Window;
+class Logger;
 
 enum class PolisherType {
     kC, // Contig polishing
@@ -95,7 +93,7 @@ protected:
     std::unique_ptr<thread_pool::ThreadPool> thread_pool_;
     std::unordered_map<std::thread::id, uint32_t> thread_to_id_;
 
-    std::unique_ptr<logger::Logger> logger_;
+    std::unique_ptr<Logger> logger_;
 };
 
 }
