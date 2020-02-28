@@ -72,6 +72,7 @@ make package
 ## Usage
 Usage of `racon` is as following:
 
+    # default output is stdout
     racon [options ...] <sequences> <overlaps> <target sequences>
 
         <sequences>
