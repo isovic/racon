@@ -4,7 +4,7 @@ from __future__ import print_function
 import os, sys, time, shutil, argparse, subprocess
 
 def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+    print(*args, file=sys.stderr, **kwargs, flush=True)
 
 #*******************************************************************************
 
@@ -108,6 +108,8 @@ class RaconWrapper:
                     break
                 self.split_target_sequences.append(target_sequences_part)
                 i += 1
+            eprint('[RaconWrapper::run] total number of splits: ' + str(i))
+
             if (len(self.split_target_sequences) == 0):
                 eprint('[RaconWrapper::run] error: unable to find split target sequences!')
                 sys.exit(1)
