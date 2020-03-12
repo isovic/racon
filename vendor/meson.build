@@ -1,6 +1,5 @@
 vendor_cpp_sources = files([
   'edlib/edlib/src/edlib.cpp',
-  'logger/src/logger.cpp',
   'rampler/src/sampler.cpp',
   'rampler/src/sequence.cpp',
   'spoa/src/alignment_engine.cpp',
@@ -14,7 +13,6 @@ vendor_cpp_sources = files([
 vendor_include_directories = [
                 include_directories('bioparser/include'),
                 include_directories('edlib/edlib/include'),
-                include_directories('logger/include'),
                 include_directories('rampler/src'),
                 include_directories('spoa/include'),
                 include_directories('thread_pool/include')
