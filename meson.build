@@ -1,7 +1,7 @@
 project(
   'Racon',
   'cpp',
-  version : '1.4.12',
+  version : '1.4.13',
   default_options : [
     'buildtype=release',
     'warning_level=3',
