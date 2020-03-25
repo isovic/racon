@@ -7,7 +7,7 @@ clean:
 
 meson: modules
 	@echo "[Invoking Meson]"
-	@mkdir -p build-meson && cd build-meson && meson --buildtype=release -Dc_args=-O3 && ninja
+	@mkdir -p build-meson && cd build-meson && meson --buildtype=release -Dc_args=-O3 -Dtests=true && ninja
 
 rebuild: modules
 	@echo "[Running Ninja only]"
@@ -19,7 +19,7 @@ cmake: modules
 
 debug: modules
 	@echo "[Invoking Meson]"
-	@mkdir -p build-debug && cd build-debug && (meson --buildtype=debugoptimized -Db_sanitize=address) && ninja
+	@mkdir -p build-debug && cd build-debug && (meson --buildtype=debugoptimized -Db_sanitize=address -Dtests=true) && ninja
 
 dist: release
 	cd build && ninja-dist
