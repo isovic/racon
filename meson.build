@@ -1,7 +1,7 @@
 project(
   'Racon',
   'cpp',
-  version : '1.4.12',
+  version : '1.4.13',
   default_options : [
     'buildtype=release',
     'warning_level=3',
@@ -10,6 +10,8 @@ project(
   meson_version : '>= 0.48')
 
 cpp = meson.get_compiler('cpp')
+
+opt_compile_with_tests = get_option('tests')
 
 ############
 # CXXFLAGS #
@@ -29,16 +31,18 @@ racon_thread_dep = dependency('threads', required : true)
 racon_zlib_dep = dependency('zlib', required: true, version : '>= 1.2.11', fallback : ['zlib', 'zlib_dep'])
 
 # Google test.
-gtest_dep = dependency('gtest', main : true, required : false)
-if not gtest_dep.found()
-    gtest_proj = subproject('gtest')
-    gtest_inc = gtest_proj.get_variable('gtest_incdir')
-    gtest_lib = static_library('gtest', gtest_proj.get_variable('gtest_libsources'),
-                                gtest_proj.get_variable('gtest_mainsources'),
-                                include_directories : gtest_inc)
+if (not meson.is_subproject()) and opt_compile_with_tests
+    gtest_dep = dependency('gtest', main : true, required : false)
+    if not gtest_dep.found()
+        gtest_proj = subproject('gtest')
+        gtest_inc = gtest_proj.get_variable('gtest_incdir')
+        gtest_lib = static_library('gtest', gtest_proj.get_variable('gtest_libsources'),
+                                    gtest_proj.get_variable('gtest_mainsources'),
+                                    include_directories : gtest_inc)
 
-    gtest_dep = declare_dependency(include_directories : gtest_inc,
-                               link_with : gtest_lib, dependencies: racon_thread_dep)
+        gtest_dep = declare_dependency(include_directories : gtest_inc,
+                                   link_with : gtest_lib, dependencies: racon_thread_dep)
+    endif
 endif
 
 #######################
@@ -80,7 +84,11 @@ racon_include_directories = [include_directories('src'), include_directories('te
 
 subdir('vendor')
 subdir('src')
-subdir('test')
+
+if (not meson.is_subproject()) and opt_compile_with_tests
+  subdir('test')
+endif
+
 
 all_sources = racon_cpp_sources + vendor_cpp_sources
 
@@ -108,13 +116,16 @@ if not meson.is_subproject()
   ######################
   # Tests              #
   ######################
-  if gtest_dep.found()
-      tests_bin = executable(
-          'racon_test',
-          racon_test_cpp_sources,
-          dependencies : [racon_thread_dep, racon_zlib_dep, gtest_dep],
-          include_directories : racon_include_directories + vendor_include_directories + racon_test_include_directories,
-          link_with : [racon_lib, vendor_lib],
-          cpp_args : [racon_warning_flags, racon_cpp_flags, racon_test_extra_flags])
+  if opt_compile_with_tests
+      if gtest_dep.found()
+          tests_bin = executable(
+              'racon_test',
+              racon_test_cpp_sources,
+              dependencies : [racon_thread_dep, racon_zlib_dep, gtest_dep],
+              include_directories : racon_include_directories + vendor_include_directories + racon_test_include_directories,
+              link_with : [racon_lib, vendor_lib],
+              cpp_args : [racon_warning_flags, racon_cpp_flags, racon_test_extra_flags])
+      endif
   endif
+
 endif
