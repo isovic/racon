@@ -122,12 +122,12 @@ Usage of `racon` is as following:
     only available when built with CUDA:
         -c, --cudapoa-batches <int>
             default: 0
-            number of batches for CUDA accelerated polishing
+            number of batches for CUDA accelerated polishing per GPU
         -b, --cuda-banded-alignment
             use banding approximation for polishing on GPU. Only applicable when -c is used.
         --cudaaligner-batches <int>
             default: 0
-            number of batches for CUDA accelerated alignment
+            number of batches for CUDA accelerated alignment per GPU
 
 `racon_test` is run without any parameters.
 
