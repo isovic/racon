@@ -35,9 +35,9 @@ class RaconWrapper:
         self.mismatch = mismatch
         self.gap = gap
         self.threads = threads
-        self.cudaaligner_batches = cudaaligner_batches
-        self.cudapoa_batches = cudapoa_batches
-        self.cuda_banded_alignment = cuda_banded_alignment
+        # self.cudaaligner_batches = cudaaligner_batches
+        # self.cudapoa_batches = cudapoa_batches
+        # self.cuda_banded_alignment = cuda_banded_alignment
         self.work_directory = os.getcwd() + '/racon_work_directory_' + str(time.time())
 
     def __enter__(self):
@@ -119,7 +119,7 @@ class RaconWrapper:
         racon_params = [RaconWrapper.__racon]
         if (self.include_unpolished == True): racon_params.append('-u')
         if (self.fragment_correction == True): racon_params.append('-f')
-        if (self.cuda_banded_alignment == True): racon_params.append('-b')
+        # if (self.cuda_banded_alignment == True): racon_params.append('-b')
         racon_params.extend(['-w', str(self.window_length),
             '-q', str(self.quality_threshold),
             '-e', str(self.error_threshold),
@@ -127,8 +127,8 @@ class RaconWrapper:
             '-x', str(self.mismatch),
             '-g', str(self.gap),
             '-t', str(self.threads),
-            '--cudaaligner-batches', str(self.cudaaligner_batches),
-            '-c', str(self.cudapoa_batches),
+            # '--cudaaligner-batches', str(self.cudaaligner_batches),
+            # '-c', str(self.cudapoa_batches),
             self.subsampled_sequences, self.overlaps, ""])
 
         for target_sequences_part in self.split_target_sequences:
