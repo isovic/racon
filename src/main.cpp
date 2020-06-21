@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <getopt.h>
 
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -31,6 +32,7 @@ static struct option options[] = {
     {"mismatch", required_argument, 0, 'x'},
     {"gap", required_argument, 0, 'g'},
     {"threads", required_argument, 0, 't'},
+    {"bed", required_argument, 0, 'B'},
     {"version", no_argument, 0, 'v'},
     {"help", no_argument, 0, 'h'},
 #ifdef CUDA_ENABLED
@@ -66,7 +68,9 @@ int main(int argc, char** argv) {
     uint32_t cudaaligner_band_width = 0;
     bool cuda_banded_alignment = false;
 
-    std::string optstring = "ufw:q:e:m:x:g:t:h";
+    std::string bed_file;
+
+    std::string optstring = "ufw:q:e:m:x:g:t:B:h";
 #ifdef CUDA_ENABLED
     optstring += "bc::";
 #endif
@@ -103,6 +107,9 @@ int main(int argc, char** argv) {
                 break;
             case 't':
                 num_threads = atoi(optarg);
+                break;
+            case 'B':
+                bed_file = std::string(optarg);
                 break;
             case 'v':
                 printf("%s\n", version);
@@ -148,6 +155,8 @@ int main(int argc, char** argv) {
         help();
         exit(1);
     }
+
+    std::cerr << "BED file: '" << bed_file << "'\n";
 
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
         input_paths[2], type == 0 ? racon::PolisherType::kC :
@@ -209,6 +218,9 @@ void help() {
         "        -g, --gap <int>\n"
         "            default: -4\n"
         "            gap penalty (must be negative)\n"
+        "        -B, --bed <str>\n"
+        "            default: ''\n"
+        "            path to a BED file with regions to polish\n"
         "        -t, --threads <int>\n"
         "            default: 1\n"
         "            number of threads\n"
