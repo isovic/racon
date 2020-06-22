@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <utility>
 
@@ -62,9 +63,12 @@ public:
         WindowType type, uint32_t backbone_start, const char* backbone,
         uint32_t backbone_length, const char* quality, uint32_t quality_length);
 
+    friend std::ostream& operator<<(std::ostream& os, const Window& a);
+
 #ifdef CUDA_ENABLED
     friend class CUDABatchProcessor;
 #endif
+
 private:
     Window(uint64_t id, uint32_t rank, WindowType type, uint32_t backbone_start,
         const char* backbone, uint32_t backbone_length, const char* quality,
@@ -81,5 +85,7 @@ private:
     std::vector<std::pair<const char*, uint32_t>> qualities_;
     std::vector<std::pair<uint32_t, uint32_t>> positions_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Window& a);
 
 }

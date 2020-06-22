@@ -142,4 +142,17 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
     return true;
 }
 
+std::ostream& operator<<(std::ostream& os, const Window& a)
+{
+    os << "Window: id = " << a.id_ << ", rank = " << a.rank_ << ", type = "
+        << ((a.type_ == WindowType::kNGS) ? "NGS" : "TGS")
+        << ", start = " << a.start_
+        << ", backbone_len = " << a.backbone_length()
+        << ", consensus_len = " << a.consensus_.size()
+        << ", seqs_len = " << a.sequences_.size()
+        << ", quals_len = " << a.qualities_.size()
+        << ", pos_len = " << a.positions_.size();
+    return os;
+}
+
 }
