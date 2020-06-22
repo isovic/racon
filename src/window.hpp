@@ -52,6 +52,10 @@ public:
         return sequences_.front().second;
     }
 
+    uint32_t start() const {
+        return start_;
+    }
+
     bool generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine,
         bool trim);
 

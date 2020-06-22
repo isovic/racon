@@ -508,10 +508,16 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
     uint64_t logger_step = thread_futures.size() / 20;
 
+    uint64_t prev_window_end = 0;
+
     for (uint64_t i = 0; i < thread_futures.size(); ++i) {
         thread_futures[i].wait();
 
         num_polished_windows += thread_futures[i].get() == true ? 1 : 0;
+        if (windows_[i]->start() > prev_window_end) {
+            uint64_t span = windows_[i]->start() - prev_window_end;
+            polished_data += sequences_[windows_[i]->id()]->data().substr(prev_window_end, span);
+        }
         polished_data += windows_[i]->consensus();
 
         if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
@@ -530,6 +536,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
             num_polished_windows = 0;
             polished_data.clear();
         }
+        prev_window_end = windows_[i]->start() + windows_[i]->backbone_length();
         windows_[i].reset();
 
         if (logger_step != 0 && (i + 1) % logger_step == 0 && (i + 1) / logger_step < 20) {
