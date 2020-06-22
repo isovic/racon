@@ -6,11 +6,12 @@
 
 #pragma once
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <vector>
 #include <memory>
 #include <unordered_map>
 #include <thread>
+#include "window.hpp"
 
 namespace bioparser {
     template<class T>
@@ -73,6 +74,8 @@ protected:
     Polisher(const Polisher&) = delete;
     const Polisher& operator=(const Polisher&) = delete;
     virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps);
+    void create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>& overlaps,
+        uint64_t targets_size, WindowType window_type);
 
     std::unique_ptr<bioparser::Parser<Sequence>> sparser_;
     std::unique_ptr<bioparser::Parser<Overlap>> oparser_;

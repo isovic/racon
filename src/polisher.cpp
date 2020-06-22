@@ -10,7 +10,6 @@
 
 #include "overlap.hpp"
 #include "sequence.hpp"
-#include "window.hpp"
 #include "logger.hpp"
 #include "polisher.hpp"
 #ifdef CUDA_ENABLED
@@ -377,6 +376,13 @@ void Polisher::initialize() {
         it.wait();
     }
 
+    create_and_populate_windows(overlaps, targets_size, window_type);
+
+    logger_->log("[racon::Polisher::initialize] transformed data into windows");
+}
+
+void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>& overlaps,
+        uint64_t targets_size, WindowType window_type) {
     find_overlap_breaking_points(overlaps);
 
     logger_->log();
@@ -455,8 +461,6 @@ void Polisher::initialize() {
 
         overlaps[i].reset();
     }
-
-    logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
 
 void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
