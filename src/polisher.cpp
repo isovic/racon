@@ -389,7 +389,7 @@ void Polisher::initialize() {
             uint32_t length = std::min(j + window_length_,
                 static_cast<uint32_t>(sequences_[i]->data().size())) - j;
 
-            windows_.emplace_back(createWindow(i, k, window_type,
+            windows_.emplace_back(createWindow(i, k, window_type, j,
                 &(sequences_[i]->data()[j]), length,
                 sequences_[i]->quality().empty() ? &(dummy_quality_[0]) :
                 &(sequences_[i]->quality()[j]), length));

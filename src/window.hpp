@@ -25,7 +25,7 @@ enum class WindowType {
 
 class Window;
 std::shared_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
-    const char* backbone, uint32_t backbone_length, const char* quality,
+    uint32_t backbone_start, const char* backbone, uint32_t backbone_length, const char* quality,
     uint32_t quality_length);
 
 class Window {
@@ -44,6 +44,13 @@ public:
         return consensus_;
     }
 
+    uint32_t backbone_length() const {
+        if (sequences_.empty()) {
+            return 0;
+        }
+        return sequences_.front().second;
+    }
+
     bool generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine,
         bool trim);
 
@@ -52,21 +59,23 @@ public:
         uint32_t end);
 
     friend std::shared_ptr<Window> createWindow(uint64_t id, uint32_t rank,
-        WindowType type, const char* backbone, uint32_t backbone_length,
-        const char* quality, uint32_t quality_length);
+        WindowType type, uint32_t backbone_start, const char* backbone,
+        uint32_t backbone_length, const char* quality, uint32_t quality_length);
 
 #ifdef CUDA_ENABLED
     friend class CUDABatchProcessor;
 #endif
 private:
-    Window(uint64_t id, uint32_t rank, WindowType type, const char* backbone,
-        uint32_t backbone_length, const char* quality, uint32_t quality_length);
+    Window(uint64_t id, uint32_t rank, WindowType type, uint32_t backbone_start,
+        const char* backbone, uint32_t backbone_length, const char* quality,
+        uint32_t quality_length);
     Window(const Window&) = delete;
     const Window& operator=(const Window&) = delete;
 
     uint64_t id_;
     uint32_t rank_;
     WindowType type_;
+    uint32_t start_;
     std::string consensus_;
     std::vector<std::pair<const char*, uint32_t>> sequences_;
     std::vector<std::pair<const char*, uint32_t>> qualities_;
