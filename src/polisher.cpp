@@ -377,8 +377,6 @@ void Polisher::initialize() {
     }
 
     create_and_populate_windows(overlaps, targets_size, window_type);
-
-    logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
 
 void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>& overlaps,
@@ -461,6 +459,8 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
 
         overlaps[i].reset();
     }
+
+    logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
 
 void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
@@ -525,6 +525,13 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         polished_data += windows_[i]->consensus();
 
         if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
+            // Append the remaining suffix from the last window to the end of the target.
+            uint32_t tlen = sequences_[windows_[i]->id()]->data().size();
+            if ((windows_[i]->start() + windows_[i]->backbone_length()) < tlen) {
+                uint64_t suffix_start = windows_[i]->start() + windows_[i]->backbone_length();
+                polished_data += sequences_[windows_[i]->id()]->data().substr(suffix_start);
+            }
+
             double polished_ratio = num_polished_windows /
                 static_cast<double>(windows_[i]->rank() + 1);
 
