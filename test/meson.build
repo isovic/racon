@@ -1,5 +1,6 @@
 racon_test_cpp_sources = files([
-  'racon_test.cpp'
+  'bed_test.cpp',
+  'racon_test.cpp',
 ])
 
 racon_test_include_directories = [include_directories('.')]
