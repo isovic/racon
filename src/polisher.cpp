@@ -381,6 +381,17 @@ void Polisher::initialize() {
                 continue;
             }
 
+            // Remove overlaps in regions not specified by BED.
+            if (use_bed_) {
+                auto foundIntervals = target_trees_[overlaps[i]->t_id()].findOverlapping(
+                        static_cast<int64_t>(overlaps[i]->t_begin()),
+                        static_cast<int64_t>(overlaps[i]->t_end()) - 1);
+                if (foundIntervals.empty()) {
+                    overlaps[i].reset();
+                    continue;
+                }
+            }
+
             while (overlaps[c] == nullptr) {
                 ++c;
             }
