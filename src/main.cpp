@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
     std::cerr << "BED file: '" << bed_file << "'\n";
 
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
-        input_paths[2], type == 0 ? racon::PolisherType::kC :
+        input_paths[2], bed_file, type == 0 ? racon::PolisherType::kC :
         racon::PolisherType::kF, window_length, quality_threshold,
         error_threshold, trim, match, mismatch, gap, num_threads,
         cudapoa_batches, cuda_banded_alignment, cudaaligner_batches,

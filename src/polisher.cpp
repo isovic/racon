@@ -12,6 +12,7 @@
 #include "sequence.hpp"
 #include "logger.hpp"
 #include "polisher.hpp"
+#include "bed.hpp"
 #ifdef CUDA_ENABLED
 #include "cuda/cudapolisher.hpp"
 #endif
@@ -19,6 +20,9 @@
 #include "bioparser/bioparser.hpp"
 #include "thread_pool/thread_pool.hpp"
 #include "spoa/spoa.hpp"
+
+#define BED_FEATURE
+// #define BED_FEATURE_TEST
 
 namespace racon {
 
@@ -53,6 +57,7 @@ uint64_t shrinkToFit(std::vector<std::unique_ptr<T>>& src, uint64_t begin) {
 
 std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
+    const std::string& bed_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
@@ -130,6 +135,15 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
             target_path.c_str());
         exit(1);
     }
+
+    // std::unordered_map<std::string,
+    bool use_bed = false;
+    std::vector<BedRecord> bed_records;
+    if (bed_path.size() > 0) {
+        use_bed = true;
+        bed_records = BedReader::ReadAll(bed_path);
+    }
+    std::cerr << "Use bed: " << (use_bed ? "true" : "false") << ", bed records: " << bed_records.size() << "\n";
 
     if (cudapoa_batches > 0 || cudaaligner_batches > 0)
     {
@@ -460,6 +474,21 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
         overlaps[i].reset();
     }
 
+#ifdef BED_FEATURE_TEST
+    int32_t shift = 0;
+    for (int32_t i = 0; i < static_cast<int32_t>(windows_.size()); ++i) {
+        if ((i + 1) % 100 != 0) {
+            windows_[i].reset();
+            ++shift;
+            // std::cerr << "nulling i = " << i << "\n";
+            continue;
+        }
+        std::swap(windows_[i-shift], windows_[i]);
+    }
+    windows_.resize(static_cast<int32_t>(windows_.size()) - shift);
+    std::cerr << "windows_.size() = " << windows_.size() << "\n";
+#endif
+
     logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
 
@@ -518,19 +547,25 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         thread_futures[i].wait();
 
         num_polished_windows += thread_futures[i].get() == true ? 1 : 0;
+
+#ifdef BED_FEATURE
         if (windows_[i]->start() > prev_window_end) {
             uint64_t span = windows_[i]->start() - prev_window_end;
             polished_data += sequences_[windows_[i]->id()]->data().substr(prev_window_end, span);
         }
+#endif
+
         polished_data += windows_[i]->consensus();
 
         if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
+#ifdef BED_FEATURE
             // Append the remaining suffix from the last window to the end of the target.
             uint32_t tlen = sequences_[windows_[i]->id()]->data().size();
             if ((windows_[i]->start() + windows_[i]->backbone_length()) < tlen) {
                 uint64_t suffix_start = windows_[i]->start() + windows_[i]->backbone_length();
                 polished_data += sequences_[windows_[i]->id()]->data().substr(suffix_start);
             }
+#endif
 
             double polished_ratio = num_polished_windows /
                 static_cast<double>(windows_[i]->rank() + 1);
