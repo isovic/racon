@@ -41,6 +41,14 @@ public:
         return t_id_;
     }
 
+    uint32_t t_begin() const {
+        return t_begin_;
+    }
+
+    uint32_t t_end() const {
+        return t_end_;
+    }
+
     uint32_t strand() const {
         return strand_;
     }
