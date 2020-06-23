@@ -12,6 +12,9 @@
 #include <unordered_map>
 #include <thread>
 #include "window.hpp"
+#include "bed.hpp"
+#include "IntervalTree.h"
+#include <unordered_map>
 
 namespace bioparser {
     template<class T>
@@ -38,6 +41,10 @@ enum class PolisherType {
     kC, // Contig polishing
     kF // Fragment error correction
 };
+
+using IntervalTreeInt64 = IntervalTree<int64_t, size_t>;
+using IntervalVectorInt64 = IntervalTreeInt64::interval_vector;
+using IntervalInt64 = IntervalTreeInt64::interval;
 
 class Polisher;
 std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
@@ -70,6 +77,7 @@ protected:
     Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         std::unique_ptr<bioparser::Parser<Overlap>> oparser,
         std::unique_ptr<bioparser::Parser<Sequence>> tparser,
+        std::vector<BedRecord> bed_records, bool use_bed,
         PolisherType type, uint32_t window_length, double quality_threshold,
         double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
         uint32_t num_threads);
@@ -83,6 +91,9 @@ protected:
     std::unique_ptr<bioparser::Parser<Overlap>> oparser_;
     std::unique_ptr<bioparser::Parser<Sequence>> tparser_;
 
+    std::vector<BedRecord> bed_records_;
+    bool use_bed_;
+
     PolisherType type_;
     double quality_threshold_;
     double error_threshold_;
@@ -90,6 +101,7 @@ protected:
     std::vector<std::shared_ptr<spoa::AlignmentEngine>> alignment_engines_;
 
     std::vector<std::unique_ptr<Sequence>> sequences_;
+    std::unordered_map<int64_t, IntervalTreeInt64> target_trees_;
     std::vector<uint32_t> targets_coverages_;
     std::string dummy_quality_;
 

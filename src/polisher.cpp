@@ -12,7 +12,7 @@
 #include "sequence.hpp"
 #include "logger.hpp"
 #include "polisher.hpp"
-#include "bed.hpp"
+#include "util.hpp"
 #ifdef CUDA_ENABLED
 #include "cuda/cudapolisher.hpp"
 #endif
@@ -136,21 +136,22 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
         exit(1);
     }
 
-    // std::unordered_map<std::string,
     bool use_bed = false;
     std::vector<BedRecord> bed_records;
     if (bed_path.size() > 0) {
         use_bed = true;
         bed_records = BedReader::ReadAll(bed_path);
     }
-    std::cerr << "Use bed: " << (use_bed ? "true" : "false") << ", bed records: " << bed_records.size() << "\n";
+    std::cerr << "[racon::createPolisher] Use bed: " << (use_bed ? "true" : "false") << ", bed records: " << bed_records.size() << "\n";
 
     if (cudapoa_batches > 0 || cudaaligner_batches > 0)
     {
 #ifdef CUDA_ENABLED
         // If CUDA is enabled, return an instance of the CUDAPolisher object.
         return std::unique_ptr<Polisher>(new CUDAPolisher(std::move(sparser),
-                    std::move(oparser), std::move(tparser), type, window_length,
+                    std::move(oparser), std::move(tparser),
+                    std::move(bed_records), use_bed,
+                    type, window_length,
                     quality_threshold, error_threshold, trim, match, mismatch, gap,
                     num_threads, cudapoa_batches, cuda_banded_alignment, cudaaligner_batches,
                     cudaaligner_band_width));
@@ -166,7 +167,9 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     {
         (void) cuda_banded_alignment;
         return std::unique_ptr<Polisher>(new Polisher(std::move(sparser),
-                    std::move(oparser), std::move(tparser), type, window_length,
+                    std::move(oparser), std::move(tparser),
+                    std::move(bed_records), use_bed,
+                    type, window_length,
                     quality_threshold, error_threshold, trim, match, mismatch, gap,
                     num_threads));
     }
@@ -175,11 +178,13 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
 Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     std::unique_ptr<bioparser::Parser<Overlap>> oparser,
     std::unique_ptr<bioparser::Parser<Sequence>> tparser,
+    std::vector<BedRecord> bed_records, bool use_bed,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads)
         : sparser_(std::move(sparser)), oparser_(std::move(oparser)),
-        tparser_(std::move(tparser)), type_(type), quality_threshold_(
+        tparser_(std::move(tparser)), bed_records_(std::move(bed_records)),
+        use_bed_(use_bed), type_(type), quality_threshold_(
         quality_threshold), error_threshold_(error_threshold), trim_(trim),
         alignment_engines_(), sequences_(), dummy_quality_(window_length, '!'),
         window_length_(window_length), windows_(),
@@ -291,6 +296,48 @@ void Polisher::initialize() {
 
     logger_->log("[racon::Polisher::initialize] loaded sequences");
     logger_->log();
+
+
+
+    /////////////////////////////////
+    // Collect the intervals.
+    logger_->log("[racon::Polisher::initialize] building the interval trees");
+    logger_->log();
+    IntervalVectorInt64 intervals;
+    std::unordered_map<int64_t, std::vector<IntervalInt64>> target_intervals;
+    for (size_t i = 0; i < bed_records_.size(); ++i) {
+        const auto& record = bed_records_[i];
+        uint64_t t_id = 0;
+        if (!transmuteId(name_to_id, record.chrom() + "t", t_id)) {
+            throw std::runtime_error("Target sequence '" + record.chrom() +
+                        "' specified in the BED file was not found among the target sequences.");
+        }
+        target_intervals[t_id].emplace_back(IntervalInt64(record.chrom_start(), record.chrom_end() - 1, i));
+    }
+    // Construct the trees.
+    target_trees_.clear();
+    for (auto& it: target_intervals) {
+        // Make a copy, because the IntervalTree has only the move constructor,
+        // and we still need t he intvervals for validation below.
+        auto intervals = it.second;
+        target_trees_[it.first] = IntervalTreeInt64(std::move(intervals));
+    }
+    // Validate that there are no overlapping intervals.
+    for (const auto& it: target_intervals) {
+        int64_t t_id = it.first;
+        for (const auto& interval: it.second) {
+            auto foundIntervals = target_trees_[t_id].findOverlapping(interval.start, interval.stop);
+            if (foundIntervals.size() != 1 ||
+                (foundIntervals.size() == 1 && foundIntervals.front().value != interval.value)) {
+                throw std::runtime_error("Invalid BED record: '" +
+                    BedFile::Serialize(bed_records_[interval.value]) +
+                    "'. It overlaps other BED records, which is not allowed.");
+            }
+        }
+    }
+    /////////////////////////////////
+
+
 
     std::vector<std::unique_ptr<Overlap>> overlaps;
 
