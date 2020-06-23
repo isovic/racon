@@ -1,5 +1,6 @@
 vendor_cpp_sources = files([
   'edlib/edlib/src/edlib.cpp',
+  'intervaltree/interval_tree_test.cpp',
   'rampler/src/sampler.cpp',
   'rampler/src/sequence.cpp',
   'spoa/src/alignment_engine.cpp',
@@ -7,15 +8,16 @@ vendor_cpp_sources = files([
   'spoa/src/sequence.cpp',
   'spoa/src/simd_alignment_engine.cpp',
   'spoa/src/sisd_alignment_engine.cpp',
-  'thread_pool/src/thread_pool.cpp'
+  'thread_pool/src/thread_pool.cpp',
 ])
 
 vendor_include_directories = [
                 include_directories('bioparser/include'),
                 include_directories('edlib/edlib/include'),
+                include_directories('intervaltree/'),
                 include_directories('rampler/src'),
                 include_directories('spoa/include'),
-                include_directories('thread_pool/include')
+                include_directories('thread_pool/include'),
                 ]
 
 vendor_extra_flags = []
