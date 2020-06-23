@@ -303,8 +303,7 @@ void Polisher::initialize() {
     // Collect the intervals.
     logger_->log("[racon::Polisher::initialize] building the interval trees");
     logger_->log();
-    IntervalVectorInt64 intervals;
-    std::unordered_map<int64_t, std::vector<IntervalInt64>> target_intervals;
+    target_intervals_.clear();
     for (size_t i = 0; i < bed_records_.size(); ++i) {
         const auto& record = bed_records_[i];
         uint64_t t_id = 0;
@@ -312,18 +311,23 @@ void Polisher::initialize() {
             throw std::runtime_error("Target sequence '" + record.chrom() +
                         "' specified in the BED file was not found among the target sequences.");
         }
-        target_intervals[t_id].emplace_back(IntervalInt64(record.chrom_start(), record.chrom_end() - 1, i));
+        target_intervals_[t_id].emplace_back(IntervalInt64(record.chrom_start(), record.chrom_end() - 1, i));
+    }
+    // Sort target intervals.
+    for (auto& it: target_intervals_) {
+        std::stable_sort(it.second.begin(), it.second.end(),
+            [](const IntervalInt64& a, const IntervalInt64& b) { return a.start < b.start; });
     }
     // Construct the trees.
     target_trees_.clear();
-    for (auto& it: target_intervals) {
+    for (const auto& it: target_intervals_) {
         // Make a copy, because the IntervalTree has only the move constructor,
         // and we still need t he intvervals for validation below.
         auto intervals = it.second;
         target_trees_[it.first] = IntervalTreeInt64(std::move(intervals));
     }
     // Validate that there are no overlapping intervals.
-    for (const auto& it: target_intervals) {
+    for (const auto& it: target_intervals_) {
         int64_t t_id = it.first;
         for (const auto& interval: it.second) {
             auto foundIntervals = target_trees_[t_id].findOverlapping(interval.start, interval.stop);

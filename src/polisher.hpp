@@ -101,7 +101,6 @@ protected:
     std::vector<std::shared_ptr<spoa::AlignmentEngine>> alignment_engines_;
 
     std::vector<std::unique_ptr<Sequence>> sequences_;
-    std::unordered_map<int64_t, IntervalTreeInt64> target_trees_;
     std::vector<uint32_t> targets_coverages_;
     std::string dummy_quality_;
 
@@ -112,6 +111,9 @@ protected:
     std::unordered_map<std::thread::id, uint32_t> thread_to_id_;
 
     std::unique_ptr<Logger> logger_;
+
+    std::unordered_map<int64_t, std::vector<IntervalInt64>> target_intervals_;
+    std::unordered_map<int64_t, IntervalTreeInt64> target_trees_;
 };
 
 }
