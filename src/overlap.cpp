@@ -8,6 +8,7 @@
 
 #include "sequence.hpp"
 #include "overlap.hpp"
+#include "util.hpp"
 #include "edlib.h"
 
 namespace racon {
@@ -112,18 +113,6 @@ Overlap::Overlap()
         t_id_(), t_begin_(), t_end_(), t_length_(), strand_(), length_(),
         error_(), cigar_(), is_valid_(true), is_transmuted_(true),
         breaking_points_(), dual_breaking_points_() {
-}
-
-template<typename T>
-bool transmuteId(const std::unordered_map<T, uint64_t>& t_to_id, const T& t,
-    uint64_t& id) {
-
-    auto it = t_to_id.find(t);
-    if (it == t_to_id.end()) {
-        return false;
-    }
-    id = it->second;
-    return true;
 }
 
 void Overlap::transmute(const std::vector<std::unique_ptr<Sequence>>& sequences,
