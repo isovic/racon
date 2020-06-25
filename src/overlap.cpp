@@ -216,16 +216,19 @@ void Overlap::find_breaking_points_from_cigar(uint32_t window_length)
 {
     // find breaking points from cigar
     std::vector<int32_t> window_ends;
+    uint32_t w_offset = 0;
     for (uint32_t i = 0; i < t_end_; i += window_length) {
         if (i > t_begin_) {
             window_ends.emplace_back(i - 1);
+        } else {
+            ++w_offset;
         }
     }
     window_ends.emplace_back(t_end_ - 1);
 
     uint32_t w = 0;
     bool found_first_match = false;
-    std::pair<uint32_t, uint32_t> first_match = {0, 0}, last_match = {0, 0};
+    std::tuple<uint32_t, uint32_t, uint32_t> first_match = {0, 0, 0}, last_match = {0, 0, 0};
 
     int32_t q_ptr = (strand_ ? (q_length_ - q_end_) : q_begin_) - 1;
     int32_t t_ptr = t_begin_ - 1;
@@ -240,11 +243,9 @@ void Overlap::find_breaking_points_from_cigar(uint32_t window_length)
 
                 if (!found_first_match) {
                     found_first_match = true;
-                    first_match.first = t_ptr;
-                    first_match.second = q_ptr;
+                    first_match = std::make_tuple(t_ptr, q_ptr, w + w_offset);
                 }
-                last_match.first = t_ptr + 1;
-                last_match.second = q_ptr + 1;
+                last_match = std::make_tuple(t_ptr + 1, q_ptr + 1, w + w_offset);
                 if (t_ptr == window_ends[w]) {
                     if (found_first_match) {
                         breaking_points_.emplace_back(first_match);

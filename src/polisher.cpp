@@ -557,7 +557,12 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
         const auto& breaking_points = overlaps[i]->breaking_points();
 
         for (uint32_t j = 0; j < breaking_points.size(); j += 2) {
-            if (breaking_points[j + 1].second - breaking_points[j].second < 0.02 * window_length_) {
+            const uint32_t start_curr = std::get<0>(breaking_points[j]);
+            const uint32_t start_next = std::get<0>(breaking_points[j + 1]);
+            const uint32_t end_curr = std::get<1>(breaking_points[j]);
+            const uint32_t end_next = std::get<1>(breaking_points[j + 1]);
+
+            if ((end_next - end_curr) < 0.02 * window_length_) {
                 continue;
             }
 
@@ -567,10 +572,10 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
                 const auto& quality = overlaps[i]->strand() ?
                     sequence->reverse_quality() : sequence->quality();
                 double average_quality = 0;
-                for (uint32_t k = breaking_points[j].second; k < breaking_points[j + 1].second; ++k) {
+                for (uint32_t k = end_curr; k < end_next; ++k) {
                     average_quality += static_cast<uint32_t>(quality[k]) - 33;
                 }
-                average_quality /= breaking_points[j + 1].second - breaking_points[j].second;
+                average_quality /= (end_next - end_curr);
 
                 if (average_quality < quality_threshold_) {
                     continue;
@@ -578,28 +583,27 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
             }
 
             uint64_t window_id = id_to_first_window_id[overlaps[i]->t_id()] +
-                breaking_points[j].first / window_length_;
-            uint32_t window_start = (breaking_points[j].first / window_length_) *
+                start_curr / window_length_;
+            uint32_t window_start = (start_curr / window_length_) *
                 window_length_;
 
             const char* data = overlaps[i]->strand() ?
-                &(sequence->reverse_complement()[breaking_points[j].second]) :
-                &(sequence->data()[breaking_points[j].second]);
-            uint32_t data_length = breaking_points[j + 1].second -
-                breaking_points[j].second;
+                &(sequence->reverse_complement()[end_curr]) :
+                &(sequence->data()[end_curr]);
+            uint32_t data_length = end_next - end_curr;
 
             const char* quality = overlaps[i]->strand() ?
                 (sequence->reverse_quality().empty() ?
-                    nullptr : &(sequence->reverse_quality()[breaking_points[j].second]))
+                    nullptr : &(sequence->reverse_quality()[end_curr]))
                 :
                 (sequence->quality().empty() ?
-                    nullptr : &(sequence->quality()[breaking_points[j].second]));
+                    nullptr : &(sequence->quality()[end_curr]));
             uint32_t quality_length = quality == nullptr ? 0 : data_length;
 
             windows_[window_id]->add_layer(data, data_length,
                 quality, quality_length,
-                breaking_points[j].first - window_start,
-                breaking_points[j + 1].first - window_start - 1);
+                start_curr - window_start,
+                start_next - window_start - 1);
         }
 
         overlaps[i].reset();
