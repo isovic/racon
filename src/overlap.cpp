@@ -212,73 +212,27 @@ void Overlap::align_overlaps(const char* q, uint32_t q_length, const char* t, ui
     edlibFreeAlignResult(result);
 }
 
-void Overlap::find_breaking_points_from_cigar(uint32_t window_length)
+void Overlap::find_breaking_points_from_cigar(int64_t window_length)
 {
+    std::vector<std::tuple<int64_t, int64_t, int64_t>> windows;
+
     // find breaking points from cigar
-    std::vector<int32_t> window_ends;
-    uint32_t w_offset = 0;
-    for (uint32_t i = 0; i < t_end_; i += window_length) {
-        if (i > t_begin_) {
-            window_ends.emplace_back(i - 1);
-        } else {
-            ++w_offset;
-        }
+    int64_t window_id = t_begin_ / window_length;
+    const int64_t start = window_id * window_length;
+    const int64_t end = t_end_;
+
+    for (int64_t i = start; i < end; i += window_length, ++window_id) {
+        windows.emplace_back(std::make_tuple(i, std::min(static_cast<int64_t>(t_length_), i + window_length), window_id));
     }
-    window_ends.emplace_back(t_end_ - 1);
 
-    uint32_t w = 0;
-    bool found_first_match = false;
-    std::tuple<uint32_t, uint32_t, uint32_t> first_match = {0, 0, 0}, last_match = {0, 0, 0};
+    int64_t q_start = (strand_ ? (q_length_ - q_end_) : q_begin_);
+    int64_t t_start = t_begin_;
 
-    int32_t q_ptr = (strand_ ? (q_length_ - q_end_) : q_begin_) - 1;
-    int32_t t_ptr = t_begin_ - 1;
+    std::vector<WindowInterval> result = generate_window_breakpoints(
+            cigar_, q_start, t_start,
+            windows);
 
-    for (uint32_t i = 0, j = 0; i < cigar_.size(); ++i) {
-        if (cigar_[i] == 'M' || cigar_[i] == '=' || cigar_[i] == 'X') {
-            uint32_t k = 0, num_bases = atoi(&cigar_[j]);
-            j = i + 1;
-            while (k < num_bases) {
-                ++q_ptr;
-                ++t_ptr;
-
-                if (!found_first_match) {
-                    found_first_match = true;
-                    first_match = std::make_tuple(t_ptr, q_ptr, w + w_offset);
-                }
-                last_match = std::make_tuple(t_ptr + 1, q_ptr + 1, w + w_offset);
-                if (t_ptr == window_ends[w]) {
-                    if (found_first_match) {
-                        breaking_points_.emplace_back(first_match);
-                        breaking_points_.emplace_back(last_match);
-                    }
-                    found_first_match = false;
-                    ++w;
-                }
-
-                ++k;
-            }
-        } else if (cigar_[i] == 'I') {
-            q_ptr += atoi(&cigar_[j]);
-            j = i + 1;
-        } else if (cigar_[i] == 'D' || cigar_[i] == 'N') {
-            uint32_t k = 0, num_bases = atoi(&cigar_[j]);
-            j = i + 1;
-            while (k < num_bases) {
-                ++t_ptr;
-                if (t_ptr == window_ends[w]) {
-                    if (found_first_match) {
-                        breaking_points_.emplace_back(first_match);
-                        breaking_points_.emplace_back(last_match);
-                    }
-                    found_first_match = false;
-                    ++w;
-                }
-                ++k;
-            }
-        } else if (cigar_[i] == 'S' || cigar_[i] == 'H' || cigar_[i] == 'P') {
-            j = i + 1;
-        }
-    }
+    std::swap(breaking_points_, result);
 }
 
 }

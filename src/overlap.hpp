@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "util.hpp"
 #include <cstdlib>
 #include <cstdint>
 #include <memory>
@@ -74,7 +75,7 @@ public:
         return cigar_;
     }
 
-    const std::vector<std::tuple<uint32_t, uint32_t, uint32_t>>& breaking_points() const {
+    const std::vector<WindowInterval>& breaking_points() const {
         return breaking_points_;
     }
 
@@ -106,7 +107,7 @@ private:
     Overlap();
     Overlap(const Overlap&) = delete;
     const Overlap& operator=(const Overlap&) = delete;
-    virtual void find_breaking_points_from_cigar(uint32_t window_length);
+    virtual void find_breaking_points_from_cigar(int64_t window_length);
     virtual void align_overlaps(const char* q, uint32_t q_len, const char* t, uint32_t t_len);
 
     std::string q_name_;
@@ -128,8 +129,10 @@ private:
 
     bool is_valid_;
     bool is_transmuted_;
-    std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> breaking_points_;
+    // std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> breaking_points_;
     std::vector<std::pair<uint32_t, uint32_t>> dual_breaking_points_;
+
+    std::vector<WindowInterval> breaking_points_;
 };
 
 }
