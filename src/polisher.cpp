@@ -623,8 +623,8 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 #ifdef BED_FEATURE
             // Append the remaining suffix from the last window to the end of the target.
             uint32_t tlen = sequences_[windows_[i]->id()]->data().size();
-            if ((windows_[i]->start() + windows_[i]->backbone_length()) < tlen) {
-                uint64_t suffix_start = windows_[i]->start() + windows_[i]->backbone_length();
+            if (windows_[i]->end() < tlen) {
+                uint64_t suffix_start = windows_[i]->end;
                 polished_data += sequences_[windows_[i]->id()]->data().substr(suffix_start);
             }
 #endif
@@ -644,7 +644,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
             num_polished_windows = 0;
             polished_data.clear();
         }
-        prev_window_end = windows_[i]->start() + windows_[i]->backbone_length();
+        prev_window_end = windows_[i]->end();
         windows_[i].reset();
 
         if (logger_step != 0 && (i + 1) % logger_step == 0 && (i + 1) / logger_step < 20) {

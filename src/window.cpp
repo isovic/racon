@@ -13,7 +13,7 @@
 namespace racon {
 
 std::shared_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
-    uint32_t backbone_start, const char* backbone, uint32_t backbone_length,
+    uint32_t window_start, const char* backbone, uint32_t backbone_length,
     const char* quality, uint32_t quality_length) {
 
     if (backbone_length == 0 || backbone_length != quality_length) {
@@ -22,14 +22,15 @@ std::shared_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type
         exit(1);
     }
 
-    return std::shared_ptr<Window>(new Window(id, rank, type, backbone_start, backbone,
+    return std::shared_ptr<Window>(new Window(id, rank, type, window_start, backbone,
         backbone_length, quality, quality_length));
 }
 
-Window::Window(uint64_t id, uint32_t rank, WindowType type, uint32_t backbone_start,
+Window::Window(uint64_t id, uint32_t rank, WindowType type, uint32_t window_start,
     const char* backbone, uint32_t backbone_length, const char* quality,
     uint32_t quality_length)
-        : id_(id), rank_(rank), type_(type), start_(backbone_start), consensus_(), sequences_(),
+        : id_(id), rank_(rank), type_(type), start_(window_start), end_(window_start + backbone_length),
+        consensus_(), sequences_(),
         qualities_(), positions_() {
 
     sequences_.emplace_back(backbone, backbone_length);

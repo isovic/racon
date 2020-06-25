@@ -26,7 +26,7 @@ enum class WindowType {
 
 class Window;
 std::shared_ptr<Window> createWindow(uint64_t id, uint32_t rank, WindowType type,
-    uint32_t backbone_start, const char* backbone, uint32_t backbone_length, const char* quality,
+    uint32_t window_start, const char* backbone, uint32_t backbone_length, const char* quality,
     uint32_t quality_length);
 
 class Window {
@@ -56,6 +56,10 @@ public:
         return start_;
     }
 
+    uint32_t end() const {
+        return end_;
+    }
+
     bool generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine,
         bool trim);
 
@@ -64,7 +68,7 @@ public:
         uint32_t end);
 
     friend std::shared_ptr<Window> createWindow(uint64_t id, uint32_t rank,
-        WindowType type, uint32_t backbone_start, const char* backbone,
+        WindowType type, uint32_t window_start, const char* backbone,
         uint32_t backbone_length, const char* quality, uint32_t quality_length);
 
     friend std::ostream& operator<<(std::ostream& os, const Window& a);
@@ -74,7 +78,7 @@ public:
 #endif
 
 private:
-    Window(uint64_t id, uint32_t rank, WindowType type, uint32_t backbone_start,
+    Window(uint64_t id, uint32_t rank, WindowType type, uint32_t window_start,
         const char* backbone, uint32_t backbone_length, const char* quality,
         uint32_t quality_length);
     Window(const Window&) = delete;
@@ -84,6 +88,7 @@ private:
     uint32_t rank_;
     WindowType type_;
     uint32_t start_;
+    uint32_t end_;
     std::string consensus_;
     std::vector<std::pair<const char*, uint32_t>> sequences_;
     std::vector<std::pair<const char*, uint32_t>> qualities_;
