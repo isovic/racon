@@ -114,8 +114,12 @@ protected:
 
     std::unique_ptr<Logger> logger_;
 
-    std::unordered_map<int64_t, std::vector<IntervalInt64>> target_intervals_;
-    std::unordered_map<int64_t, IntervalTreeInt64> target_trees_;
+    std::unordered_map<int64_t, std::vector<IntervalInt64>> target_bed_intervals_;
+    std::unordered_map<int64_t, IntervalTreeInt64> target_bed_trees_;
+
+    std::unordered_map<int64_t, std::vector<IntervalInt64>> target_window_intervals_;
+    std::unordered_map<int64_t, IntervalTreeInt64> target_window_trees_;
+
 };
 
 }

@@ -303,7 +303,7 @@ void Polisher::initialize() {
     // Collect the intervals.
     logger_->log("[racon::Polisher::initialize] building the interval trees");
     logger_->log();
-    target_intervals_.clear();
+    target_bed_intervals_.clear();
     for (size_t i = 0; i < bed_records_.size(); ++i) {
         const auto& record = bed_records_[i];
         uint64_t t_id = 0;
@@ -311,26 +311,26 @@ void Polisher::initialize() {
             throw std::runtime_error("Target sequence '" + record.chrom() +
                         "' specified in the BED file was not found among the target sequences.");
         }
-        target_intervals_[t_id].emplace_back(IntervalInt64(record.chrom_start(), record.chrom_end() - 1, i));
+        target_bed_intervals_[t_id].emplace_back(IntervalInt64(record.chrom_start(), record.chrom_end() - 1, i));
     }
     // Sort target intervals.
-    for (auto& it: target_intervals_) {
+    for (auto& it: target_bed_intervals_) {
         std::stable_sort(it.second.begin(), it.second.end(),
             [](const IntervalInt64& a, const IntervalInt64& b) { return a.start < b.start; });
     }
     // Construct the trees.
-    target_trees_.clear();
-    for (const auto& it: target_intervals_) {
+    target_bed_trees_.clear();
+    for (const auto& it: target_bed_intervals_) {
         // Make a copy, because the IntervalTree has only the move constructor,
         // and we still need t he intvervals for validation below.
         auto intervals = it.second;
-        target_trees_[it.first] = IntervalTreeInt64(std::move(intervals));
+        target_bed_trees_[it.first] = IntervalTreeInt64(std::move(intervals));
     }
     // Validate that there are no overlapping intervals.
-    for (const auto& it: target_intervals_) {
+    for (const auto& it: target_bed_intervals_) {
         int64_t t_id = it.first;
         for (const auto& interval: it.second) {
-            auto foundIntervals = target_trees_[t_id].findOverlapping(interval.start, interval.stop);
+            auto foundIntervals = target_bed_trees_[t_id].findOverlapping(interval.start, interval.stop);
             if (foundIntervals.size() != 1 ||
                 (foundIntervals.size() == 1 && foundIntervals.front().value != interval.value)) {
                 throw std::runtime_error("Invalid BED record: '" +
@@ -387,7 +387,7 @@ void Polisher::initialize() {
 
             // Remove overlaps in regions not specified by BED.
             if (use_bed_) {
-                auto foundIntervals = target_trees_[overlaps[i]->t_id()].findOverlapping(
+                auto foundIntervals = target_bed_trees_[overlaps[i]->t_id()].findOverlapping(
                         static_cast<int64_t>(overlaps[i]->t_begin()),
                         static_cast<int64_t>(overlaps[i]->t_end()) - 1);
                 if (foundIntervals.empty()) {
@@ -457,6 +457,22 @@ void Polisher::initialize() {
     } else {
         create_and_populate_windows(overlaps, targets_size, window_type);
     }
+
+// #ifdef BED_FEATURE_TEST
+//     int32_t shift = 0;
+//     for (int32_t i = 0; i < static_cast<int32_t>(windows_.size()); ++i) {
+//         if ((i + 1) % 100 != 0) {
+//             windows_[i].reset();
+//             ++shift;
+//             // std::cerr << "nulling i = " << i << "\n";
+//             continue;
+//         }
+//         std::swap(windows_[i-shift], windows_[i]);
+//     }
+//     windows_.resize(static_cast<int32_t>(windows_.size()) - shift);
+//     std::cerr << "windows_.size() = " << windows_.size() << "\n";
+// #endif
+
 }
 
 void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<Overlap>>& overlaps,
@@ -468,7 +484,7 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
     std::vector<int64_t> id_to_first_window_id(targets_size + 1, -1);
 
     // Target intervals are sorted ahead of time.
-    for (const auto& it: target_intervals_) {
+    for (const auto& it: target_bed_intervals_) {
         int64_t t_id = it.first;
         const std::vector<IntervalInt64>& intervals = it.second;
 
@@ -479,15 +495,26 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
         uint32_t k = 0;
         for (const auto& interval: intervals) {
             for (int64_t win_start = interval.start; win_start < (interval.stop + 1);
-                            win_start += window_length_, ++k) {
+                 win_start += window_length_, ++k) {
+
                 int64_t length = std::min(win_start + static_cast<int64_t>(window_length_),
                     (interval.stop + 1)) - win_start;
+                int64_t win_id = windows_.size();
+
                 windows_.emplace_back(createWindow(t_id, k, window_type, win_start,
                     &(sequences_[t_id]->data()[win_start]), length,
                     sequences_[t_id]->quality().empty() ? &(dummy_quality_[0]) :
                     &(sequences_[t_id]->quality()[win_start]), length));
+
+                target_window_intervals_[t_id].emplace_back(IntervalInt64(win_start, win_start + length - 1, win_id));
             }
         }
+    }
+    // Construct the trees. The iterator is not const because the IntervalTree only has the
+    // move constructor.
+    target_window_trees_.clear();
+    for (auto& it: target_window_intervals_) {
+        target_window_trees_[it.first] = IntervalTreeInt64(std::move(it.second));
     }
 
     for (size_t i = 0; i < windows_.size(); ++i) {
@@ -577,21 +604,6 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
 
         overlaps[i].reset();
     }
-
-#ifdef BED_FEATURE_TEST
-    int32_t shift = 0;
-    for (int32_t i = 0; i < static_cast<int32_t>(windows_.size()); ++i) {
-        if ((i + 1) % 100 != 0) {
-            windows_[i].reset();
-            ++shift;
-            // std::cerr << "nulling i = " << i << "\n";
-            continue;
-        }
-        std::swap(windows_[i-shift], windows_[i]);
-    }
-    windows_.resize(static_cast<int32_t>(windows_.size()) - shift);
-    std::cerr << "windows_.size() = " << windows_.size() << "\n";
-#endif
 
     logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
