@@ -624,7 +624,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
             // Append the remaining suffix from the last window to the end of the target.
             uint32_t tlen = sequences_[windows_[i]->id()]->data().size();
             if (windows_[i]->end() < tlen) {
-                uint64_t suffix_start = windows_[i]->end;
+                uint64_t suffix_start = windows_[i]->end();
                 polished_data += sequences_[windows_[i]->id()]->data().substr(suffix_start);
             }
 #endif
