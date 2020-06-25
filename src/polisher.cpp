@@ -483,6 +483,8 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
     // The -1 marks that the target doesn't have any windows.
     std::vector<int64_t> id_to_first_window_id(targets_size + 1, -1);
 
+    std::unordered_map<int64_t, std::vector<std::tuple<int64_t, int64_t, int64_t>>> windows;
+
     // Target intervals are sorted ahead of time.
     for (const auto& it: target_bed_intervals_) {
         int64_t t_id = it.first;
@@ -507,6 +509,7 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
                     &(sequences_[t_id]->quality()[win_start]), length));
 
                 target_window_intervals_[t_id].emplace_back(IntervalInt64(win_start, win_start + length - 1, win_id));
+                windows[t_id].emplace_back(win_start, win_start + length, win_id);
             }
         }
     }
@@ -517,11 +520,15 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
         target_window_trees_[it.first] = IntervalTreeInt64(std::move(it.second));
     }
 
-    for (size_t i = 0; i < windows_.size(); ++i) {
-        std::cerr << "[window " << i << "] " << *windows_[i] << "\n";
-    }
+    // for (size_t i = 0; i < windows_.size(); ++i) {
+    //     std::cerr << "[window " << i << "] " << *windows_[i] << "\n";
+    // }
 
+    find_overlap_breaking_points(overlaps, windows);
 
+    assign_sequences_to_windows(overlaps, targets_size);
+
+    logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
 
 void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>& overlaps,
@@ -546,6 +553,13 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
 
         id_to_first_window_id[i + 1] = id_to_first_window_id[i] + k;
     }
+
+    assign_sequences_to_windows(overlaps, targets_size);
+
+    logger_->log("[racon::Polisher::initialize] transformed data into windows");
+}
+
+void Polisher::assign_sequences_to_windows(std::vector<std::unique_ptr<Overlap>>& overlaps, uint64_t targets_size) {
 
     targets_coverages_.resize(targets_size, 0);
 
@@ -587,8 +601,7 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
                 }
             }
 
-            uint64_t window_id = id_to_first_window_id[overlaps[i]->t_id()] +
-                win_t_start / window_length_;
+            uint64_t window_id = bp.window_id;
             uint32_t window_start = (win_t_start / window_length_) *
                 window_length_;
 
@@ -614,7 +627,6 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
         overlaps[i].reset();
     }
 
-    logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
 
 void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
@@ -624,6 +636,35 @@ void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>
         thread_futures.emplace_back(thread_pool_->submit(
             [&](uint64_t j) -> void {
                 overlaps[j]->find_breaking_points(sequences_, window_length_);
+            }, i));
+    }
+
+    uint32_t logger_step = thread_futures.size() / 20;
+    for (uint64_t i = 0; i < thread_futures.size(); ++i) {
+        thread_futures[i].wait();
+        if (logger_step != 0 && (i + 1) % logger_step == 0 && (i + 1) / logger_step < 20) {
+            logger_->bar("[racon::Polisher::initialize] aligning overlaps");
+        }
+    }
+    if (logger_step != 0) {
+        logger_->bar("[racon::Polisher::initialize] aligning overlaps");
+    } else {
+        logger_->log("[racon::Polisher::initialize] aligned overlaps");
+    }
+}
+
+void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps,
+    const std::unordered_map<int64_t, std::vector<std::tuple<int64_t, int64_t, int64_t>>>& windows)
+{
+    std::vector<std::future<void>> thread_futures;
+    for (uint64_t i = 0; i < overlaps.size(); ++i) {
+
+        thread_futures.emplace_back(thread_pool_->submit(
+            [&](uint64_t j) -> void {
+                auto it = windows.find(overlaps[j]->t_id());
+                if (it != windows.end()) {
+                    overlaps[j]->find_breaking_points(sequences_, it->second);
+                }
             }, i));
     }
 
