@@ -1,6 +1,5 @@
 vendor_cpp_sources = files([
   'edlib/edlib/src/edlib.cpp',
-  'intervaltree/interval_tree_test.cpp',
   'rampler/src/sampler.cpp',
   'rampler/src/sequence.cpp',
   'spoa/src/alignment_engine.cpp',
