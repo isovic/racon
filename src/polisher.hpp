@@ -14,6 +14,7 @@
 #include "window.hpp"
 #include "bed.hpp"
 #include "IntervalTree.h"
+#include "util.hpp"
 #include <unordered_map>
 
 namespace bioparser {
@@ -29,7 +30,6 @@ namespace spoa {
     class AlignmentEngine;
 }
 
-
 namespace racon {
 
 class Sequence;
@@ -41,10 +41,6 @@ enum class PolisherType {
     kC, // Contig polishing
     kF // Fragment error correction
 };
-
-using IntervalTreeInt64 = IntervalTree<int64_t, size_t>;
-using IntervalVectorInt64 = IntervalTreeInt64::interval_vector;
-using IntervalInt64 = IntervalTreeInt64::interval;
 
 class Polisher;
 std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,

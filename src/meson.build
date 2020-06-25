@@ -4,6 +4,7 @@ racon_cpp_sources = files([
   'overlap.cpp',
   'polisher.cpp',
   'sequence.cpp',
+  'util.cpp',
   'window.cpp',
 ])
 
