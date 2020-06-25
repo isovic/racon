@@ -19,7 +19,7 @@ bool BedFile::Deserialize(const std::string& line, BedRecord& record) {
     char name_buff[1024];
     int64_t chrom_start = 0, chrom_end = 0;
     int32_t n = sscanf(line.c_str(), "%s %ld %ld", name_buff, &chrom_start, &chrom_end);
-    if (n < 3) {
+    if (n < 3 || chrom_end <= chrom_start) {
         throw std::runtime_error("Invalid BED line: '" + line + "'");
     }
     record = BedRecord(name_buff, chrom_start, chrom_end);
