@@ -1,5 +1,6 @@
 racon_test_cpp_sources = files([
   'bed_test.cpp',
+  'util_test.cpp',
   'racon_test.cpp',
 ])
 
