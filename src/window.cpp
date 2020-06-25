@@ -148,6 +148,7 @@ std::ostream& operator<<(std::ostream& os, const Window& a)
     os << "Window: id = " << a.id_ << ", rank = " << a.rank_ << ", type = "
         << ((a.type_ == WindowType::kNGS) ? "NGS" : "TGS")
         << ", start = " << a.start_
+        << ", end = " << a.end_
         << ", backbone_len = " << a.backbone_length()
         << ", consensus_len = " << a.consensus_.size()
         << ", seqs_len = " << a.sequences_.size()
