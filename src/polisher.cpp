@@ -452,7 +452,49 @@ void Polisher::initialize() {
         it.wait();
     }
 
-    create_and_populate_windows(overlaps, targets_size, window_type);
+    if (use_bed_) {
+        create_and_populate_windows_with_bed(overlaps, targets_size, window_type);
+    } else {
+        create_and_populate_windows(overlaps, targets_size, window_type);
+    }
+}
+
+void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<Overlap>>& overlaps,
+        uint64_t targets_size, WindowType window_type) {
+
+    logger_->log("Constructing windows for BED regions.\n");
+
+    // The -1 marks that the target doesn't have any windows.
+    std::vector<int64_t> id_to_first_window_id(targets_size + 1, -1);
+
+    // Target intervals are sorted ahead of time.
+    for (const auto& it: target_intervals_) {
+        int64_t t_id = it.first;
+        const std::vector<IntervalInt64>& intervals = it.second;
+
+        // Mark the window start.
+        id_to_first_window_id[t_id] = static_cast<int64_t>(windows_.size());
+
+        // Generate windows for each interval separately.
+        uint32_t k = 0;
+        for (const auto& interval: intervals) {
+            for (int64_t win_start = interval.start; win_start < (interval.stop + 1);
+                            win_start += window_length_, ++k) {
+                int64_t length = std::min(win_start + static_cast<int64_t>(window_length_),
+                    (interval.stop + 1)) - win_start;
+                windows_.emplace_back(createWindow(t_id, k, window_type, win_start,
+                    &(sequences_[t_id]->data()[win_start]), length,
+                    sequences_[t_id]->quality().empty() ? &(dummy_quality_[0]) :
+                    &(sequences_[t_id]->quality()[win_start]), length));
+            }
+        }
+    }
+
+    for (size_t i = 0; i < windows_.size(); ++i) {
+        std::cerr << "[window " << i << "] " << *windows_[i] << "\n";
+    }
+
+
 }
 
 void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>& overlaps,

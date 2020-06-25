@@ -86,6 +86,8 @@ protected:
     virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps);
     void create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>& overlaps,
         uint64_t targets_size, WindowType window_type);
+    void create_and_populate_windows_with_bed(std::vector<std::unique_ptr<Overlap>>& overlaps,
+        uint64_t targets_size, WindowType window_type);
 
     std::unique_ptr<bioparser::Parser<Sequence>> sparser_;
     std::unique_ptr<bioparser::Parser<Overlap>> oparser_;
