@@ -165,7 +165,6 @@ void help() {
     printf(
         "usage: racon [options ...] <sequences> <overlaps> <target sequences>\n"
         "\n"
-        "    #default output is stdout\n"
         "    <sequences>\n"
         "        input file in FASTA/FASTQ format (can be compressed with gzip)\n"
         "        containing sequences used for correction\n"
@@ -210,14 +209,14 @@ void help() {
         "        -h, --help\n"
         "            prints the usage\n"
 #ifdef CUDA_ENABLED
-        "        -c, --cudapoa-batches <int>\n"
-        "            default: 0\n"
-        "            number of batches for CUDA accelerated polishing per GPU\n"
+        "        -c, --cudapoa-batches\n"
+        "            default: 1\n"
+        "            number of batches for CUDA accelerated polishing\n"
         "        -b, --cuda-banded-alignment\n"
         "            use banding approximation for alignment on GPU\n"
-        "        --cudaaligner-batches <int>\n"
-        "            default: 0\n"
-        "            number of batches for CUDA accelerated alignment per GPU\n"
+        "        --cudaaligner-batches\n"
+        "            Number of batches for CUDA accelerated alignment\n"
+
 #endif
     );
 }

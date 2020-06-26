@@ -74,7 +74,6 @@ Usage of `racon` is as following:
 
     racon [options ...] <sequences> <overlaps> <target sequences>
 
-        # default output is stdout
         <sequences>
             input file in FASTA/FASTQ format (can be compressed with gzip)
             containing sequences used for correction
@@ -120,14 +119,13 @@ Usage of `racon` is as following:
             prints the usage
 
     only available when built with CUDA:
-        -c, --cudapoa-batches <int>
-            default: 0
-            number of batches for CUDA accelerated polishing per GPU
+        -c, --cudapoa-batches
+            default: 1
+            number of batches for CUDA accelerated polishing
         -b, --cuda-banded-alignment
             use banding approximation for polishing on GPU. Only applicable when -c is used.
-        --cudaaligner-batches <int>
-            default: 0
-            number of batches for CUDA accelerated alignment per GPU
+        --cudaaligner-batches
+            Number of batches for CUDA accelerated alignment
 
 `racon_test` is run without any parameters.
 
