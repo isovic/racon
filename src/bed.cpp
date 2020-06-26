@@ -38,12 +38,12 @@ std::string BedFile::Serialize(const BedRecord& record) {
 
 BedReader::BedReader(const std::string& in_fn)
     : file_{std::unique_ptr<std::ifstream>(new std::ifstream(in_fn))}
-    , in_{*file_.get()}
+    , in_(*file_.get())
 {
 }
 
 BedReader::BedReader(std::istream& in)
-    : in_{in}
+    : in_(in)
 {
 }
 
