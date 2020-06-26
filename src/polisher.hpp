@@ -79,12 +79,9 @@ protected:
         uint32_t num_threads);
     Polisher(const Polisher&) = delete;
     const Polisher& operator=(const Polisher&) = delete;
-    virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps);
     virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps,
         const std::unordered_map<int64_t, std::vector<std::tuple<int64_t, int64_t, int64_t>>>& windows);
 
-    void create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>& overlaps,
-        uint64_t targets_size, WindowType window_type);
     void create_and_populate_windows_with_bed(std::vector<std::unique_ptr<Overlap>>& overlaps,
         uint64_t targets_size, WindowType window_type);
     void assign_sequences_to_windows(std::vector<std::unique_ptr<Overlap>>& overlaps, uint64_t targets_size);

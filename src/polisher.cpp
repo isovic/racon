@@ -299,19 +299,28 @@ void Polisher::initialize() {
 
 
 
-    /////////////////////////////////
-    // Collect the intervals.
+    //////////////////////////////////
+    /// Collect the BED intervals. ///
+    //////////////////////////////////
     logger_->log("[racon::Polisher::initialize] building the interval trees");
     logger_->log();
     target_bed_intervals_.clear();
-    for (size_t i = 0; i < bed_records_.size(); ++i) {
-        const auto& record = bed_records_[i];
-        uint64_t t_id = 0;
-        if (!transmuteId(name_to_id, record.chrom() + "t", t_id)) {
-            throw std::runtime_error("Target sequence '" + record.chrom() +
-                        "' specified in the BED file was not found among the target sequences.");
+    // Collect target intervals of interest.
+    // If the BED file is not specified, construct windows covering full spans of targets.
+    if (use_bed_) {
+        for (size_t i = 0; i < bed_records_.size(); ++i) {
+            const auto& record = bed_records_[i];
+            uint64_t t_id = 0;
+            if (!transmuteId(name_to_id, record.chrom() + "t", t_id)) {
+                throw std::runtime_error("Target sequence '" + record.chrom() +
+                            "' specified in the BED file was not found among the target sequences.");
+            }
+            target_bed_intervals_[t_id].emplace_back(IntervalInt64(record.chrom_start(), record.chrom_end() - 1, i));
         }
-        target_bed_intervals_[t_id].emplace_back(IntervalInt64(record.chrom_start(), record.chrom_end() - 1, i));
+    } else {
+        for (uint64_t t_id = 0; t_id < targets_size; ++t_id) {
+            target_bed_intervals_[t_id].emplace_back(IntervalInt64(0, sequences_[t_id]->data().size(), -1));
+        }
     }
     // Sort target intervals.
     for (auto& it: target_bed_intervals_) {
@@ -452,11 +461,7 @@ void Polisher::initialize() {
         it.wait();
     }
 
-    if (use_bed_) {
-        create_and_populate_windows_with_bed(overlaps, targets_size, window_type);
-    } else {
-        create_and_populate_windows(overlaps, targets_size, window_type);
-    }
+    create_and_populate_windows_with_bed(overlaps, targets_size, window_type);
 
 // #ifdef BED_FEATURE_TEST
 //     int32_t shift = 0;
@@ -532,36 +537,6 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
     logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
 
-void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>& overlaps,
-        uint64_t targets_size, WindowType window_type) {
-    find_overlap_breaking_points(overlaps);
-
-    logger_->log();
-
-    id_to_first_window_id_.clear();
-    id_to_first_window_id_.resize(targets_size + 1, 0);
-
-    for (uint64_t i = 0; i < targets_size; ++i) {
-        uint32_t k = 0;
-        for (uint32_t j = 0; j < sequences_[i]->data().size(); j += window_length_, ++k) {
-
-            uint32_t length = std::min(j + window_length_,
-                static_cast<uint32_t>(sequences_[i]->data().size())) - j;
-
-            windows_.emplace_back(createWindow(i, k, window_type, j,
-                &(sequences_[i]->data()[j]), length,
-                sequences_[i]->quality().empty() ? &(dummy_quality_[0]) :
-                &(sequences_[i]->quality()[j]), length));
-        }
-
-        id_to_first_window_id_[i + 1] = id_to_first_window_id_[i] + k;
-    }
-
-    assign_sequences_to_windows(overlaps, targets_size);
-
-    logger_->log("[racon::Polisher::initialize] transformed data into windows");
-}
-
 void Polisher::assign_sequences_to_windows(std::vector<std::unique_ptr<Overlap>>& overlaps, uint64_t targets_size) {
 
     targets_coverages_.resize(targets_size, 0);
@@ -572,6 +547,14 @@ void Polisher::assign_sequences_to_windows(std::vector<std::unique_ptr<Overlap>>
 
         const auto& sequence = sequences_[overlaps[i]->q_id()];
         const std::vector<WindowInterval>& breaking_points = overlaps[i]->breaking_points();
+
+        // std::cerr << "overlap_id = " << i << "\n";
+        // std::cerr << "    " << *overlaps[i] << "\n";
+        // std::cerr << "All breaking points:\n";
+        // for (uint32_t j = 0; j < breaking_points.size(); ++j) {
+        //     const auto& bp = breaking_points[j];
+        //     std::cerr << "[j = " << j << "] bp = " << bp << "\n";
+        // }
 
         for (uint32_t j = 0; j < breaking_points.size(); ++j) {
             const auto& bp = breaking_points[j];
@@ -621,39 +604,18 @@ void Polisher::assign_sequences_to_windows(std::vector<std::unique_ptr<Overlap>>
                     nullptr : &(sequence->quality()[win_q_start]));
             uint32_t quality_length = quality == nullptr ? 0 : data_length;
 
+            // std::cerr << "[j = " << j << "] Adding layer for bp = " << bp << "\n";
+
             windows_[window_id]->add_layer(data, data_length,
                 quality, quality_length,
                 win_t_start - window_start,
                 win_t_end - window_start - 1);
         }
+        // std::cerr << "\n";
 
         overlaps[i].reset();
     }
 
-}
-
-void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps)
-{
-    std::vector<std::future<void>> thread_futures;
-    for (uint64_t i = 0; i < overlaps.size(); ++i) {
-        thread_futures.emplace_back(thread_pool_->submit(
-            [&](uint64_t j) -> void {
-                overlaps[j]->find_breaking_points(sequences_, window_length_);
-            }, i));
-    }
-
-    uint32_t logger_step = thread_futures.size() / 20;
-    for (uint64_t i = 0; i < thread_futures.size(); ++i) {
-        thread_futures[i].wait();
-        if (logger_step != 0 && (i + 1) % logger_step == 0 && (i + 1) / logger_step < 20) {
-            logger_->bar("[racon::Polisher::initialize] aligning overlaps");
-        }
-    }
-    if (logger_step != 0) {
-        logger_->bar("[racon::Polisher::initialize] aligning overlaps");
-    } else {
-        logger_->log("[racon::Polisher::initialize] aligned overlaps");
-    }
 }
 
 void Polisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps,
