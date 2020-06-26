@@ -14,11 +14,12 @@
 
 TEST(BedFile, DeserializeTests) {
     // Tuple: test_name, input line, expected record, expected return value, expected to throw.
+    using TestTupleType = std::tuple<std::string, std::string, racon::BedRecord, bool, bool>;
     std::vector<std::tuple<std::string, std::string, racon::BedRecord, bool, bool>> test_data{
-        {"Empty input", "", racon::BedRecord(), false,false},
-        {"Three columns", "chr01 0 1000", racon::BedRecord("chr01", 0, 1000), true, false},
-        {"Multiple columns", "chr01 1000 2000 some other columns that are ignored", racon::BedRecord("chr01", 1000, 2000), true, false},
-        {"Invalid BED line", "bad_bed", racon::BedRecord(), true, true},
+        TestTupleType("Empty input", "", racon::BedRecord(), false,false),
+        TestTupleType("Three columns", "chr01 0 1000", racon::BedRecord("chr01", 0, 1000), true, false),
+        TestTupleType("Multiple columns", "chr01 1000 2000 some other columns that are ignored", racon::BedRecord("chr01", 1000, 2000), true, false),
+        TestTupleType("Invalid BED line", "bad_bed", racon::BedRecord(), true, true),
     };
 
     for (const auto& single_test: test_data) {
@@ -49,26 +50,30 @@ TEST(BedFile, DeserializeTests) {
 
 TEST(BedReader, AllTests) {
     // Tuple: test_name, input line, expected record, expected return value.
+    using TestTupleType = std::tuple<std::string, std::string, std::vector<racon::BedRecord>, bool>;
     std::vector<std::tuple<std::string, std::string, std::vector<racon::BedRecord>, bool>> test_data {
-        {"Empty input", "", {}, false},
-        {"Normal BED file",
-R"(chr01 0 1000
+        TestTupleType("Empty input", "", {}, false),
+
+        TestTupleType(
+            "Normal BED file",
+            R"(chr01 0 1000
 chr02 1000 2000
 chr03 2000 3000
 )",
-            {
+            std::vector<racon::BedRecord>{
                 racon::BedRecord("chr01", 0, 1000),
                 racon::BedRecord("chr02", 1000, 2000),
                 racon::BedRecord("chr03", 2000, 3000),
             },
             false
-        },
-        {"Normal BED file",
-R"(chr01 0 1000
+        ),
+        TestTupleType(
+            "Normal BED file",
+            R"(chr01 0 1000
 bad_line
 )",
-            {}, true
-        },
+            std::vector<racon::BedRecord>(), true
+        ),
 
     };
 
