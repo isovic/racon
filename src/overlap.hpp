@@ -80,9 +80,6 @@ public:
     }
 
     void find_breaking_points(const std::vector<std::unique_ptr<Sequence>>& sequences,
-        uint32_t window_length);
-
-    void find_breaking_points(const std::vector<std::unique_ptr<Sequence>>& sequences,
         std::vector<std::tuple<int64_t, int64_t, int64_t>> windows);
 
     friend bioparser::MhapParser<Overlap>;
@@ -112,7 +109,6 @@ private:
     Overlap();
     Overlap(const Overlap&) = delete;
     const Overlap& operator=(const Overlap&) = delete;
-    virtual void find_breaking_points_from_cigar(int64_t window_length);
     virtual void find_breaking_points_from_cigar(std::vector<std::tuple<int64_t, int64_t, int64_t>> windows);
     virtual void align_overlaps(const char* q, uint32_t q_len, const char* t, uint32_t t_len);
 
