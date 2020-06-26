@@ -14,7 +14,7 @@
 
 TEST(BedFile, DeserializeTests) {
     // Tuple: test_name, input line, expected record, expected return value, expected to throw.
-    std::vector<std::tuple<std::string, std::string, racon::BedRecord, bool, bool>> test_data = {
+    std::vector<std::tuple<std::string, std::string, racon::BedRecord, bool, bool>> test_data{
         {"Empty input", "", racon::BedRecord(), false,false},
         {"Three columns", "chr01 0 1000", racon::BedRecord("chr01", 0, 1000), true, false},
         {"Multiple columns", "chr01 1000 2000 some other columns that are ignored", racon::BedRecord("chr01", 1000, 2000), true, false},
@@ -49,7 +49,7 @@ TEST(BedFile, DeserializeTests) {
 
 TEST(BedReader, AllTests) {
     // Tuple: test_name, input line, expected record, expected return value.
-    std::vector<std::tuple<std::string, std::string, std::vector<racon::BedRecord>, bool>> test_data = {
+    std::vector<std::tuple<std::string, std::string, std::vector<racon::BedRecord>, bool>> test_data {
         {"Empty input", "", {}, false},
         {"Normal BED file",
 R"(chr01 0 1000
