@@ -30,10 +30,12 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 
 set(racon_sources
     src/main.cpp
+    src/bed.cpp
     src/logger.cpp
     src/polisher.cpp
     src/overlap.cpp
     src/sequence.cpp
+    src/util.cpp
     src/window.cpp)
 
 if(racon_enable_cuda)
@@ -101,13 +103,18 @@ if (racon_build_tests)
         "${PROJECT_BINARY_DIR}/config/racon_test_config.h")
     include_directories(${PROJECT_BINARY_DIR}/config)
     include_directories(${PROJECT_SOURCE_DIR}/src)
+    include_directories(${PROJECT_SOURCE_DIR}/vendor/intervaltree)
 
     set(racon_test_sources
+        test/bed_test.cpp
         test/racon_test.cpp
+        test/util_test.cpp
+        src/bed.cpp
         src/logger.cpp
         src/polisher.cpp
         src/overlap.cpp
         src/sequence.cpp
+        src/util.cpp
         src/window.cpp)
 
     if (racon_enable_cuda)
