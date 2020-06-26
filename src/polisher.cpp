@@ -461,7 +461,11 @@ void Polisher::initialize() {
         it.wait();
     }
 
+    logger_->log("[racon::Polisher::initialize] Constructing windows for BED regions.\n");
+
     create_and_populate_windows_with_bed(overlaps, targets_size, window_type);
+
+    logger_->log("[racon::Polisher::initialize] transformed data into windows");
 
 // #ifdef BED_FEATURE_TEST
 //     int32_t shift = 0;
@@ -482,8 +486,6 @@ void Polisher::initialize() {
 
 void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<Overlap>>& overlaps,
         uint64_t targets_size, WindowType window_type) {
-
-    logger_->log("Constructing windows for BED regions.\n");
 
     // The -1 marks that the target doesn't have any windows.
     id_to_first_window_id_.clear();
@@ -533,8 +535,6 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
     find_overlap_breaking_points(overlaps, windows);
 
     assign_sequences_to_windows(overlaps, targets_size);
-
-    logger_->log("[racon::Polisher::initialize] transformed data into windows");
 }
 
 void Polisher::assign_sequences_to_windows(std::vector<std::unique_ptr<Overlap>>& overlaps, uint64_t targets_size) {
