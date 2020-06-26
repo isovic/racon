@@ -38,12 +38,7 @@ public:
                     && t_end == rhs.t_end && window_id == rhs.window_id;
     }
 
-    std::ostream& operator<<(std::ostream& os) const {
-        os << "q_start = " << q_start << ", q_end = " << q_end
-            << ", t_start = " << t_start << "t_end = " << t_end
-            << "window_id = " << window_id;
-        return os;
-    }
+    friend std::ostream& operator<<(::std::ostream& os, const WindowInterval& a);
 
     int64_t q_start = 0;
     int64_t q_end = 0;
@@ -51,6 +46,13 @@ public:
     int64_t t_end = 0;
     int64_t window_id = -1;
 };
+
+inline std::ostream& operator<<(::std::ostream& os, const WindowInterval& a) {
+    os << "q_start = " << a.q_start << ", q_end = " << a.q_end
+        << ", t_start = " << a.t_start << ", t_end = " << a.t_end
+        << ", window_id = " << a.window_id;
+    return os;
+}
 
 template<typename T>
 bool transmuteId(const std::unordered_map<T, uint64_t>& t_to_id, const T& t,
