@@ -41,7 +41,8 @@ std::vector<WindowInterval> generate_window_breakpoints(
     int64_t num_windows = static_cast<int64_t>(windows.size());
 
     bool found_first_match = false;
-    std::tuple<int64_t, int64_t, int64_t> first_match = {0, 0, 0}, last_match = {0, 0, 0};
+    std::tuple<int64_t, int64_t, int64_t> first_match(0, 0, 0);
+    std::tuple<int64_t, int64_t, int64_t> last_match(0, 0, 0);
 
     // The "-1" is because of the while loops below (increment is done at the top).
     int64_t q_pos = q_start - 1;
