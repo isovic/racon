@@ -515,7 +515,7 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
                     &(sequences_[t_id]->quality()[win_start]), length));
 
                 target_window_intervals_[t_id].emplace_back(IntervalInt64(win_start, win_start + length - 1, win_id));
-                windows[t_id].emplace_back(win_start, win_start + length - 1, win_id);
+                windows[t_id].emplace_back(win_start, win_start + length, win_id);
             }
         }
     }
