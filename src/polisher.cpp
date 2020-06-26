@@ -319,7 +319,7 @@ void Polisher::initialize() {
         }
     } else {
         for (uint64_t t_id = 0; t_id < targets_size; ++t_id) {
-            target_bed_intervals_[t_id].emplace_back(IntervalInt64(0, sequences_[t_id]->data().size(), -1));
+            target_bed_intervals_[t_id].emplace_back(IntervalInt64(0, static_cast<int64_t>(sequences_[t_id]->data().size()) - 1, -1));
         }
     }
     // Sort target intervals.

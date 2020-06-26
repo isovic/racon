@@ -49,7 +49,7 @@ std::vector<WindowInterval> generate_window_breakpoints(
     int64_t t_pos = t_start - 1;
     int64_t curr_w = 0;
 
-    while (curr_w < num_windows && std::get<1>(windows[curr_w]) < t_start) {
+    while (curr_w < num_windows && std::get<1>(windows[curr_w]) <= t_start) {
         ++curr_w;
     }
 
@@ -61,7 +61,7 @@ std::vector<WindowInterval> generate_window_breakpoints(
                 ++q_pos;
                 ++t_pos;
 
-                while (curr_w < num_windows && std::get<1>(windows[curr_w]) < t_pos) {
+                while (curr_w < num_windows && std::get<1>(windows[curr_w]) <= t_pos) {
                     ++curr_w;
                 }
                 if (curr_w >= num_windows) {
@@ -107,7 +107,7 @@ std::vector<WindowInterval> generate_window_breakpoints(
             for (uint32_t k = 0; k < num_bases; ++k) {
                 ++t_pos;
 
-                while (curr_w < num_windows && std::get<1>(windows[curr_w]) < t_pos) {
+                while (curr_w < num_windows && std::get<1>(windows[curr_w]) <= t_pos) {
                     ++curr_w;
                 }
                 if (curr_w >= num_windows) {
