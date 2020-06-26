@@ -15,135 +15,139 @@
 
 TEST(Utils, find_breaking_points_from_cigar) {
     // Tuple: test_name, CIGAR string, windows as tuples, expected breakpoints split into windows.
+    using TestTupleType = std::tuple<std::string, std::string, int64_t,
+                            int64_t, std::vector<std::tuple<int64_t, int64_t, int64_t>>,
+                            std::vector<racon::WindowInterval>>;
+    using TestWindowTuple = std::tuple<int64_t, int64_t, int64_t>;
     std::vector<std::tuple<std::string, std::string, int64_t,
-        int64_t, std::vector<std::tuple<int64_t, int64_t, int64_t>>, std::vector<racon::WindowInterval>>> test_data {
-        {"Empty input", "", 0, 0, {}, {}},
+        int64_t, std::vector<TestWindowTuple>, std::vector<racon::WindowInterval>>> test_data {
+        TestTupleType("Empty input", "", 0, 0, std::vector<TestWindowTuple>{}, std::vector<racon::WindowInterval>{}),
 
-        {"Simple windowing", "1000M", 0, 0,
-            {
-                {100, 500, 0},
-                {700, 800, 1},
-                {900, 950, 2},
+        TestTupleType("Simple windowing", "1000M", 0, 0,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{100, 500, 0},
+                TestWindowTuple{700, 800, 1},
+                TestWindowTuple{900, 950, 2},
             },
-            {
+            std::vector<racon::WindowInterval>{
                 racon::WindowInterval(100, 500, 100, 500, 0),
                 racon::WindowInterval(700, 800, 700, 800, 1),
                 racon::WindowInterval(900, 950, 900, 950, 2),
             }
-        },
+        ),
 
-        {"Simple windowing with indels", "200=100I300=50D450=", 0, 0,
-            {
-                {100, 500, 0},
-                {500, 700, 1},
-                {700, 800, 2},
-                {900, 950, 3},
+        TestTupleType("Simple windowing with indels", "200=100I300=50D450=", 0, 0,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{100, 500, 0},
+                TestWindowTuple{500, 700, 1},
+                TestWindowTuple{700, 800, 2},
+                TestWindowTuple{900, 950, 3},
             },
-            {
+            std::vector<racon::WindowInterval>{
                 racon::WindowInterval(100, 600, 100, 500, 0),
                 racon::WindowInterval(600, 750, 550, 700, 1),
                 racon::WindowInterval(750, 850, 700, 800, 2),
                 racon::WindowInterval(950, 1000, 900, 950, 3),
             }
-        },
+        ),
 
-        {"Intra-window alignments", "100=", 0, 250,
-            {
-                {0, 200, 0},
-                {200, 400, 1},
-                {400, 600, 2},
-                {600, 800, 3},
-                {800, 1000, 4},
+        TestTupleType("Intra-window alignments", "100=", 0, 250,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{0, 200, 0},
+                TestWindowTuple{200, 400, 1},
+                TestWindowTuple{400, 600, 2},
+                TestWindowTuple{600, 800, 3},
+                TestWindowTuple{800, 1000, 4},
             },
-            {
+            std::vector<racon::WindowInterval>{
                 racon::WindowInterval(0, 100, 250, 350, 1),
             }
-        },
+        ),
 
-        {"Cross-window alignments", "200=", 0, 250,
-            {
-                {0, 200, 0},
-                {200, 400, 1},
-                {400, 600, 2},
-                {600, 800, 3},
-                {800, 1000, 4},
+        TestTupleType("Cross-window alignments", "200=", 0, 250,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{0, 200, 0},
+                TestWindowTuple{200, 400, 1},
+                TestWindowTuple{400, 600, 2},
+                TestWindowTuple{600, 800, 3},
+                TestWindowTuple{800, 1000, 4},
             },
-            {
+            std::vector<racon::WindowInterval>{
                 racon::WindowInterval(0, 150, 250, 400, 1),
                 racon::WindowInterval(150, 200, 400, 450, 2),
             }
-        },
+        ),
 
-        {"Flanking insertions", "10I180=10I", 0, 200,
-            {
-                {0, 200, 0},
-                {200, 400, 1},
-                {400, 600, 2},
-                {600, 800, 3},
-                {800, 1000, 4},
+        TestTupleType("Flanking insertions", "10I180=10I", 0, 200,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{0, 200, 0},
+                TestWindowTuple{200, 400, 1},
+                TestWindowTuple{400, 600, 2},
+                TestWindowTuple{600, 800, 3},
+                TestWindowTuple{800, 1000, 4},
             },
-            {
+            std::vector<racon::WindowInterval>{
                 racon::WindowInterval(10, 190, 200, 380, 1),
             }
-        },
+        ),
 
-        {"Flanking insertions", "10D180=10D", 0, 200,
-            {
-                {0, 200, 0},
-                {200, 400, 1},
-                {400, 600, 2},
-                {600, 800, 3},
-                {800, 1000, 4},
+        TestTupleType("Flanking insertions", "10D180=10D", 0, 200,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{0, 200, 0},
+                TestWindowTuple{200, 400, 1},
+                TestWindowTuple{400, 600, 2},
+                TestWindowTuple{600, 800, 3},
+                TestWindowTuple{800, 1000, 4},
             },
-            {
+            std::vector<racon::WindowInterval>{
                 racon::WindowInterval(0, 180, 210, 390, 1),
             }
-        },
+        ),
 
-        {"Alignment outside of the windows, front", "50=", 0, 50,
-            {
-                {200, 400, 0},
-                {400, 600, 1},
-                {600, 800, 2},
-                {800, 1000, 3},
+        TestTupleType("Alignment outside of the windows, front", "50=", 0, 50,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{200, 400, 0},
+                TestWindowTuple{400, 600, 1},
+                TestWindowTuple{600, 800, 2},
+                TestWindowTuple{800, 1000, 3},
             },
-            { }
-        },
+            std::vector<racon::WindowInterval>{ }
+        ),
 
-        {"Alignment outside of the windows, back", "50=", 0, 1050,
-            {
-                {200, 400, 0},
-                {400, 600, 1},
-                {600, 800, 2},
-                {800, 1000, 3},
+        TestTupleType("Alignment outside of the windows, back", "50=", 0, 1050,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{200, 400, 0},
+                TestWindowTuple{400, 600, 1},
+                TestWindowTuple{600, 800, 2},
+                TestWindowTuple{800, 1000, 3},
             },
-            { }
-        },
+            std::vector<racon::WindowInterval>{ }
+        ),
 
-        {"Alignment in between windows (not overlapping)", "50=", 0, 450,
-            {
-                {0, 200, 0},
-                {200, 400, 1},
-                {600, 800, 3},
-                {800, 1000, 4},
+        TestTupleType("Alignment in between windows (not overlapping)", "50=", 0, 450,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{0, 200, 0},
+                TestWindowTuple{200, 400, 1},
+                TestWindowTuple{600, 800, 3},
+                TestWindowTuple{800, 1000, 4},
             },
-            { }
-        },
+            std::vector<racon::WindowInterval>{ }
+        ),
 
-        {"Out of order windows, should still work because internal sort", "200=100I300=50D450=", 0, 0,
-            {
-                {900, 950, 3},
-                {500, 700, 1},
-                {100, 500, 0},
-                {700, 800, 2},
+        TestTupleType("Out of order windows, should still work because internal sort", "200=100I300=50D450=", 0, 0,
+            std::vector<TestWindowTuple>{
+                TestWindowTuple{900, 950, 3},
+                TestWindowTuple{500, 700, 1},
+                TestWindowTuple{100, 500, 0},
+                TestWindowTuple{700, 800, 2},
             },
-            {
+            std::vector<racon::WindowInterval>{
                 racon::WindowInterval(100, 600, 100, 500, 0),
                 racon::WindowInterval(600, 750, 550, 700, 1),
                 racon::WindowInterval(750, 850, 700, 800, 2),
                 racon::WindowInterval(950, 1000, 900, 950, 3),
             }
-        },
+        ),
 
     };
 
