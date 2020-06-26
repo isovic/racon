@@ -16,7 +16,7 @@
 TEST(Utils, find_breaking_points_from_cigar) {
     // Tuple: test_name, CIGAR string, windows as tuples, expected breakpoints split into windows.
     std::vector<std::tuple<std::string, std::string, int64_t,
-        int64_t, std::vector<std::tuple<int64_t, int64_t, int64_t>>, std::vector<racon::WindowInterval>>> test_data = {
+        int64_t, std::vector<std::tuple<int64_t, int64_t, int64_t>>, std::vector<racon::WindowInterval>>> test_data {
         {"Empty input", "", 0, 0, {}, {}},
 
         {"Simple windowing", "1000M", 0, 0,
