@@ -481,7 +481,8 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
     logger_->log("Constructing windows for BED regions.\n");
 
     // The -1 marks that the target doesn't have any windows.
-    std::vector<int64_t> id_to_first_window_id(targets_size + 1, -1);
+    id_to_first_window_id_.clear();
+    id_to_first_window_id_.resize(targets_size + 1, -1);
 
     std::unordered_map<int64_t, std::vector<std::tuple<int64_t, int64_t, int64_t>>> windows;
 
@@ -491,7 +492,7 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
         const std::vector<IntervalInt64>& intervals = it.second;
 
         // Mark the window start.
-        id_to_first_window_id[t_id] = static_cast<int64_t>(windows_.size());
+        id_to_first_window_id_[t_id] = static_cast<int64_t>(windows_.size());
 
         // Generate windows for each interval separately.
         uint32_t k = 0;
@@ -537,7 +538,9 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
 
     logger_->log();
 
-    std::vector<uint64_t> id_to_first_window_id(targets_size + 1, 0);
+    id_to_first_window_id_.clear();
+    id_to_first_window_id_.resize(targets_size + 1, 0);
+
     for (uint64_t i = 0; i < targets_size; ++i) {
         uint32_t k = 0;
         for (uint32_t j = 0; j < sequences_[i]->data().size(); j += window_length_, ++k) {
@@ -551,7 +554,7 @@ void Polisher::create_and_populate_windows(std::vector<std::unique_ptr<Overlap>>
                 &(sequences_[i]->quality()[j]), length));
         }
 
-        id_to_first_window_id[i + 1] = id_to_first_window_id[i] + k;
+        id_to_first_window_id_[i + 1] = id_to_first_window_id_[i] + k;
     }
 
     assign_sequences_to_windows(overlaps, targets_size);
@@ -715,12 +718,14 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         num_polished_windows += thread_futures[i].get() == true ? 1 : 0;
 
 #ifdef BED_FEATURE
+        // Add the sequence in between windows.
         if (windows_[i]->start() > prev_window_end) {
             uint64_t span = windows_[i]->start() - prev_window_end;
             polished_data += sequences_[windows_[i]->id()]->data().substr(prev_window_end, span);
         }
 #endif
 
+        // Add the window consensus.
         polished_data += windows_[i]->consensus();
 
         if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
@@ -753,6 +758,24 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
         if (logger_step != 0 && (i + 1) % logger_step == 0 && (i + 1) / logger_step < 20) {
             logger_->bar("[racon::Polisher::polish] generating consensus");
+        }
+    }
+
+    // Write the original sequences if there were no BED windows assigned to them.
+    // If the BED is used, then some sequences can have 0 windows, and consensus will not
+    // be generated.
+    if (use_bed_) {
+        // There is an extra element because of legacy code.
+        for (int32_t t_id = 0; t_id < (static_cast<int32_t>(id_to_first_window_id_.size()) - 1); ++t_id) {
+            if (id_to_first_window_id_[t_id] < 0) {
+                std::string tags = type_ == PolisherType::kF ? "r" : "";
+                tags += " LN:i:" + std::to_string(sequences_[t_id]->data().size());
+                tags += " RC:i:" + std::to_string(targets_coverages_[t_id]);
+                tags += " XC:f:0.0";
+                dst.emplace_back(createSequence(sequences_[t_id]->name() +
+                    tags, sequences_[t_id]->data()));
+
+            }
         }
     }
 

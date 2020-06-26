@@ -108,6 +108,7 @@ protected:
 
     uint32_t window_length_;
     std::vector<std::shared_ptr<Window>> windows_;
+    std::vector<int64_t> id_to_first_window_id_;
 
     std::unique_ptr<thread_pool::ThreadPool> thread_pool_;
     std::unordered_map<std::thread::id, uint32_t> thread_to_id_;
@@ -119,7 +120,6 @@ protected:
 
     std::unordered_map<int64_t, std::vector<IntervalInt64>> target_window_intervals_;
     std::unordered_map<int64_t, IntervalTreeInt64> target_window_trees_;
-
 };
 
 }
