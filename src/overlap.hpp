@@ -89,6 +89,8 @@ public:
     friend bioparser::PafParser<Overlap>;
     friend bioparser::SamParser<Overlap>;
 
+    friend std::ostream& operator<<(::std::ostream& os, const Overlap& a);
+
 #ifdef CUDA_ENABLED
     friend class CUDABatchAligner;
 #endif
@@ -138,5 +140,14 @@ private:
 
     std::vector<WindowInterval> breaking_points_;
 };
+
+inline std::ostream& operator<<(::std::ostream& os, const Overlap& a) {
+    std::string delim(" ");
+    os << a.q_id_ << delim << a.q_begin_ << delim << a.q_end_ << delim << a.q_length_
+        << delim << (a.strand_ ? "-" : "+")
+        << delim << a.t_id_ << delim << a.t_begin_ << delim << a.t_end_ << delim << a.t_length_
+        << delim << a.cigar_ << delim << a.is_valid_ << delim << a.is_transmuted_;
+    return os;
+}
 
 }
