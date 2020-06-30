@@ -27,6 +27,7 @@ if(racon_enable_cuda)
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
+include_directories(${PROJECT_SOURCE_DIR}/vendor/intervaltree)
 
 set(racon_sources
     src/main.cpp
@@ -103,7 +104,6 @@ if (racon_build_tests)
         "${PROJECT_BINARY_DIR}/config/racon_test_config.h")
     include_directories(${PROJECT_BINARY_DIR}/config)
     include_directories(${PROJECT_SOURCE_DIR}/src)
-    include_directories(${PROJECT_SOURCE_DIR}/vendor/intervaltree)
 
     set(racon_test_sources
         test/bed_test.cpp
