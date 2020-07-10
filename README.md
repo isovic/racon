@@ -49,7 +49,7 @@ To build unit tests add `-Dracon_build_tests=ON` while running `cmake`. After in
 To build the wrapper script add `-Dracon_build_wrapper=ON` while running `cmake`. After installation, an executable named `racon_wrapper` (python script) will be created in `build/bin`.
 
 ### CUDA Support
-Racon makes use of [NVIDIA's ClaraGenomicsAnalysis SDK](https://github.com/clara-genomics/ClaraGenomicsAnalysis) for CUDA accelerated polishing and alignment.
+Racon makes use of [NVIDIA's GenomeWorks SDK](https://github.com/clara-parabricks/GenomeWorks) for CUDA accelerated polishing and alignment.
 
 To build `racon` with CUDA support, add `-Dracon_enable_cuda=ON` while running `cmake`. If CUDA support is unavailable, the `cmake` step will error out.
 Note that the CUDA support flag does not produce a new binary target. Instead it augments the existing `racon` binary itself.
