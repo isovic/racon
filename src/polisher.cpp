@@ -528,11 +528,34 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
         target_window_trees_[it.first] = IntervalTreeInt64(std::move(it.second));
     }
 
-    // for (size_t i = 0; i < windows_.size(); ++i) {
-    //     std::cerr << "[window " << i << "] " << *windows_[i] << "\n";
-    // }
+#ifdef BED_FEATURE_TEST
+    for (size_t i = 0; i < windows_.size(); ++i) {
+        std::cerr << "[window " << i << "] " << *windows_[i] << "\n";
+    }
+#endif
 
     find_overlap_breaking_points(overlaps, windows);
+
+#ifdef BED_FEATURE_TEST
+    for (uint64_t i = 0; i < overlaps.size(); ++i) {
+        const auto& sequence = sequences_[overlaps[i]->q_id()];
+        const std::vector<WindowInterval>& breaking_points = overlaps[i]->breaking_points();
+
+        std::cerr << "overlap_id = " << i << "\n";
+        std::cerr << "    " << *overlaps[i] << "\n";
+        std::cerr << "All breaking points:\n";
+        for (uint32_t j = 0; j < breaking_points.size(); ++j) {
+            const auto& bp = breaking_points[j];
+            std::cerr << "[j = " << j << "] bp = " << bp << ", Window: " << *windows_[bp.window_id] << "\n";
+            if (bp.t_start < windows_[bp.window_id]->start() || bp.t_start >= windows_[bp.window_id]->end() ||
+                bp.t_end < windows_[bp.window_id]->start() || bp.t_end > windows_[bp.window_id]->end()) {
+                std::cerr << "ERROR! Coordiantes out of bounds!\n";
+                exit(1);
+            }
+        }
+        std::cerr << "\n";
+    }
+#endif
 
     assign_sequences_to_windows(overlaps, targets_size);
 }
@@ -588,8 +611,7 @@ void Polisher::assign_sequences_to_windows(std::vector<std::unique_ptr<Overlap>>
             }
 
             uint64_t window_id = bp.window_id;
-            uint32_t window_start = (win_t_start / window_length_) *
-                window_length_;
+            uint32_t window_start = windows_[bp.window_id]->start();
 
             const char* data = overlaps[i]->strand() ?
                 &(sequence->reverse_complement()[win_q_start]) :

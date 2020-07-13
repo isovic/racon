@@ -55,7 +55,8 @@ void Window::add_layer(const char* sequence, uint32_t sequence_length,
     }
     if (begin >= end || begin > sequences_.front().second || end > sequences_.front().second) {
         fprintf(stderr, "[racon::Window::add_layer] error: "
-            "layer begin and end positions are invalid!\n");
+            "layer begin and end positions are invalid! begin = %lu, end = %lu, backbone_len = %lu\n",
+            begin, end, sequences_.front().second);
         exit(1);
     }
 
