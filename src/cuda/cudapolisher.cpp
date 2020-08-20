@@ -155,25 +155,11 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
         }
         int64_t mean = len_sum / overlaps.size();
 
-        // Calculate std deviation
-        int64_t len_sq = 0;
-        for(uint32_t i = 0; i < overlaps.size(); i++)
-        {
-            int32_t len = overlaps[i]->length();
-            len_sq += len * len;
-        }
-
-        int32_t std = sqrt(len_sq / overlaps.size());
-
-        // Assuming lengths are normally distributed, setting cudaaligner
-        // max dimensions to be mean + 3 std deviations.
-        uint32_t max_len = mean + 3 * std;
-
         // Calculate band width automatically if set to 0
         if (cudaaligner_band_width_ == 0)
         {
             // Use 10% of max sequence length as band width
-            cudaaligner_band_width_ = static_cast<uint32_t>(max_len * 0.1f);
+            cudaaligner_band_width_ = static_cast<uint32_t>(mean * 0.1f);
         }
 
         for(int32_t device = 0; device < num_devices_; device++)
@@ -186,7 +172,7 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
             const size_t free_usable_memory = static_cast<float>(free) * 90 / 100; // Using 90% of available memory
             const int64_t usable_memory_per_aligner = free_usable_memory / cudaaligner_batches_;
             const int32_t max_bandwidth = cudaaligner_band_width_ & ~0x1; // Band width needs to be even
-            std::cerr << "GPU " << device << ": Aligning " << overlaps.size() << " overlaps (" << max_len << "x" << max_len << "), band  " << max_bandwidth << std::endl;
+            std::cerr << "GPU " << device << ": Aligning with band width " << max_bandwidth << std::endl;
             for(uint32_t batch = 0; batch < cudaaligner_batches_; batch++)
             {
                 batch_aligners_.emplace_back(createCUDABatchAligner(max_bandwidth, device, usable_memory_per_aligner));
