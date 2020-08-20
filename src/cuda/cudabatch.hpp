@@ -11,7 +11,7 @@
 #include <atomic>
 
 #include "window.hpp"
-#include <claragenomics/cudapoa/batch.hpp>
+#include <claraparabricks/genomeworks/cudapoa/batch.hpp>
 
 namespace spoa {
     class AlignmentEngine;
@@ -106,7 +106,7 @@ protected:
     uint32_t bid_ = 0;
 
     // CUDA-POA library object that manages POA batch.
-    std::unique_ptr<claragenomics::cudapoa::Batch> cudapoa_batch_;
+    std::unique_ptr<claraparabricks::genomeworks::cudapoa::Batch> cudapoa_batch_;
 
     // Stream for running POA batch.
     cudaStream_t stream_;

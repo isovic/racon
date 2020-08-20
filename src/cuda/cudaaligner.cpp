@@ -4,49 +4,48 @@
  * @brief CUDABatchAligner class source file
  */
 
-#include <claragenomics/utils/cudautils.hpp>
+#include <claraparabricks/genomeworks/utils/cudautils.hpp>
 
 #include "cudaaligner.hpp"
 
 namespace racon {
 
+using namespace claraparabricks::genomeworks::cudaaligner;
+
 std::atomic<uint32_t> CUDABatchAligner::batches;
 
-std::unique_ptr<CUDABatchAligner> createCUDABatchAligner(uint32_t max_query_size,
-                                                         uint32_t max_target_size,
-                                                         uint32_t max_alignments,
-                                                         uint32_t device_id)
+std::unique_ptr<CUDABatchAligner> createCUDABatchAligner(uint32_t max_bandwidth,
+                                                         uint32_t device_id,
+                                                         int64_t max_gpu_memory)
 {
-    return std::unique_ptr<CUDABatchAligner>(new CUDABatchAligner(max_query_size,
-                                                                  max_target_size,
-                                                                  max_alignments,
-                                                                  device_id));
+    return std::unique_ptr<CUDABatchAligner>(new CUDABatchAligner(max_bandwidth,
+                                                                  device_id,
+                                                                  max_gpu_memory));
 }
 
-CUDABatchAligner::CUDABatchAligner(uint32_t max_query_size,
-                                   uint32_t max_target_size,
-                                   uint32_t max_alignments,
-                                   uint32_t device_id)
+CUDABatchAligner::CUDABatchAligner(uint32_t max_bandwidth,
+                                   uint32_t device_id,
+                                   int64_t max_gpu_memory)
     : overlaps_()
     , stream_(0)
 {
     bid_ = CUDABatchAligner::batches++;
 
-    CGA_CU_CHECK_ERR(cudaSetDevice(device_id));
+    GW_CU_CHECK_ERR(cudaSetDevice(device_id));
 
-    CGA_CU_CHECK_ERR(cudaStreamCreate(&stream_));
+    GW_CU_CHECK_ERR(cudaStreamCreate(&stream_));
 
-    aligner_ = claragenomics::cudaaligner::create_aligner(max_query_size,
-                                                          max_target_size,
-                                                          max_alignments,
-                                                          claragenomics::cudaaligner::AlignmentType::global_alignment,
-                                                          stream_,
-                                                          device_id);
+    aligner_ = create_aligner(AlignmentType::global_alignment,
+                              max_bandwidth,
+                              stream_,
+                              device_id,
+                              max_gpu_memory);
 }
 
 CUDABatchAligner::~CUDABatchAligner()
 {
-    CGA_CU_CHECK_ERR(cudaStreamDestroy(stream_));
+    aligner_.reset();
+    GW_CU_CHECK_ERR(cudaStreamDestroy(stream_));
 }
 
 bool CUDABatchAligner::addOverlap(Overlap* overlap, std::vector<std::unique_ptr<Sequence>>& sequences)
@@ -59,18 +58,18 @@ bool CUDABatchAligner::addOverlap(Overlap* overlap, std::vector<std::unique_ptr<
 
     // NOTE: The cudaaligner API for adding alignments is the opposite of edlib. Hence, what is
     // treated as target in edlib is query in cudaaligner and vice versa.
-    claragenomics::cudaaligner::StatusType s = aligner_->add_alignment(t, t_len,
+    StatusType s = aligner_->add_alignment(t, t_len,
                                                                        q, q_len);
-    if (s == claragenomics::cudaaligner::StatusType::exceeded_max_alignments)
+    if (s == StatusType::exceeded_max_alignments)
     {
         return false;
     }
-    else if (s == claragenomics::cudaaligner::StatusType::exceeded_max_alignment_difference
-             || s == claragenomics::cudaaligner::StatusType::exceeded_max_length)
+    else if (s == StatusType::exceeded_max_alignment_difference
+             || s == StatusType::exceeded_max_length)
     {
         // Do nothing as this case will be handled by CPU aligner.
     }
-    else if (s != claragenomics::cudaaligner::StatusType::success)
+    else if (s != StatusType::success)
     {
         fprintf(stderr, "Unknown error in cuda aligner!\n");
     }
@@ -90,7 +89,7 @@ void CUDABatchAligner::generate_cigar_strings()
 {
     aligner_->sync_alignments();
 
-    const std::vector<std::shared_ptr<claragenomics::cudaaligner::Alignment>>& alignments = aligner_->get_alignments();
+    const std::vector<std::shared_ptr<Alignment>>& alignments = aligner_->get_alignments();
     // Number of alignments should be the same as number of overlaps.
     if (overlaps_.size() != alignments.size())
     {

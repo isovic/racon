@@ -28,7 +28,7 @@ public:
         PolisherType type, uint32_t window_length, double quality_threshold,
         double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
         uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
-        uint32_t cudaaligner_batches);
+        uint32_t cudaaligner_batches, uint32_t cudaaligner_band_width);
 
 protected:
     CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
@@ -37,7 +37,7 @@ protected:
         PolisherType type, uint32_t window_length, double quality_threshold,
         double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
         uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
-        uint32_t cudaaligner_batches);
+        uint32_t cudaaligner_batches, uint32_t cudaaligner_band_width);
     CUDAPolisher(const CUDAPolisher&) = delete;
     const CUDAPolisher& operator=(const CUDAPolisher&) = delete;
     virtual void find_overlap_breaking_points(std::vector<std::unique_ptr<Overlap>>& overlaps) override;
@@ -69,6 +69,9 @@ protected:
 
     // Use banded POA alignment
     bool cuda_banded_alignment_;
+
+    // Band parameter for pairwise alignment
+    uint32_t cudaaligner_band_width_;
 };
 
 }
