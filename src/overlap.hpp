@@ -61,6 +61,10 @@ public:
         return error_;
     }
 
+    const std::string& cigar() const {
+        return cigar_;
+    }
+
     const std::vector<std::pair<uint32_t, uint32_t>>& breaking_points() const {
         return breaking_points_;
     }

@@ -12,7 +12,8 @@
 #include "sequence.hpp"
 #include "logger.hpp"
 #include "cudapolisher.hpp"
-#include <claragenomics/utils/cudautils.hpp>
+#include <claraparabricks/genomeworks/utils/cudautils.hpp>
+#include <algorithm>
 
 #include "bioparser/bioparser.hpp"
 
@@ -29,7 +30,7 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     PolisherType type, uint32_t window_length, double quality_threshold,
     double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
-    uint32_t cudaaligner_batches)
+    uint32_t cudaaligner_batches, uint32_t cudaaligner_band_width)
         : Polisher(std::move(sparser), std::move(oparser), std::move(tparser),
                 type, window_length, quality_threshold, error_threshold, trim,
                 match, mismatch, gap, num_threads)
@@ -39,11 +40,12 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         , mismatch_(mismatch)
         , match_(match)
         , cuda_banded_alignment_(cuda_banded_alignment)
+        , cudaaligner_band_width_(cudaaligner_band_width)
 {
-    claragenomics::cudapoa::Init();
-    claragenomics::cudaaligner::Init();
+    claraparabricks::genomeworks::cudapoa::Init();
+    claraparabricks::genomeworks::cudaaligner::Init();
 
-    CGA_CU_CHECK_ERR(cudaGetDeviceCount(&num_devices_));
+    GW_CU_CHECK_ERR(cudaGetDeviceCount(&num_devices_));
 
     if (num_devices_ < 1)
     {
@@ -56,8 +58,8 @@ CUDAPolisher::CUDAPolisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     for(int32_t dev_id = 0; dev_id < num_devices_; dev_id++)
     {
         std::cerr << "Initialize device " << dev_id << std::endl;
-        CGA_CU_CHECK_ERR(cudaSetDevice(dev_id));
-        CGA_CU_CHECK_ERR(cudaFree(0));
+        GW_CU_CHECK_ERR(cudaSetDevice(dev_id));
+        GW_CU_CHECK_ERR(cudaFree(0));
     }
 
     std::cerr << "[CUDAPolisher] Constructed." << std::endl;
@@ -165,25 +167,29 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
 
         // Assuming lengths are normally distributed, setting cudaaligner
         // max dimensions to be mean + 3 std deviations.
-        int32_t max_len = mean + 3 * std;
+        uint32_t max_len = mean + 3 * std;
+
+        // Calculate band width automatically if set to 0
+        if (cudaaligner_band_width_ == 0)
+        {
+            // Use 10% of max sequence length as band width
+            cudaaligner_band_width_ = static_cast<uint32_t>(max_len * 0.1f);
+        }
 
         for(int32_t device = 0; device < num_devices_; device++)
         {
-            CGA_CU_CHECK_ERR(cudaSetDevice(device));
+            GW_CU_CHECK_ERR(cudaSetDevice(device));
 
-            int32_t factor = max_len / 1e3; // As a ratio of aligning 1k bases X 1k bases
-            const float memory_per_1k_alignment = 0.21 * 1e6;// Estimation of memory per 1kx1k alignment in bytes
-            float memory_per_alignment = factor * memory_per_1k_alignment;
 
             size_t free, total;
-            CGA_CU_CHECK_ERR(cudaMemGetInfo(&free, &total));
-            const size_t max_alignments = (static_cast<float>(free) * 90 / 100) / memory_per_alignment; // Using 90% of available memory
-            int32_t batch_size          = std::min(static_cast<int32_t>(overlaps.size()), static_cast<int32_t>(max_alignments)) / cudaaligner_batches_;
-            std::cerr << "GPU " << device << ": Aligning " << overlaps.size() << " overlaps (" << max_len << "x" << max_len << ") with batch size " << batch_size << std::endl;
-
+            GW_CU_CHECK_ERR(cudaMemGetInfo(&free, &total));
+            const size_t free_usable_memory = static_cast<float>(free) * 90 / 100; // Using 90% of available memory
+            const int64_t usable_memory_per_aligner = free_usable_memory / cudaaligner_batches_;
+            const int32_t max_bandwidth = cudaaligner_band_width_ & ~0x1; // Band width needs to be even
+            std::cerr << "GPU " << device << ": Aligning " << overlaps.size() << " overlaps (" << max_len << "x" << max_len << "), band  " << max_bandwidth << std::endl;
             for(uint32_t batch = 0; batch < cudaaligner_batches_; batch++)
             {
-                batch_aligners_.emplace_back(createCUDABatchAligner(max_len, max_len, batch_size, device));
+                batch_aligners_.emplace_back(createCUDABatchAligner(max_bandwidth, device, usable_memory_per_aligner));
             }
         }
 
@@ -207,6 +213,11 @@ void CUDAPolisher::find_overlap_breaking_points(std::vector<std::unique_ptr<Over
         }
 
         batch_aligners_.clear();
+
+        // Determine overlaps missed by GPU which will fall back to CPU.
+        int64_t missing_overlaps = std::count_if(begin(overlaps), end(overlaps),[](std::unique_ptr<Overlap> const& o){ return o->cigar().empty();});
+
+        std::cerr << "Alignment skipped by GPU: " << missing_overlaps << " / " << overlaps.size() << std::endl;
     }
 
     // This call runs the breaking point detection code for all alignments.
@@ -231,8 +242,8 @@ void CUDAPolisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         for(int32_t device = 0; device < num_devices_; device++)
         {
             size_t total = 0, free = 0;
-            CGA_CU_CHECK_ERR(cudaSetDevice(device));
-            CGA_CU_CHECK_ERR(cudaMemGetInfo(&free, &total));
+            GW_CU_CHECK_ERR(cudaSetDevice(device));
+            GW_CU_CHECK_ERR(cudaMemGetInfo(&free, &total));
             // Using 90% of available memory as heuristic since not all available memory can be used
             // due to fragmentation.
             size_t mem_per_batch = 0.9 * free / cudapoa_batches_;
