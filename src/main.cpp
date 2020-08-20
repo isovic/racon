@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
     uint32_t cudapoa_batches = 0;
     uint32_t cudaaligner_batches = 0;
-    uint32_t cudaaligner_band_width = 1024;
+    uint32_t cudaaligner_band_width = 0;
     bool cuda_banded_alignment = false;
 
     std::string optstring = "ufw:q:e:m:x:g:t:h";
