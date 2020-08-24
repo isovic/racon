@@ -13,9 +13,11 @@
 #include "cudautils.hpp"
 
 #include "spoa/spoa.hpp"
-#include <claragenomics/utils/cudautils.hpp>
+#include <claraparabricks/genomeworks/utils/cudautils.hpp>
 
 namespace racon {
+
+using namespace claraparabricks::genomeworks::cudapoa;
 
 std::atomic<uint32_t> CUDABatchProcessor::batches;
 
@@ -49,28 +51,32 @@ CUDABatchProcessor::CUDABatchProcessor(uint32_t max_window_depth,
     bid_ = CUDABatchProcessor::batches++;
     
     // Create new CUDA stream.
-    CGA_CU_CHECK_ERR(cudaStreamCreate(&stream_));
+    GW_CU_CHECK_ERR(cudaStreamCreate(&stream_));
 
-    cudapoa_batch_ = claragenomics::cudapoa::create_batch(max_window_depth,
-                                                          device,
-                                                          stream_,
-                                                          avail_mem,
-                                                          claragenomics::cudapoa::OutputType::consensus,
-                                                          gap,
-                                                          mismatch,
-                                                          match,
-                                                          cuda_banded_alignment);
+    BatchConfig batch_config(1023,
+                             max_window_depth,
+                             256,
+                             cuda_banded_alignment ? BandMode::static_band : BandMode::full_band);
+
+    cudapoa_batch_ = create_batch(device,
+                                  stream_,
+                                  avail_mem,
+                                  OutputType::consensus,
+                                  batch_config,
+                                  gap,
+                                  mismatch,
+                                  match);
 }
 
 CUDABatchProcessor::~CUDABatchProcessor()
 {
     // Destroy CUDA stream.
-    CGA_CU_CHECK_ERR(cudaStreamDestroy(stream_));
+    GW_CU_CHECK_ERR(cudaStreamDestroy(stream_));
 }
 
 bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
 {
-    claragenomics::cudapoa::Group poa_group;
+    Group poa_group;
     uint32_t num_seqs = window->sequences_.size();
     std::vector<std::vector<int8_t>> all_read_weights(num_seqs, std::vector<int8_t>());
 
@@ -79,7 +85,7 @@ bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
     std::pair<const char*, uint32_t> qualities = window->qualities_.front();
     std::vector<int8_t> backbone_weights;
     convertPhredQualityToWeights(qualities.first, qualities.second, all_read_weights[0]);
-    claragenomics::cudapoa::Entry e = {
+    Entry e = {
         seq.first,
         all_read_weights[0].data(),
         static_cast<int32_t>(seq.second)
@@ -107,7 +113,7 @@ bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
         qualities = window->qualities_.at(i);
         convertPhredQualityToWeights(qualities.first, qualities.second, all_read_weights[i]);
 
-        claragenomics::cudapoa::Entry p = {
+        Entry p = {
             seq.first,
             all_read_weights[i].data(),
             static_cast<int32_t>(seq.second)
@@ -116,12 +122,11 @@ bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
     }
 
     // Add group to CUDAPOA batch object.
-    std::vector<claragenomics::cudapoa::StatusType> entry_status;
-    claragenomics::cudapoa::StatusType status = cudapoa_batch_->add_poa_group(entry_status,
-                                                                              poa_group);
+    std::vector<StatusType> entry_status;
+    StatusType status = cudapoa_batch_->add_poa_group(entry_status, poa_group);
 
     // If group was added, then push window in accepted windows list.
-    if (status != claragenomics::cudapoa::StatusType::success)
+    if (status != StatusType::success)
     {
         return false;
     }
@@ -135,17 +140,17 @@ bool CUDABatchProcessor::addWindow(std::shared_ptr<Window> window)
     int32_t seq_added = 0;
     for(uint32_t i = 1; i < entry_status.size(); i++)
     {
-        if (entry_status[i] == claragenomics::cudapoa::StatusType::exceeded_maximum_sequence_size)
+        if (entry_status[i] == StatusType::exceeded_maximum_sequence_size)
         {
             long_seq++;
             continue;
         }
-        else if (entry_status[i] == claragenomics::cudapoa::StatusType::exceeded_maximum_sequences_per_poa)
+        else if (entry_status[i] == StatusType::exceeded_maximum_sequences_per_poa)
         {
             skipped_seq++;
             continue;
         }
-        else if (entry_status[i] != claragenomics::cudapoa::StatusType::success)
+        else if (entry_status[i] != StatusType::success)
         {
             fprintf(stderr, "Could not add sequence to POA in batch %d.\n",
                     cudapoa_batch_->batch_id());
@@ -195,13 +200,13 @@ void CUDABatchProcessor::getConsensus()
 {
     std::vector<std::string> consensuses;
     std::vector<std::vector<uint16_t>> coverages;
-    std::vector<claragenomics::cudapoa::StatusType> output_status;
+    std::vector<StatusType> output_status;
     cudapoa_batch_->get_consensus(consensuses, coverages, output_status);
 
     for(uint32_t i = 0; i < windows_.size(); i++)
     {
         auto window = windows_.at(i);
-        if (output_status.at(i) != claragenomics::cudapoa::StatusType::success)
+        if (output_status.at(i) != StatusType::success)
         {
             // leave the failure cases to CPU polisher
             window_consensus_status_.emplace_back(false);

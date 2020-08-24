@@ -3,9 +3,9 @@
  *
  * @brief CUDA aligner class header file
  */
-#include <claragenomics/cudaaligner/cudaaligner.hpp>
-#include <claragenomics/cudaaligner/aligner.hpp>
-#include <claragenomics/cudaaligner/alignment.hpp>
+#include <claraparabricks/genomeworks/cudaaligner/cudaaligner.hpp>
+#include <claraparabricks/genomeworks/cudaaligner/aligner.hpp>
+#include <claraparabricks/genomeworks/cudaaligner/alignment.hpp>
 
 #include "overlap.hpp"
 #include "sequence.hpp"
@@ -16,7 +16,7 @@
 namespace racon {
 
 class CUDABatchAligner;
-std::unique_ptr<CUDABatchAligner> createCUDABatchAligner(uint32_t max_query_size, uint32_t max_target_size, uint32_t max_alignments, uint32_t device_id);
+std::unique_ptr<CUDABatchAligner> createCUDABatchAligner(uint32_t max_bandwidth, uint32_t device_id, int64_t max_gpu_memory);
 
 class CUDABatchAligner
 {
@@ -68,14 +68,14 @@ class CUDABatchAligner
 
         // Builder function to create a new CUDABatchAligner object.
         friend std::unique_ptr<CUDABatchAligner>
-        createCUDABatchAligner(uint32_t max_query_size, uint32_t max_target_size, uint32_t max_alignments, uint32_t device_id);
+        createCUDABatchAligner(uint32_t max_bandwidth, uint32_t device_id, int64_t max_gpu_memory);
 
     protected:
-        CUDABatchAligner(uint32_t max_query_size, uint32_t max_target_size, uint32_t max_alignments, uint32_t device_id);
+        CUDABatchAligner(uint32_t max_bandwidth, uint32_t device_id, int64_t max_gpu_memory);
         CUDABatchAligner(const CUDABatchAligner&) = delete;
         const CUDABatchAligner& operator=(const CUDABatchAligner&) = delete;
 
-        std::unique_ptr<claragenomics::cudaaligner::Aligner> aligner_;
+        std::unique_ptr<claraparabricks::genomeworks::cudaaligner::Aligner> aligner_;
 
         std::vector<Overlap*> overlaps_;
 

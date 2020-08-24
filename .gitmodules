@@ -16,6 +16,7 @@
 [submodule "vendor/rampler"]
 	path = vendor/rampler
 	url = https://github.com/rvaser/rampler
-[submodule "vendor/ClaraGenomicsAnalysis"]
-	path = vendor/ClaraGenomicsAnalysis
-	url = https://github.com/clara-genomics/ClaraGenomicsAnalysis
+[submodule "vendor/GenomeWorks"]
+	path = vendor/GenomeWorks
+	url = https://github.com/clara-parabricks/GenomeWorks.git
+	branch = master

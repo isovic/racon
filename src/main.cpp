@@ -18,6 +18,7 @@
 
 static const char* version = RACON_VERSION;
 static const int32_t CUDAALIGNER_INPUT_CODE = 10000;
+static const int32_t CUDAALIGNER_BAND_WIDTH_INPUT_CODE = 10001;
 
 static struct option options[] = {
     {"include-unpolished", no_argument, 0, 'u'},
@@ -36,6 +37,7 @@ static struct option options[] = {
     {"cudapoa-batches", optional_argument, 0, 'c'},
     {"cuda-banded-alignment", no_argument, 0, 'b'},
     {"cudaaligner-batches", required_argument, 0, CUDAALIGNER_INPUT_CODE},
+    {"cudaaligner-band-width", required_argument, 0, CUDAALIGNER_BAND_WIDTH_INPUT_CODE},
 #endif
     {0, 0, 0, 0}
 };
@@ -61,6 +63,7 @@ int main(int argc, char** argv) {
 
     uint32_t cudapoa_batches = 0;
     uint32_t cudaaligner_batches = 0;
+    uint32_t cudaaligner_band_width = 0;
     bool cuda_banded_alignment = false;
 
     std::string optstring = "ufw:q:e:m:x:g:t:h";
@@ -127,6 +130,9 @@ int main(int argc, char** argv) {
             case CUDAALIGNER_INPUT_CODE: // cudaaligner-batches
                 cudaaligner_batches = atoi(optarg);
                 break;
+            case CUDAALIGNER_BAND_WIDTH_INPUT_CODE: // cudaaligner-band-width
+                cudaaligner_band_width = atoi(optarg);
+                break;
 #endif
             default:
                 exit(1);
@@ -147,7 +153,8 @@ int main(int argc, char** argv) {
         input_paths[2], type == 0 ? racon::PolisherType::kC :
         racon::PolisherType::kF, window_length, quality_threshold,
         error_threshold, trim, match, mismatch, gap, num_threads,
-        cudapoa_batches, cuda_banded_alignment, cudaaligner_batches);
+        cudapoa_batches, cuda_banded_alignment, cudaaligner_batches,
+        cudaaligner_band_width);
 
     polisher->initialize();
 
@@ -218,6 +225,10 @@ void help() {
         "        --cudaaligner-batches <int>\n"
         "            default: 0\n"
         "            number of batches for CUDA accelerated alignment per GPU\n"
+        "        --cudaaligner-band-width <int>\n"
+        "            default: 0\n"
+        "            Band width for cuda alignment. Must be >= 0. Non-zero allows user defined \n"
+        "            band width, whereas 0 implies auto band width determination.\n"
 #endif
     );
 }
