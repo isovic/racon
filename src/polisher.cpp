@@ -21,7 +21,6 @@
 #include "thread_pool/thread_pool.hpp"
 #include "spoa/spoa.hpp"
 
-#define BED_FEATURE
 // #define BED_FEATURE_TEST
 
 namespace racon {
@@ -528,34 +527,34 @@ void Polisher::create_and_populate_windows_with_bed(std::vector<std::unique_ptr<
         target_window_trees_[it.first] = IntervalTreeInt64(std::move(it.second));
     }
 
-#ifdef BED_FEATURE_TEST
-    for (size_t i = 0; i < windows_.size(); ++i) {
-        std::cerr << "[window " << i << "] " << *windows_[i] << "\n";
-    }
-#endif
+// #ifdef BED_FEATURE_TEST
+//     for (size_t i = 0; i < windows_.size(); ++i) {
+//         std::cerr << "[window " << i << "] " << *windows_[i] << "\n";
+//     }
+// #endif
 
     find_overlap_breaking_points(overlaps, windows);
 
-#ifdef BED_FEATURE_TEST
-    for (uint64_t i = 0; i < overlaps.size(); ++i) {
-        const auto& sequence = sequences_[overlaps[i]->q_id()];
-        const std::vector<WindowInterval>& breaking_points = overlaps[i]->breaking_points();
+// #ifdef BED_FEATURE_TEST
+//     for (uint64_t i = 0; i < overlaps.size(); ++i) {
+//         const auto& sequence = sequences_[overlaps[i]->q_id()];
+//         const std::vector<WindowInterval>& breaking_points = overlaps[i]->breaking_points();
 
-        std::cerr << "overlap_id = " << i << "\n";
-        std::cerr << "    " << *overlaps[i] << "\n";
-        std::cerr << "All breaking points:\n";
-        for (uint32_t j = 0; j < breaking_points.size(); ++j) {
-            const auto& bp = breaking_points[j];
-            std::cerr << "[j = " << j << "] bp = " << bp << ", Window: " << *windows_[bp.window_id] << "\n";
-            if (bp.t_start < windows_[bp.window_id]->start() || bp.t_start >= windows_[bp.window_id]->end() ||
-                bp.t_end < windows_[bp.window_id]->start() || bp.t_end > windows_[bp.window_id]->end()) {
-                std::cerr << "ERROR! Coordiantes out of bounds!\n";
-                exit(1);
-            }
-        }
-        std::cerr << "\n";
-    }
-#endif
+//         std::cerr << "overlap_id = " << i << "\n";
+//         std::cerr << "    " << *overlaps[i] << "\n";
+//         std::cerr << "All breaking points:\n";
+//         for (uint32_t j = 0; j < breaking_points.size(); ++j) {
+//             const auto& bp = breaking_points[j];
+//             std::cerr << "[j = " << j << "] bp = " << bp << ", Window: " << *windows_[bp.window_id] << "\n";
+//             if (bp.t_start < windows_[bp.window_id]->start() || bp.t_start >= windows_[bp.window_id]->end() ||
+//                 bp.t_end < windows_[bp.window_id]->start() || bp.t_end > windows_[bp.window_id]->end()) {
+//                 std::cerr << "ERROR! Coordiantes out of bounds!\n";
+//                 exit(1);
+//             }
+//         }
+//         std::cerr << "\n";
+//     }
+// #endif
 
     assign_sequences_to_windows(overlaps, targets_size);
 }
@@ -701,26 +700,22 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
 
         num_polished_windows += thread_futures[i].get() == true ? 1 : 0;
 
-#ifdef BED_FEATURE
-        // Add the sequence in between windows.
+        // BED region related: Add the sequence in between windows.
         if (windows_[i]->start() > prev_window_end) {
             uint64_t span = windows_[i]->start() - prev_window_end;
             polished_data += sequences_[windows_[i]->id()]->data().substr(prev_window_end, span);
         }
-#endif
 
         // Add the window consensus.
         polished_data += windows_[i]->consensus();
 
         if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
-#ifdef BED_FEATURE
-            // Append the remaining suffix from the last window to the end of the target.
+            // BED region related: Append the remaining suffix from the last window to the end of the target.
             uint32_t tlen = sequences_[windows_[i]->id()]->data().size();
             if (windows_[i]->end() < tlen) {
                 uint64_t suffix_start = windows_[i]->end();
                 polished_data += sequences_[windows_[i]->id()]->data().substr(suffix_start);
             }
-#endif
 
             double polished_ratio = num_polished_windows /
                 static_cast<double>(windows_[i]->rank() + 1);
