@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 project(racon)
-set(racon_version 1.4.17)
+set(racon_version 1.5.0)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
