@@ -143,10 +143,10 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
 
     if (produce_liftover) {
         // Get the sequences.
-        const char* q = sequences_.front().first;
-        const uint32_t q_len = sequences_.front().second;
-        const char* t = consensus_.c_str();
-        const uint32_t t_len = consensus_.size();
+        const char* t = sequences_.front().first;
+        const uint32_t t_len = sequences_.front().second;
+        const char* q = consensus_.c_str();
+        const uint32_t q_len = consensus_.size();
 
         // align overlaps with edlib
         EdlibAlignResult result = edlibAlign(q, q_len, t, t_len,
