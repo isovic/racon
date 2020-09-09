@@ -690,6 +690,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     }
 
     std::string polished_data = "";
+    std::string cigar = "";
     uint32_t num_polished_windows = 0;
 
     uint64_t logger_step = thread_futures.size() / 20;
@@ -705,10 +706,12 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         if (windows_[i]->start() > prev_window_end) {
             uint64_t span = windows_[i]->start() - prev_window_end;
             polished_data += sequences_[windows_[i]->id()]->data().substr(prev_window_end, span);
+            cigar += std::to_string(span) + "=";
         }
 
         // Add the window consensus.
         polished_data += windows_[i]->consensus();
+        cigar += windows_[i]->cigar();
 
         if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
             // BED region related: Append the remaining suffix from the last window to the end of the target.
@@ -716,6 +719,8 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
             if (windows_[i]->end() < tlen) {
                 uint64_t suffix_start = windows_[i]->end();
                 polished_data += sequences_[windows_[i]->id()]->data().substr(suffix_start);
+                int64_t span = static_cast<int64_t>(sequences_[windows_[i]->id()]->data().size()) - static_cast<int64_t>(suffix_start);
+                cigar += std::to_string(span) + "=";
             }
 
             double polished_ratio = num_polished_windows /
@@ -727,7 +732,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                 tags += " RC:i:" + std::to_string(targets_coverages_[windows_[i]->id()]);
                 tags += " XC:f:" + std::to_string(polished_ratio);
                 dst.emplace_back(createSequence(sequences_[windows_[i]->id()]->name() +
-                    tags, polished_data));
+                    tags, polished_data, cigar));
             }
 
             num_polished_windows = 0;

@@ -10,7 +10,6 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include "cigar.hpp"
 
 namespace bioparser {
     template<class T>
@@ -25,6 +24,8 @@ namespace racon {
 class Sequence;
 std::unique_ptr<Sequence> createSequence(const std::string& name,
     const std::string& data);
+std::unique_ptr<Sequence> createSequence(const std::string& name,
+    const std::string& data, const std::string& cigar);
 
 class Sequence {
 public:
@@ -58,12 +59,15 @@ public:
     friend bioparser::FastqParser<Sequence>;
     friend std::unique_ptr<Sequence> createSequence(const std::string& name,
         const std::string& data);
+    friend std::unique_ptr<Sequence> createSequence(const std::string& name,
+        const std::string& data, const std::string& cigar);
 private:
     Sequence(const char* name, uint32_t name_length, const char* data,
         uint32_t data_length);
     Sequence(const char* name, uint32_t name_length, const char* data,
         uint32_t data_length, const char* quality, uint32_t quality_length);
     Sequence(const std::string& name, const std::string& data);
+    Sequence(const std::string& name, const std::string& data, const std::string& cigar);
     Sequence(const Sequence&) = delete;
     const Sequence& operator=(const Sequence&) = delete;
 
@@ -72,7 +76,7 @@ private:
     std::string reverse_complement_;
     std::string quality_;
     std::string reverse_quality_;
-    Cigar cigar_;
+    std::string cigar_;
 };
 
 }

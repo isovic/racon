@@ -12,7 +12,6 @@
 #include <ostream>
 #include <string>
 #include <utility>
-#include "cigar.hpp"
 
 namespace spoa {
     class AlignmentEngine;
@@ -61,6 +60,10 @@ public:
         return end_;
     }
 
+    const std::string& cigar() const {
+        return cigar_;
+    }
+
     bool generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine,
         bool trim, bool liftover);
 
@@ -91,7 +94,7 @@ private:
     uint32_t start_;
     uint32_t end_;
     std::string consensus_;
-    Cigar cigar_;
+    std::string cigar_;
     std::vector<std::pair<const char*, uint32_t>> sequences_;
     std::vector<std::pair<const char*, uint32_t>> qualities_;
     std::vector<std::pair<uint32_t, uint32_t>> positions_;

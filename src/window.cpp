@@ -7,8 +7,8 @@
 #include <algorithm>
 
 #include "window.hpp"
-
 #include "spoa/spoa.hpp"
+#include "edlib.h"
 
 namespace racon {
 
@@ -66,7 +66,7 @@ void Window::add_layer(const char* sequence, uint32_t sequence_length,
 }
 
 bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine,
-    bool trim, bool liftover) {
+    bool trim, bool produce_liftover) {
 
     if (sequences_.size() < 3) {
         consensus_ = std::string(sequences_.front().first, sequences_.front().second);
@@ -139,6 +139,31 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         } else {
             consensus_ = consensus_.substr(begin, end - begin + 1);
         }
+    }
+
+    if (produce_liftover) {
+        // Get the sequences.
+        const char* q = sequences_.front().first;
+        const uint32_t q_len = sequences_.front().second;
+        const char* t = consensus_.c_str();
+        const uint32_t t_len = consensus_.size();
+
+        // align overlaps with edlib
+        EdlibAlignResult result = edlibAlign(q, q_len, t, t_len,
+                edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH,
+                    nullptr, 0));
+
+        if (result.status == EDLIB_STATUS_OK) {
+            char* cigar = edlibAlignmentToCigar(result.alignment,
+                    result.alignmentLength, EDLIB_CIGAR_STANDARD);
+            cigar_ = cigar;
+            free(cigar);
+        } else {
+            edlibFreeAlignResult(result);
+            throw std::runtime_error("Edlib unable to align consensus to draft sequence!");
+        }
+
+        edlibFreeAlignResult(result);
     }
 
     return true;
