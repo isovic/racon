@@ -66,7 +66,7 @@ void Window::add_layer(const char* sequence, uint32_t sequence_length,
 }
 
 bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine,
-    bool trim) {
+    bool trim, bool liftover) {
 
     if (sequences_.size() < 3) {
         consensus_ = std::string(sequences_.front().first, sequences_.front().second);

@@ -28,6 +28,7 @@ static struct option options[] = {
     {"quality-threshold", required_argument, 0, 'q'},
     {"error-threshold", required_argument, 0, 'e'},
     {"no-trimming", no_argument, 0, 'T'},
+    {"liftover", required_argument, 0, 'L'},
     {"match", required_argument, 0, 'm'},
     {"mismatch", required_argument, 0, 'x'},
     {"gap", required_argument, 0, 'g'},
@@ -69,8 +70,9 @@ int main(int argc, char** argv) {
     bool cuda_banded_alignment = false;
 
     std::string bed_file;
+    std::string out_liftover_file;
 
-    std::string optstring = "ufw:q:e:m:x:g:t:B:h";
+    std::string optstring = "ufw:q:e:m:x:g:t:B:L:h";
 #ifdef CUDA_ENABLED
     optstring += "bc::";
 #endif
@@ -95,6 +97,9 @@ int main(int argc, char** argv) {
                 break;
             case 'T':
                 trim = false;
+                break;
+            case 'L':
+                out_liftover_file = optarg;
                 break;
             case 'm':
                 match = atoi(optarg);
@@ -158,10 +163,12 @@ int main(int argc, char** argv) {
 
     std::cerr << "BED file: '" << bed_file << "'\n";
 
+    const bool produce_liftover = (out_liftover_file.empty() ? false : true);
+
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
         input_paths[2], bed_file, type == 0 ? racon::PolisherType::kC :
         racon::PolisherType::kF, window_length, quality_threshold,
-        error_threshold, trim, match, mismatch, gap, num_threads,
+        error_threshold, trim, produce_liftover, match, mismatch, gap, num_threads,
         cudapoa_batches, cuda_banded_alignment, cudaaligner_batches,
         cudaaligner_band_width);
 
@@ -209,6 +216,10 @@ void help() {
         "            maximum allowed error rate used for filtering overlaps\n"
         "        --no-trimming\n"
         "            disables consensus trimming at window ends\n"
+        "        -L, --liftover <string>\n"
+        "            default: ''\n"
+        "            optional output liftover file which converts the draft\n"
+        "            sequence to the output consensus\n"
         "        -m, --match <int>\n"
         "            default: 3\n"
         "            score for matching bases\n"

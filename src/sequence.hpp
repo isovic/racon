@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include "cigar.hpp"
 
 namespace bioparser {
     template<class T>
@@ -71,6 +72,7 @@ private:
     std::string reverse_complement_;
     std::string quality_;
     std::string reverse_quality_;
+    Cigar cigar_;
 };
 
 }

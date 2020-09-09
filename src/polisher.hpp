@@ -47,7 +47,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
     const std::string& bed_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
-    double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
+    double error_threshold, bool trim, bool produce_liftover, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads, uint32_t cuda_batches = 0,
     bool cuda_banded_alignment = false, uint32_t cudaaligner_batches = 0,
     uint32_t cudaaligner_band_width = 0);
@@ -65,7 +65,7 @@ public:
         const std::string& overlaps_path, const std::string& target_path,
         const std::string& bed_path,
         PolisherType type, uint32_t window_length, double quality_threshold,
-        double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
+        double error_threshold, bool trim, bool produce_liftover, int8_t match, int8_t mismatch, int8_t gap,
         uint32_t num_threads, uint32_t cuda_batches, bool cuda_banded_alignment,
         uint32_t cudaaligner_batches, uint32_t cudaaligner_band_width);
 
@@ -75,7 +75,7 @@ protected:
         std::unique_ptr<bioparser::Parser<Sequence>> tparser,
         std::vector<BedRecord> bed_records, bool use_bed,
         PolisherType type, uint32_t window_length, double quality_threshold,
-        double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
+        double error_threshold, bool trim, bool produce_liftover, int8_t match, int8_t mismatch, int8_t gap,
         uint32_t num_threads);
     Polisher(const Polisher&) = delete;
     const Polisher& operator=(const Polisher&) = delete;
@@ -97,6 +97,7 @@ protected:
     double quality_threshold_;
     double error_threshold_;
     bool trim_;
+    bool produce_liftover_;
     std::vector<std::shared_ptr<spoa::AlignmentEngine>> alignment_engines_;
 
     std::vector<std::unique_ptr<Sequence>> sequences_;

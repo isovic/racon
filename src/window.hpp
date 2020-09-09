@@ -12,6 +12,7 @@
 #include <ostream>
 #include <string>
 #include <utility>
+#include "cigar.hpp"
 
 namespace spoa {
     class AlignmentEngine;
@@ -61,7 +62,7 @@ public:
     }
 
     bool generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment_engine,
-        bool trim);
+        bool trim, bool liftover);
 
     void add_layer(const char* sequence, uint32_t sequence_length,
         const char* quality, uint32_t quality_length, uint32_t begin,
@@ -90,6 +91,7 @@ private:
     uint32_t start_;
     uint32_t end_;
     std::string consensus_;
+    Cigar cigar_;
     std::vector<std::pair<const char*, uint32_t>> sequences_;
     std::vector<std::pair<const char*, uint32_t>> qualities_;
     std::vector<std::pair<uint32_t, uint32_t>> positions_;

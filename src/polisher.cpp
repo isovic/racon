@@ -58,7 +58,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
     const std::string& overlaps_path, const std::string& target_path,
     const std::string& bed_path,
     PolisherType type, uint32_t window_length, double quality_threshold,
-    double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
+    double error_threshold, bool trim, bool produce_liftover, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads, uint32_t cudapoa_batches, bool cuda_banded_alignment,
     uint32_t cudaaligner_batches, uint32_t cudaaligner_band_width) {
 
@@ -169,7 +169,7 @@ std::unique_ptr<Polisher> createPolisher(const std::string& sequences_path,
                     std::move(oparser), std::move(tparser),
                     std::move(bed_records), use_bed,
                     type, window_length,
-                    quality_threshold, error_threshold, trim, match, mismatch, gap,
+                    quality_threshold, error_threshold, trim, produce_liftover, match, mismatch, gap,
                     num_threads));
     }
 }
@@ -179,12 +179,13 @@ Polisher::Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
     std::unique_ptr<bioparser::Parser<Sequence>> tparser,
     std::vector<BedRecord> bed_records, bool use_bed,
     PolisherType type, uint32_t window_length, double quality_threshold,
-    double error_threshold, bool trim, int8_t match, int8_t mismatch, int8_t gap,
+    double error_threshold, bool trim, bool produce_liftover, int8_t match, int8_t mismatch, int8_t gap,
     uint32_t num_threads)
         : sparser_(std::move(sparser)), oparser_(std::move(oparser)),
         tparser_(std::move(tparser)), bed_records_(std::move(bed_records)),
         use_bed_(use_bed), type_(type), quality_threshold_(
         quality_threshold), error_threshold_(error_threshold), trim_(trim),
+        produce_liftover_(produce_liftover),
         alignment_engines_(), sequences_(), dummy_quality_(window_length, '!'),
         window_length_(window_length), windows_(),
         thread_pool_(thread_pool::createThreadPool(num_threads)),
@@ -684,7 +685,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                     exit(1);
                 }
                 return windows_[j]->generate_consensus(
-                    alignment_engines_[it->second], trim_);
+                    alignment_engines_[it->second], trim_, produce_liftover_);
             }, i));
     }
 
