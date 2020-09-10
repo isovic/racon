@@ -125,43 +125,72 @@ void WriteLiftoverFile(FILE *fp_out, LiftoverOutFormat liftover_fmt, const std::
 
         } else if (liftover_fmt == LiftoverOutFormat::VCF) {
             auto cigar = racon::ParseCigarString(it->cigar());
+
+            struct VcfDiff {
+                int32_t pos;
+                std::string ref;
+                std::string alt;
+            };
+            std::vector<VcfDiff> vcf_diffs;
+
             int32_t qpos = 0, tpos = 0;
-            for (const auto c: cigar) {
-                if (c.op == '=') {
-                    qpos += c.count;
-                    tpos += c.count;
+            int32_t first_diff = -1;
+            int32_t first_qpos = -1, first_tpos = -1;
+            int64_t draft_len = draft_seq->data().size();
+            int64_t cons_len = it->data().size();
+            for (int32_t i = 0; i < static_cast<int32_t>(cigar.size()); ++i) {
+                const auto& c = cigar[i];
 
-                } else if (c.op == 'X') {
-                    const int32_t pos = (tpos + 1);     // 1-based.
-                    const std::string ref = draft_seq->data().substr(tpos, c.count);
-                    const std::string alt = it->data().substr(qpos, c.count);
-                    const int32_t qual = 60;
-                    const std::string genotype = "1/1";
-                    fprintf(fp_out, "%s\t%d\t.\t%s\t%s\t%d\tPASS\t.\tGT\t%s\tX\n", draft_header.c_str(), pos, ref.c_str(), alt.c_str(), qual, genotype.c_str());
+                if (c.op != '=' && first_diff < 0) {
+                    first_diff = i;
+                    first_qpos = qpos;
+                    first_tpos = tpos;
+                }
+                // Check if we found a stretch of diffs.
+                if (c.op == '=' && first_diff >= 0) {
+                    const int32_t start = first_diff;
+                    const int32_t end = i;
+                    const int32_t qspan = qpos - first_qpos;
+                    const int32_t tspan = tpos - first_tpos;
 
+                    VcfDiff v;
+                    if (first_tpos == 0) {
+                        if ((first_tpos + tspan + 1) > draft_len || (first_qpos + qspan + 1) > cons_len) {
+                            std::ostringstream oss;
+                            oss << "The entire contig alignment is a diff?"
+                                    << " first_tpos = " << first_tpos << ", tspan = "
+                                    << tspan << ", draft_len = " << draft_len
+                                    << ", first_qpos = " << first_qpos << ", qspan = "
+                                    << qspan << ", cons_len = " << cons_len;
+                            throw std::runtime_error(oss.str());
+                        }
+                        v.pos = first_tpos;
+                        v.ref = draft_seq->data().substr(first_tpos, tspan + 1);
+                        v.alt = it->data().substr(first_qpos, qspan + 1);
+                    } else {
+                        v.pos = first_tpos - 1;
+                        v.ref = draft_seq->data().substr(first_tpos - 1, tspan + 1);
+                        v.alt = it->data().substr(first_qpos - 1, qspan + 1);
+                    }
+                    vcf_diffs.emplace_back(v);
+
+                    first_diff = -1;
+                    first_qpos = -1;
+                    first_tpos = -1;
+                }
+                if (c.op == '=' || c.op == 'X') {
                     qpos += c.count;
                     tpos += c.count;
                 } else if (c.op == 'I') {
-                    const int32_t pos = (tpos - 1 + 1);     // +1 because 1-based, -1 because indels need to include the preceeding base.
-                    const std::string ref = (tpos == 0) ? "." : draft_seq->data().substr(tpos - 1, 1);
-                    const std::string alt = (qpos == 0) ? "." + it->data().substr(qpos, c.count) : it->data().substr(qpos - 1, c.count + 1);
-                    const int32_t qual = 60;
-                    const std::string genotype = "1/1";
-                    fprintf(fp_out, "%s\t%d\t.\t%s\t%s\t%d\tPASS\t.\tGT\t%s\tI\n", draft_header.c_str(), pos, ref.c_str(), alt.c_str(), qual, genotype.c_str());
-
                     qpos += c.count;
                 } else if (c.op == 'D') {
-                    const int32_t pos = (tpos - 1 + 1);     // +1 because 1-based, -1 because indels need to include the preceeding base.
-                    const std::string ref = (tpos == 0) ? "." + draft_seq->data().substr(tpos, c.count) : draft_seq->data().substr(tpos - 1, c.count + 1);
-                    const std::string alt = (qpos == 0) ? "." : it->data().substr(qpos - 1, 1);
-                    const int32_t qual = 60;
-                    const std::string genotype = "1/1";
-                    fprintf(fp_out, "%s\t%d\t.\t%s\t%s\t%d\tPASS\t.\tGT\t%s\tD\n", draft_header.c_str(), pos, ref.c_str(), alt.c_str(), qual, genotype.c_str());
-
                     tpos += c.count;
-                } else {
-                    throw std::runtime_error("Unsupported CIGAR operation for liftover: '" + std::string(c.op, 1) + "'.");
                 }
+            }
+
+            // Write out the VCF events.
+            for (const auto& v: vcf_diffs) {
+                fprintf(fp_out, "%s\t%d\t.\t%s\t%s\t%d\tPASS\t.\tGT\t%s\n", draft_header.c_str(), v.pos + 1, v.ref.c_str(), v.alt.c_str(), 60, "1/1");
             }
 
         } else {
