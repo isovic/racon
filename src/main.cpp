@@ -8,8 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "sequence.hpp"
+#include "cigar.hpp"
 #include "polisher.hpp"
+#include "sequence.hpp"
 #include "util.hpp"
 #ifdef CUDA_ENABLED
 #include "cuda/cudapolisher.hpp"
@@ -72,14 +73,27 @@ LiftoverOutFormat ParseLiftoverFormatFromExt(const std::string& out_file) {
     return LiftoverOutFormat::Unknown;
 }
 
-void WriteLiftoverFile(FILE *fp_out_liftover, LiftoverOutFormat liftover_fmt, const std::unique_ptr<racon::Polisher>& polisher,
+void WriteLiftoverFile(FILE *fp_out, LiftoverOutFormat liftover_fmt, const std::unique_ptr<racon::Polisher>& polisher,
                         const std::vector<std::unique_ptr<racon::Sequence>>& polished_sequences) {
+    // Header.
     if (liftover_fmt == LiftoverOutFormat::SAM) {
-        fprintf(fp_out_liftover, "@HD\tVN:1.5\n");
+        fprintf(fp_out, "@HD\tVN:1.5\n");
         for (const auto& it: polished_sequences) {
             const std::string cons_header = racon::TokenizeToWhitespaces(it->name())[0];
-            fprintf(fp_out_liftover, "@SQ\tSN:%s\tLN:%lu\n", cons_header.c_str(), it->data().size());
+            fprintf(fp_out, "@SQ\tSN:%s\tLN:%lu\n", cons_header.c_str(), it->data().size());
         }
+    } else if (liftover_fmt == LiftoverOutFormat::VCF) {
+        fprintf(fp_out, "##fileformat=VCFv4.2\n");
+        fprintf(fp_out, "##FILTER=<ID=PASS,Description=\"All filters passed\">\n");
+        fprintf(fp_out, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
+        // Draft contig headers.
+        for (const auto& it: polished_sequences) {
+            // Get the input draft sequence, needed for length.
+            const auto& draft_seq = polisher->sequences()[it->id()];
+            const std::string draft_header = racon::TokenizeToWhitespaces(draft_seq->name())[0];
+            fprintf(fp_out, "##contig=<ID=%s,length=%lu>\n", draft_header.c_str(), draft_seq->data().size());
+        }
+        fprintf(fp_out, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tFORMAT_VALS\n");
     }
 
     for (const auto& it: polished_sequences) {
@@ -99,15 +113,56 @@ void WriteLiftoverFile(FILE *fp_out_liftover, LiftoverOutFormat liftover_fmt, co
 
         // PAF output.
         if (liftover_fmt == LiftoverOutFormat::PAF) {
-            fprintf(fp_out_liftover, "%s\t%lu\t%lu\t%lu\t+\t%s\t%lu\t%lu\t%lu\t%lu\t%lu\t60\tcg:Z:%s\n",
+            fprintf(fp_out, "%s\t%lu\t%lu\t%lu\t+\t%s\t%lu\t%lu\t%lu\t%lu\t%lu\t60\tcg:Z:%s\n",
                                 cons_header.c_str(), it->data().size(), 0, it->data().size(),
                                 draft_header.c_str(), draft_seq->data().size(), 0, draft_seq->data().size(),
                                 it->data().size(), draft_seq->data().size(),
                                 it->cigar().c_str());
 
         } else if (liftover_fmt == LiftoverOutFormat::SAM) {
-            fprintf(fp_out_liftover, "%s\t0\t%s\t1\t60\t%s\t*\t0\t0\t%s\t*\n",
+            fprintf(fp_out, "%s\t0\t%s\t1\t60\t%s\t*\t0\t0\t%s\t*\n",
                                 cons_header.c_str(), draft_header.c_str(),it->cigar().c_str(), it->data().c_str());
+
+        } else if (liftover_fmt == LiftoverOutFormat::VCF) {
+            auto cigar = racon::ParseCigarString(it->cigar());
+            int32_t qpos = 0, tpos = 0;
+            for (const auto c: cigar) {
+                if (c.op == '=') {
+                    qpos += c.count;
+                    tpos += c.count;
+
+                } else if (c.op == 'X') {
+                    const int32_t pos = (tpos + 1);     // 1-based.
+                    const std::string ref = draft_seq->data().substr(tpos, c.count);
+                    const std::string alt = it->data().substr(qpos, c.count);
+                    const int32_t qual = 60;
+                    const std::string genotype = "1/1";
+                    fprintf(fp_out, "%s\t%d\t.\t%s\t%s\t%d\tPASS\t.\tGT\t%s\tX\n", draft_header.c_str(), pos, ref.c_str(), alt.c_str(), qual, genotype.c_str());
+
+                    qpos += c.count;
+                    tpos += c.count;
+                } else if (c.op == 'I') {
+                    const int32_t pos = (tpos - 1 + 1);     // +1 because 1-based, -1 because indels need to include the preceeding base.
+                    const std::string ref = (tpos == 0) ? "." : draft_seq->data().substr(tpos - 1, 1);
+                    const std::string alt = (qpos == 0) ? "." + it->data().substr(qpos, c.count) : it->data().substr(qpos - 1, c.count + 1);
+                    const int32_t qual = 60;
+                    const std::string genotype = "1/1";
+                    fprintf(fp_out, "%s\t%d\t.\t%s\t%s\t%d\tPASS\t.\tGT\t%s\tI\n", draft_header.c_str(), pos, ref.c_str(), alt.c_str(), qual, genotype.c_str());
+
+                    qpos += c.count;
+                } else if (c.op == 'D') {
+                    const int32_t pos = (tpos - 1 + 1);     // +1 because 1-based, -1 because indels need to include the preceeding base.
+                    const std::string ref = (tpos == 0) ? "." + draft_seq->data().substr(tpos, c.count) : draft_seq->data().substr(tpos - 1, c.count + 1);
+                    const std::string alt = (qpos == 0) ? "." : it->data().substr(qpos - 1, 1);
+                    const int32_t qual = 60;
+                    const std::string genotype = "1/1";
+                    fprintf(fp_out, "%s\t%d\t.\t%s\t%s\t%d\tPASS\t.\tGT\t%s\tD\n", draft_header.c_str(), pos, ref.c_str(), alt.c_str(), qual, genotype.c_str());
+
+                    tpos += c.count;
+                } else {
+                    throw std::runtime_error("Unsupported CIGAR operation for liftover: '" + std::string(c.op, 1) + "'.");
+                }
+            }
 
         } else {
             throw std::runtime_error("Currently unsupported output liftover format.");
