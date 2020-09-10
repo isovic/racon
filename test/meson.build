@@ -3,6 +3,7 @@ racon_test_cpp_sources = files([
   'util_test.cpp',
   'racon_test.cpp',
   'test_cigar.cpp',
+  'test_vcf.cpp',
 ])
 
 racon_test_include_directories = [include_directories('.')]
