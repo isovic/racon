@@ -19,17 +19,18 @@ std::vector<VcfDiff> ExtractVCFEventsFromCigarString(const racon::Cigar& cigar, 
     int64_t qpos = 0, tpos = 0;
     int64_t first_diff = -1;
     int64_t first_qpos = -1, first_tpos = -1;
+    int64_t n_ops = cigar.size();
 
-    for (int64_t i = 0; i < static_cast<int64_t>(cigar.size()); ++i) {
-        const auto& c = cigar[i];
+    for (int64_t i = 0; i <= n_ops; ++i) {
 
-        if (c.op != '=' && first_diff < 0) {
+        if (i < n_ops && cigar[i].op != '=' && first_diff < 0) {
             first_diff = i;
             first_qpos = qpos;
             first_tpos = tpos;
         }
+
         // Check if we found a stretch of diffs.
-        if (c.op == '=' && first_diff >= 0) {
+        if ((i == n_ops || cigar[i].op == '=') && first_diff >= 0) {
             const int64_t qspan = qpos - first_qpos;
             const int64_t tspan = tpos - first_tpos;
 
@@ -59,13 +60,23 @@ std::vector<VcfDiff> ExtractVCFEventsFromCigarString(const racon::Cigar& cigar, 
             first_qpos = -1;
             first_tpos = -1;
         }
-        if (c.op == '=' || c.op == 'X') {
-            qpos += c.count;
-            tpos += c.count;
-        } else if (c.op == 'I') {
-            qpos += c.count;
-        } else if (c.op == 'D') {
-            tpos += c.count;
+        if (i == n_ops) {
+            break;
+        }
+        if (cigar[i].op == '=' || cigar[i].op == 'X') {
+            qpos += cigar[i].count;
+            tpos += cigar[i].count;
+        } else if (cigar[i].op == 'I') {
+            qpos += cigar[i].count;
+        } else if (cigar[i].op == 'D') {
+            tpos += cigar[i].count;
+        }
+
+        if (qpos > qlen || tpos > tlen) {
+            std::ostringstream oss;
+            oss << "Invalid CIGAR vector, the operations do not match the provided sequence "
+                << "lengths. qpos = " << qpos << ", tpos = " << tpos << ", qlen = " << qlen << ", tlen = " << tlen;
+            throw std::runtime_error(oss.str());
         }
     }
 
