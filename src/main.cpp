@@ -73,6 +73,77 @@ LiftoverOutFormat ParseLiftoverFormatFromExt(const std::string& out_file) {
     return LiftoverOutFormat::Unknown;
 }
 
+struct VcfDiff {
+    int32_t pos;
+    std::string ref;
+    std::string alt;
+};
+
+std::vector<VcfDiff> ExtractVCFEventsFromCigarString(const racon::Cigar& cigar, const std::string& qseq, const std::string& tseq) {
+
+    std::vector<VcfDiff> vcf_diffs;
+
+    const int64_t qlen = qseq.size();
+    const int64_t tlen = tseq.size();
+
+    int64_t qpos = 0, tpos = 0;
+    int64_t first_diff = -1;
+    int64_t first_qpos = -1, first_tpos = -1;
+
+    for (int64_t i = 0; i < static_cast<int64_t>(cigar.size()); ++i) {
+        const auto& c = cigar[i];
+
+        if (c.op != '=' && first_diff < 0) {
+            first_diff = i;
+            first_qpos = qpos;
+            first_tpos = tpos;
+        }
+        // Check if we found a stretch of diffs.
+        if (c.op == '=' && first_diff >= 0) {
+            const int64_t start = first_diff;
+            const int64_t end = i;
+            const int64_t qspan = qpos - first_qpos;
+            const int64_t tspan = tpos - first_tpos;
+
+            VcfDiff v;
+            // VCF format is poorly specified. It has a special case when an indel event happens at the first base.
+            if (first_tpos == 0) {
+                if ((first_tpos + tspan + 1) > tlen || (first_qpos + qspan + 1) > qlen) {
+                    std::ostringstream oss;
+                    oss << "The entire contig alignment is a diff?"
+                            << " first_tpos = " << first_tpos << ", tspan = "
+                            << tspan << ", tlen = " << tlen
+                            << ", first_qpos = " << first_qpos << ", qspan = "
+                            << qspan << ", qlen = " << qlen;
+                    throw std::runtime_error(oss.str());
+                }
+                v.pos = first_tpos;
+                v.ref = tseq.substr(first_tpos, tspan + 1);
+                v.alt = qseq.substr(first_qpos, qspan + 1);
+            } else {
+                v.pos = first_tpos - 1;
+                v.ref = tseq.substr(first_tpos - 1, tspan + 1);
+                v.alt = qseq.substr(first_qpos - 1, qspan + 1);
+            }
+            vcf_diffs.emplace_back(v);
+
+            first_diff = -1;
+            first_qpos = -1;
+            first_tpos = -1;
+        }
+        if (c.op == '=' || c.op == 'X') {
+            qpos += c.count;
+            tpos += c.count;
+        } else if (c.op == 'I') {
+            qpos += c.count;
+        } else if (c.op == 'D') {
+            tpos += c.count;
+        }
+    }
+
+    return vcf_diffs;
+}
+
 void WriteLiftoverFile(FILE *fp_out, LiftoverOutFormat liftover_fmt, const std::unique_ptr<racon::Polisher>& polisher,
                         const std::vector<std::unique_ptr<racon::Sequence>>& polished_sequences) {
     // Header.
@@ -124,69 +195,11 @@ void WriteLiftoverFile(FILE *fp_out, LiftoverOutFormat liftover_fmt, const std::
                                 cons_header.c_str(), draft_header.c_str(),it->cigar().c_str(), it->data().c_str());
 
         } else if (liftover_fmt == LiftoverOutFormat::VCF) {
+            // Get the VCF events.
             auto cigar = racon::ParseCigarString(it->cigar());
-
-            struct VcfDiff {
-                int32_t pos;
-                std::string ref;
-                std::string alt;
-            };
-            std::vector<VcfDiff> vcf_diffs;
-
-            int32_t qpos = 0, tpos = 0;
-            int32_t first_diff = -1;
-            int32_t first_qpos = -1, first_tpos = -1;
-            int64_t draft_len = draft_seq->data().size();
-            int64_t cons_len = it->data().size();
-            for (int32_t i = 0; i < static_cast<int32_t>(cigar.size()); ++i) {
-                const auto& c = cigar[i];
-
-                if (c.op != '=' && first_diff < 0) {
-                    first_diff = i;
-                    first_qpos = qpos;
-                    first_tpos = tpos;
-                }
-                // Check if we found a stretch of diffs.
-                if (c.op == '=' && first_diff >= 0) {
-                    const int32_t start = first_diff;
-                    const int32_t end = i;
-                    const int32_t qspan = qpos - first_qpos;
-                    const int32_t tspan = tpos - first_tpos;
-
-                    VcfDiff v;
-                    if (first_tpos == 0) {
-                        if ((first_tpos + tspan + 1) > draft_len || (first_qpos + qspan + 1) > cons_len) {
-                            std::ostringstream oss;
-                            oss << "The entire contig alignment is a diff?"
-                                    << " first_tpos = " << first_tpos << ", tspan = "
-                                    << tspan << ", draft_len = " << draft_len
-                                    << ", first_qpos = " << first_qpos << ", qspan = "
-                                    << qspan << ", cons_len = " << cons_len;
-                            throw std::runtime_error(oss.str());
-                        }
-                        v.pos = first_tpos;
-                        v.ref = draft_seq->data().substr(first_tpos, tspan + 1);
-                        v.alt = it->data().substr(first_qpos, qspan + 1);
-                    } else {
-                        v.pos = first_tpos - 1;
-                        v.ref = draft_seq->data().substr(first_tpos - 1, tspan + 1);
-                        v.alt = it->data().substr(first_qpos - 1, qspan + 1);
-                    }
-                    vcf_diffs.emplace_back(v);
-
-                    first_diff = -1;
-                    first_qpos = -1;
-                    first_tpos = -1;
-                }
-                if (c.op == '=' || c.op == 'X') {
-                    qpos += c.count;
-                    tpos += c.count;
-                } else if (c.op == 'I') {
-                    qpos += c.count;
-                } else if (c.op == 'D') {
-                    tpos += c.count;
-                }
-            }
+            const auto& qseq = it->data();
+            const auto& tseq = draft_seq->data();
+            auto vcf_diffs = ExtractVCFEventsFromCigarString(cigar, qseq, tseq);
 
             // Write out the VCF events.
             for (const auto& v: vcf_diffs) {
