@@ -1,5 +1,6 @@
 racon_cpp_sources = files([
   'bed.cpp',
+  'cigar.cpp',
   'logger.cpp',
   'overlap.cpp',
   'polisher.cpp',

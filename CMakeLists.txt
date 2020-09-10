@@ -114,6 +114,7 @@ if (racon_build_tests)
         src/polisher.cpp
         src/overlap.cpp
         src/sequence.cpp
+        src/test_cigar.cpp
         src/util.cpp
         src/window.cpp)
 
