@@ -5,6 +5,7 @@
  */
 
 #include "util.hpp"
+#include <sstream>
 
 namespace racon {
 
@@ -161,6 +162,29 @@ std::vector<WindowInterval> generate_window_breakpoints(
     }
 
     return ret;
+}
+
+std::vector<std::string> Tokenize(const std::string& str, const char delimiter) {
+    std::vector<std::string> words;
+    std::istringstream ss(str);
+    std::string line;
+    while (std::getline(ss, line, delimiter)) {
+        if (line.size() == 0) {
+            continue;
+        }
+        words.push_back(line);
+    }
+    return words;
+}
+
+std::vector<std::string> TokenizeToWhitespaces(const std::string& str) {
+    std::vector<std::string> words;
+    std::istringstream ss(str);
+    std::string word;
+    while (ss >> word) {
+        words.emplace_back(word);
+    }
+    return words;
 }
 
 }

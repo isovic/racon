@@ -70,4 +70,8 @@ std::vector<WindowInterval> generate_window_breakpoints(
             const std::string& cigar, int64_t q_start, int64_t t_start,
             std::vector<std::tuple<int64_t, int64_t, int64_t>> windows);
 
+std::vector<std::string> Tokenize(const std::string& str, const char delimiter);
+
+std::vector<std::string> TokenizeToWhitespaces(const std::string& str);
+
 }
