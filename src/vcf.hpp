@@ -17,6 +17,11 @@ struct VcfDiff {
     int32_t pos;
     std::string ref;
     std::string alt;
+
+    bool operator==(const VcfDiff& rhs) const
+    {
+        return pos == rhs.pos && ref == rhs.ref && alt == rhs.alt;
+    }
 };
 
 std::vector<VcfDiff> ExtractVCFEventsFromCigarString(const racon::Cigar& cigar, const std::string& qseq, const std::string& tseq);

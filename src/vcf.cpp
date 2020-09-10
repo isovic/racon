@@ -30,8 +30,6 @@ std::vector<VcfDiff> ExtractVCFEventsFromCigarString(const racon::Cigar& cigar, 
         }
         // Check if we found a stretch of diffs.
         if (c.op == '=' && first_diff >= 0) {
-            const int64_t start = first_diff;
-            const int64_t end = i;
             const int64_t qspan = qpos - first_qpos;
             const int64_t tspan = tpos - first_tpos;
 
