@@ -4,11 +4,13 @@
 #include <getopt.h>
 
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include "sequence.hpp"
 #include "polisher.hpp"
+#include "util.hpp"
 #ifdef CUDA_ENABLED
 #include "cuda/cudapolisher.hpp"
 #endif
@@ -44,6 +46,74 @@ static struct option options[] = {
 #endif
     {0, 0, 0, 0}
 };
+
+enum class LiftoverOutFormat {
+    PAF,
+    SAM,
+    VCF,
+    Unknown,
+};
+
+LiftoverOutFormat ParseLiftoverFormatFromExt(const std::string& out_file) {
+    std::vector<std::string> tokens = racon::Tokenize(out_file, '.');
+    if (tokens.size() < 2) {
+        return LiftoverOutFormat::Unknown;
+    }
+    std::string ext = tokens.back();
+    std::transform(ext.begin(), ext.end(), ext.begin(),
+                        [](unsigned char c){ return std::tolower(c); });
+    if (ext == "paf") {
+        return LiftoverOutFormat::PAF;
+    } else if (ext == "sam") {
+        return LiftoverOutFormat::SAM;
+    } else if (ext == "vcf") {
+        return LiftoverOutFormat::VCF;
+    }
+    return LiftoverOutFormat::Unknown;
+}
+
+void WriteLiftoverFile(FILE *fp_out_liftover, LiftoverOutFormat liftover_fmt, const std::unique_ptr<racon::Polisher>& polisher,
+                        const std::vector<std::unique_ptr<racon::Sequence>>& polished_sequences) {
+    if (liftover_fmt == LiftoverOutFormat::SAM) {
+        fprintf(fp_out_liftover, "@HD\tVN:1.5\n");
+        for (const auto& it: polished_sequences) {
+            const std::string cons_header = racon::TokenizeToWhitespaces(it->name())[0];
+            fprintf(fp_out_liftover, "@SQ\tSN:%s\tLN:%lu\n", cons_header.c_str(), it->data().size());
+        }
+    }
+
+    for (const auto& it: polished_sequences) {
+        // Sanity check.
+        if (it->id() < 0) {
+            std::ostringstream oss;
+            oss << "Invalid target id: " << it->id() << "\n";
+            throw std::runtime_error(oss.str());
+        }
+
+        // Get the input draft sequence, needed for length.
+        const auto& draft_seq = polisher->sequences()[it->id()];
+
+        // Parse the headers only up to the first whitespace.
+        const std::string cons_header = racon::TokenizeToWhitespaces(it->name())[0];
+        const std::string draft_header = racon::TokenizeToWhitespaces(draft_seq->name())[0];
+
+        // PAF output.
+        if (liftover_fmt == LiftoverOutFormat::PAF) {
+            fprintf(fp_out_liftover, "%s\t%lu\t%lu\t%lu\t+\t%s\t%lu\t%lu\t%lu\t%lu\t%lu\t60\tcg:Z:%s\n",
+                                cons_header.c_str(), it->data().size(), 0, it->data().size(),
+                                draft_header.c_str(), draft_seq->data().size(), 0, draft_seq->data().size(),
+                                it->data().size(), draft_seq->data().size(),
+                                it->cigar().c_str());
+
+        } else if (liftover_fmt == LiftoverOutFormat::SAM) {
+            fprintf(fp_out_liftover, "%s\t0\t%s\t1\t60\t%s\t*\t0\t0\t%s\t*\n",
+                                cons_header.c_str(), draft_header.c_str(),it->cigar().c_str(), it->data().c_str());
+
+        } else {
+            throw std::runtime_error("Currently unsupported output liftover format.");
+        }
+    }
+}
 
 void help();
 
@@ -163,7 +233,22 @@ int main(int argc, char** argv) {
 
     std::cerr << "BED file: '" << bed_file << "'\n";
 
+    // Prepare output for the liftover if required.
     const bool produce_liftover = (out_liftover_file.empty() ? false : true);
+    LiftoverOutFormat liftover_fmt = LiftoverOutFormat::Unknown;
+    FILE* fp_out_liftover = NULL;
+    if (produce_liftover) {
+        liftover_fmt = ParseLiftoverFormatFromExt(out_liftover_file);
+        // Parse the output format, and make sure it's good.
+        if (liftover_fmt == LiftoverOutFormat::Unknown) {
+            throw std::runtime_error("Unknown output liftover format for file: '" + out_liftover_file + "'.");
+        }
+        // Open the output liftover file if required, and sanity check.
+        fp_out_liftover = fopen(out_liftover_file.c_str(), "w");
+        if (fp_out_liftover == NULL) {
+            throw std::runtime_error("Cannot open file '" + out_liftover_file + "' for writing!.");
+        }
+    }
 
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
         input_paths[2], bed_file, type == 0 ? racon::PolisherType::kC :
@@ -179,6 +264,15 @@ int main(int argc, char** argv) {
 
     for (const auto& it: polished_sequences) {
         fprintf(stdout, ">%s\n%s\n", it->name().c_str(), it->data().c_str());
+    }
+
+    // Write the liftover file if required.
+    if (produce_liftover) {
+        fprintf(stderr, "[racon::] Writing the liftover file.\n");
+        WriteLiftoverFile(fp_out_liftover, liftover_fmt, polisher, polished_sequences);
+        if (fp_out_liftover) {
+            fclose(fp_out_liftover);
+        }
     }
 
     return 0;
