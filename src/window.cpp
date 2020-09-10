@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <stdexcept>
 
 #include "window.hpp"
 #include "spoa/spoa.hpp"

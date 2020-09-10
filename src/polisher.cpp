@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <iostream>
+#include <stdexcept>
 
 #include "overlap.hpp"
 #include "sequence.hpp"

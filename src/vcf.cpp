@@ -4,6 +4,7 @@
  * @brief VCF data structures and tools.
  */
 
+#include <stdexcept>
 #include <sstream>
 #include "vcf.hpp"
 

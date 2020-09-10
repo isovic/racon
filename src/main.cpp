@@ -4,6 +4,7 @@
 #include <getopt.h>
 
 #include <iostream>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <vector>

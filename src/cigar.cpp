@@ -6,6 +6,7 @@
 
 #include <cctype>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include "cigar.hpp"

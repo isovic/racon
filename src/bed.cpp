@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <sstream>
 
 #include "bed.hpp"
