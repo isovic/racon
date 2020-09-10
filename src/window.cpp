@@ -155,7 +155,7 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
 
         if (result.status == EDLIB_STATUS_OK) {
             char* cigar = edlibAlignmentToCigar(result.alignment,
-                    result.alignmentLength, EDLIB_CIGAR_STANDARD);
+                    result.alignmentLength, EDLIB_CIGAR_EXTENDED);
             cigar_ = cigar;
             free(cigar);
         } else {
