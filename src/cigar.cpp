@@ -1,7 +1,7 @@
 /*!
- * @file bed.cpp
+ * @file cigar.cpp
  *
- * @brief BED reader source file
+ * @brief CIGAR data structures and tools.
  */
 
 #include <cctype>
