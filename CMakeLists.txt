@@ -32,11 +32,13 @@ include_directories(${PROJECT_SOURCE_DIR}/vendor/intervaltree)
 set(racon_sources
     src/main.cpp
     src/bed.cpp
+    src/cigar.cpp
     src/logger.cpp
     src/polisher.cpp
     src/overlap.cpp
     src/sequence.cpp
     src/util.cpp
+    src/vcf.cpp
     src/window.cpp)
 
 if(racon_enable_cuda)
@@ -108,14 +110,17 @@ if (racon_build_tests)
     set(racon_test_sources
         test/bed_test.cpp
         test/racon_test.cpp
+        test/test_cigar.cpp
+        test/test_vcf.cpp
         test/util_test.cpp
         src/bed.cpp
+        src/cigar.cpp
         src/logger.cpp
         src/polisher.cpp
         src/overlap.cpp
         src/sequence.cpp
-        src/test_cigar.cpp
         src/util.cpp
+        src/vcf.cpp
         src/window.cpp)
 
     if (racon_enable_cuda)
