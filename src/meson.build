@@ -6,6 +6,7 @@ racon_cpp_sources = files([
   'polisher.cpp',
   'sequence.cpp',
   'util.cpp',
+  'vcf.cpp',
   'window.cpp',
 ])
 
