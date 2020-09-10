@@ -696,6 +696,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     uint64_t logger_step = thread_futures.size() / 20;
 
     uint64_t prev_window_end = 0;
+    const int32_t target_id = (windows_.empty() ? -1 : windows_[0]->id());
 
     for (uint64_t i = 0; i < thread_futures.size(); ++i) {
         thread_futures[i].wait();
@@ -732,7 +733,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                 tags += " RC:i:" + std::to_string(targets_coverages_[windows_[i]->id()]);
                 tags += " XC:f:" + std::to_string(polished_ratio);
                 dst.emplace_back(createSequence(sequences_[windows_[i]->id()]->name() +
-                    tags, polished_data, cigar));
+                    tags, polished_data, cigar, target_id));
             }
 
             num_polished_windows = 0;
@@ -758,7 +759,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                 tags += " RC:i:" + std::to_string(targets_coverages_[t_id]);
                 tags += " XC:f:0.0";
                 dst.emplace_back(createSequence(sequences_[t_id]->name() +
-                    tags, sequences_[t_id]->data()));
+                    tags, sequences_[t_id]->data(), "*", target_id));
 
             }
         }
@@ -771,7 +772,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     }
 
     std::vector<std::shared_ptr<Window>>().swap(windows_);
-    std::vector<std::unique_ptr<Sequence>>().swap(sequences_);
+    // std::vector<std::unique_ptr<Sequence>>().swap(sequences_);
 }
 
 }

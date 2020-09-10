@@ -69,6 +69,10 @@ public:
         uint32_t num_threads, uint32_t cuda_batches, bool cuda_banded_alignment,
         uint32_t cudaaligner_batches, uint32_t cudaaligner_band_width);
 
+    const std::vector<std::unique_ptr<Sequence>>& sequences() const {
+        return sequences_;
+    }
+
 protected:
     Polisher(std::unique_ptr<bioparser::Parser<Sequence>> sparser,
         std::unique_ptr<bioparser::Parser<Overlap>> oparser,

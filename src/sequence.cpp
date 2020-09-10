@@ -17,9 +17,9 @@ std::unique_ptr<Sequence> createSequence(const std::string& name,
 }
 
 std::unique_ptr<Sequence> createSequence(const std::string& name,
-    const std::string& data, const std::string& cigar) {
+    const std::string& data, const std::string& cigar, const int32_t id) {
 
-    return std::unique_ptr<Sequence>(new Sequence(name, data, cigar));
+    return std::unique_ptr<Sequence>(new Sequence(name, data, cigar, id));
 }
 
 Sequence::Sequence(const char* name, uint32_t name_length, const char* data,
@@ -49,13 +49,13 @@ Sequence::Sequence(const char* name, uint32_t name_length, const char* data,
 
 Sequence::Sequence(const std::string& name, const std::string& data)
     : name_(name), data_(data), reverse_complement_(), quality_(),
-    reverse_quality_(), cigar_() {
+    reverse_quality_(), cigar_(), id_(-1) {
 }
 
 Sequence::Sequence(const std::string& name, const std::string& data,
-    const std::string& cigar)
+    const std::string& cigar, const int32_t id)
     : name_(name), data_(data), reverse_complement_(), quality_(),
-    reverse_quality_(), cigar_(cigar) {
+    reverse_quality_(), cigar_(cigar), id_(id) {
 }
 
 void Sequence::create_reverse_complement() {

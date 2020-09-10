@@ -25,7 +25,7 @@ class Sequence;
 std::unique_ptr<Sequence> createSequence(const std::string& name,
     const std::string& data);
 std::unique_ptr<Sequence> createSequence(const std::string& name,
-    const std::string& data, const std::string& cigar);
+    const std::string& data, const std::string& cigar, const int32_t id);
 
 class Sequence {
 public:
@@ -51,6 +51,14 @@ public:
         return reverse_quality_;
     }
 
+    const std::string& cigar() const {
+        return cigar_;
+    }
+
+    int32_t id() const {
+        return id_;
+    }
+
     void create_reverse_complement();
 
     void transmute(bool has_name, bool has_data, bool has_reverse_data);
@@ -60,14 +68,16 @@ public:
     friend std::unique_ptr<Sequence> createSequence(const std::string& name,
         const std::string& data);
     friend std::unique_ptr<Sequence> createSequence(const std::string& name,
-        const std::string& data, const std::string& cigar);
+        const std::string& data, const std::string& cigar, const int32_t id);
+
 private:
     Sequence(const char* name, uint32_t name_length, const char* data,
         uint32_t data_length);
     Sequence(const char* name, uint32_t name_length, const char* data,
         uint32_t data_length, const char* quality, uint32_t quality_length);
     Sequence(const std::string& name, const std::string& data);
-    Sequence(const std::string& name, const std::string& data, const std::string& cigar);
+    Sequence(const std::string& name, const std::string& data, const std::string& cigar,
+        const int32_t id);
     Sequence(const Sequence&) = delete;
     const Sequence& operator=(const Sequence&) = delete;
 
@@ -77,6 +87,7 @@ private:
     std::string quality_;
     std::string reverse_quality_;
     std::string cigar_;
+    int32_t id_;
 };
 
 }
