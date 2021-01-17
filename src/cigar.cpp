@@ -41,4 +41,18 @@ std::string CigarToString(const Cigar& cigar) {
     return oss.str();
 }
 
+void AddCigarEvent(Cigar& cigar, char op, int32_t count) {
+    if (cigar.size() > 0 && cigar.back().op == op) {
+        cigar.back().count += count;
+    } else {
+        cigar.emplace_back(CigarOperation(op, count));
+    }
+}
+
+void MergeCigar(Cigar& cigarDest, const Cigar& cigarSrc) {
+    for (const auto& event: cigarSrc) {
+        AddCigarEvent(cigarDest, event.op, event.count);
+    }
+}
+
 }
