@@ -25,5 +25,6 @@ struct CigarOperation {
 using Cigar = std::vector<CigarOperation>;
 
 Cigar ParseCigarString(const std::string& cigarStr);
+std::string CigarToString(const Cigar& cigar);
 
 }

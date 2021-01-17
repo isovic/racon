@@ -7,6 +7,7 @@
 #include <cctype>
 #include <memory>
 #include <stdexcept>
+#include <sstream>
 #include <string>
 
 #include "cigar.hpp"
@@ -30,6 +31,14 @@ Cigar ParseCigarString(const std::string& cigarStr) {
         throw std::runtime_error("Invalid CIGAR string passed to ParseCigarString, there are no ops specified. CIGAR: '" + cigarStr + "'.");
     }
     return ret;
+}
+
+std::string CigarToString(const Cigar& cigar) {
+    std::ostringstream oss;
+    for (const auto& op: cigar) {
+        oss << op.count << op.op;
+    }
+    return oss.str();
 }
 
 }
