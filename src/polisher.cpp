@@ -14,6 +14,7 @@
 #include "logger.hpp"
 #include "polisher.hpp"
 #include "util.hpp"
+#include "cigar.hpp"
 #ifdef CUDA_ENABLED
 #include "cuda/cudapolisher.hpp"
 #endif
@@ -233,6 +234,7 @@ void Polisher::initialize() {
     for (uint64_t i = 0; i < targets_size; ++i) {
         name_to_id[sequences_[i]->name() + "t"] = i;
         id_to_id[i << 1 | 1] = i;
+        sequences_[i]->id(i);
     }
 
     std::vector<bool> has_name(targets_size, true);
@@ -251,6 +253,7 @@ void Polisher::initialize() {
 
         uint64_t n = 0;
         for (uint64_t i = l; i < sequences_.size(); ++i, ++sequences_size) {
+            sequences_[i]->id(i);
             total_sequences_length += sequences_[i]->data().size();
 
             auto it = name_to_id.find(sequences_[i]->name() + "t");
@@ -691,13 +694,12 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
     }
 
     std::string polished_data = "";
-    std::string cigar = "";
+    Cigar cigar;
     uint32_t num_polished_windows = 0;
 
     uint64_t logger_step = thread_futures.size() / 20;
 
     uint64_t prev_window_end = 0;
-    const int32_t target_id = (windows_.empty() ? -1 : windows_[0]->id());
 
     for (uint64_t i = 0; i < thread_futures.size(); ++i) {
         thread_futures[i].wait();
@@ -708,21 +710,23 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
         if (windows_[i]->start() > prev_window_end) {
             uint64_t span = windows_[i]->start() - prev_window_end;
             polished_data += sequences_[windows_[i]->id()]->data().substr(prev_window_end, span);
-            cigar += std::to_string(span) + "=";
+            AddCigarEvent(cigar, '=', span);
         }
 
         // Add the window consensus.
         polished_data += windows_[i]->consensus();
-        cigar += windows_[i]->cigar();
+        Cigar windowCigar = ParseCigarString(windows_[i]->cigar());
+        MergeCigar(cigar, windowCigar);
 
         if (i == windows_.size() - 1 || windows_[i + 1]->rank() == 0) {
             // BED region related: Append the remaining suffix from the last window to the end of the target.
-            uint32_t tlen = sequences_[windows_[i]->id()]->data().size();
+            const int32_t target_id = windows_[i]->id();
+            uint32_t tlen = sequences_[target_id]->data().size();
             if (windows_[i]->end() < tlen) {
                 uint64_t suffix_start = windows_[i]->end();
                 polished_data += sequences_[windows_[i]->id()]->data().substr(suffix_start);
                 int64_t span = static_cast<int64_t>(sequences_[windows_[i]->id()]->data().size()) - static_cast<int64_t>(suffix_start);
-                cigar += std::to_string(span) + "=";
+                AddCigarEvent(cigar, '=', span);
             }
 
             double polished_ratio = num_polished_windows /
@@ -733,12 +737,14 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                 tags += " LN:i:" + std::to_string(polished_data.size());
                 tags += " RC:i:" + std::to_string(targets_coverages_[windows_[i]->id()]);
                 tags += " XC:f:" + std::to_string(polished_ratio);
+                std::string cigarStr = CigarToString(cigar);
                 dst.emplace_back(createSequence(sequences_[windows_[i]->id()]->name() +
-                    tags, polished_data, cigar, target_id));
+                    tags, polished_data, std::move(cigarStr), target_id));
             }
 
             num_polished_windows = 0;
             polished_data.clear();
+            cigar = {};
         }
         prev_window_end = windows_[i]->end();
         windows_[i].reset();
@@ -760,8 +766,7 @@ void Polisher::polish(std::vector<std::unique_ptr<Sequence>>& dst,
                 tags += " RC:i:" + std::to_string(targets_coverages_[t_id]);
                 tags += " XC:f:0.0";
                 dst.emplace_back(createSequence(sequences_[t_id]->name() +
-                    tags, sequences_[t_id]->data(), "*", target_id));
-
+                    tags, sequences_[t_id]->data(), "*", t_id));
             }
         }
     }
