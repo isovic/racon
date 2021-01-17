@@ -34,6 +34,7 @@ static struct option options[] = {
     {"error-threshold", required_argument, 0, 'e'},
     {"no-trimming", no_argument, 0, 'T'},
     {"liftover", required_argument, 0, 'L'},
+    {"liftover-sam", required_argument, 0, 'S'},
     {"match", required_argument, 0, 'm'},
     {"mismatch", required_argument, 0, 'x'},
     {"gap", required_argument, 0, 'g'},
@@ -75,27 +76,52 @@ LiftoverOutFormat ParseLiftoverFormatFromExt(const std::string& out_file) {
     return LiftoverOutFormat::Unknown;
 }
 
-void WriteLiftoverFile(FILE *fp_out, LiftoverOutFormat liftover_fmt, const std::unique_ptr<racon::Polisher>& polisher,
+void WriteLiftoverFile(const std::string& out_prefix, bool write_sam, const std::unique_ptr<racon::Polisher>& polisher,
                         const std::vector<std::unique_ptr<racon::Sequence>>& polished_sequences) {
-    // Header.
-    if (liftover_fmt == LiftoverOutFormat::SAM) {
-        fprintf(fp_out, "@HD\tVN:1.5\n");
+
+    const std::string out_paf = out_prefix + ".paf";
+    FILE* fp_out_paf = fopen(out_paf.c_str(), "w");
+    if (fp_out_paf == NULL) {
+        throw std::runtime_error("Cannot open file '" + out_paf + "' for writing!.");
+    }
+
+    const std::string out_vcf = out_prefix + ".vcf";
+    FILE* fp_out_vcf = fopen(out_vcf.c_str(), "w");
+    if (fp_out_vcf == NULL) {
+        throw std::runtime_error("Cannot open file '" + out_vcf + "' for writing!.");
+    }
+
+    const std::string out_sam = out_prefix + ".sam";
+    FILE* fp_out_sam = NULL;
+    if (write_sam) {
+        fp_out_sam = fopen(out_sam.c_str(), "w");
+        if (fp_out_sam == NULL) {
+            throw std::runtime_error("Cannot open file '" + out_sam + "' for writing!.");
+        }
+    }
+
+    // SAM header.
+    if (write_sam) {
+        fprintf(fp_out_sam, "@HD\tVN:1.5\n");
         for (const auto& it: polished_sequences) {
             const std::string cons_header = racon::TokenizeToWhitespaces(it->name())[0];
-            fprintf(fp_out, "@SQ\tSN:%s\tLN:%lu\n", cons_header.c_str(), it->data().size());
+            fprintf(fp_out_sam, "@SQ\tSN:%s\tLN:%lu\n", cons_header.c_str(), it->data().size());
         }
-    } else if (liftover_fmt == LiftoverOutFormat::VCF) {
-        fprintf(fp_out, "##fileformat=VCFv4.2\n");
-        fprintf(fp_out, "##FILTER=<ID=PASS,Description=\"All filters passed\">\n");
-        fprintf(fp_out, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
+    }
+
+    // VCF header.
+    {   // Always write a VCF.
+        fprintf(fp_out_vcf, "##fileformat=VCFv4.2\n");
+        fprintf(fp_out_vcf, "##FILTER=<ID=PASS,Description=\"All filters passed\">\n");
+        fprintf(fp_out_vcf, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
         // Draft contig headers.
         for (const auto& it: polished_sequences) {
             // Get the input draft sequence, needed for length.
             const auto& draft_seq = polisher->sequences()[it->id()];
             const std::string draft_header = racon::TokenizeToWhitespaces(draft_seq->name())[0];
-            fprintf(fp_out, "##contig=<ID=%s,length=%lu>\n", draft_header.c_str(), draft_seq->data().size());
+            fprintf(fp_out_vcf, "##contig=<ID=%s,length=%lu>\n", draft_header.c_str(), draft_seq->data().size());
         }
-        fprintf(fp_out, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tFORMAT_VALS\n");
+        fprintf(fp_out_vcf, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tFORMAT_VALS\n");
     }
 
     for (const auto& it: polished_sequences) {
@@ -114,18 +140,16 @@ void WriteLiftoverFile(FILE *fp_out, LiftoverOutFormat liftover_fmt, const std::
         const std::string draft_header = racon::TokenizeToWhitespaces(draft_seq->name())[0];
 
         // PAF output.
-        if (liftover_fmt == LiftoverOutFormat::PAF) {
-            fprintf(fp_out, "%s\t%lu\t%lu\t%lu\t+\t%s\t%lu\t%lu\t%lu\t%lu\t%lu\t60\tcg:Z:%s\n",
+        {
+            fprintf(fp_out_paf, "%s\t%lu\t%lu\t%lu\t+\t%s\t%lu\t%lu\t%lu\t%lu\t%lu\t60\tcg:Z:%s\n",
                                 cons_header.c_str(), it->data().size(), 0, it->data().size(),
                                 draft_header.c_str(), draft_seq->data().size(), 0, draft_seq->data().size(),
                                 it->data().size(), draft_seq->data().size(),
                                 it->cigar().c_str());
+        }
 
-        } else if (liftover_fmt == LiftoverOutFormat::SAM) {
-            fprintf(fp_out, "%s\t0\t%s\t1\t60\t%s\t*\t0\t0\t%s\t*\n",
-                                cons_header.c_str(), draft_header.c_str(),it->cigar().c_str(), it->data().c_str());
-
-        } else if (liftover_fmt == LiftoverOutFormat::VCF) {
+        // VCF output.
+        {
             // Get the VCF events.
             auto cigar = racon::ParseCigarString(it->cigar());
             const auto& qseq = it->data();
@@ -134,12 +158,29 @@ void WriteLiftoverFile(FILE *fp_out, LiftoverOutFormat liftover_fmt, const std::
 
             // Write out the VCF events.
             for (const auto& v: vcf_diffs) {
-                fprintf(fp_out, "%s\t%d\t.\t%s\t%s\t%d\tPASS\t.\tGT\t%s\n", draft_header.c_str(), v.pos + 1, v.ref.c_str(), v.alt.c_str(), 60, "1/1");
+                fprintf(fp_out_vcf, "%s\t%d\t.\t%s\t%s\t%d\tPASS\t.\tGT\t%s\n", draft_header.c_str(), v.pos + 1, v.ref.c_str(), v.alt.c_str(), 60, "1/1");
             }
-
-        } else {
-            throw std::runtime_error("Currently unsupported output liftover format.");
         }
+
+        // SAM output.
+        if (write_sam) {
+            fprintf(fp_out_sam, "%s\t0\t%s\t1\t60\t%s\t*\t0\t0\t%s\t*\n",
+                                cons_header.c_str(), draft_header.c_str(),it->cigar().c_str(), it->data().c_str());
+
+        }
+    }
+
+    if (fp_out_paf) {
+        fflush(fp_out_paf);
+        fclose(fp_out_paf);
+    }
+    if (fp_out_vcf) {
+        fflush(fp_out_vcf);
+        fclose(fp_out_vcf);
+    }
+    if (fp_out_sam) {
+        fflush(fp_out_sam);
+        fclose(fp_out_sam);
     }
 }
 
@@ -168,9 +209,10 @@ int main(int argc, char** argv) {
     bool cuda_banded_alignment = false;
 
     std::string bed_file;
-    std::string out_liftover_file;
+    std::string out_liftover_prefix;
+    bool write_liftover_sam = false;
 
-    std::string optstring = "ufw:q:e:m:x:g:t:B:L:h";
+    std::string optstring = "ufw:q:e:m:x:g:t:B:L:Sh";
 #ifdef CUDA_ENABLED
     optstring += "bc::";
 #endif
@@ -197,7 +239,10 @@ int main(int argc, char** argv) {
                 trim = false;
                 break;
             case 'L':
-                out_liftover_file = optarg;
+                out_liftover_prefix = optarg;
+                break;
+            case 'S':
+                write_liftover_sam = true;
                 break;
             case 'm':
                 match = atoi(optarg);
@@ -262,20 +307,10 @@ int main(int argc, char** argv) {
     std::cerr << "BED file: '" << bed_file << "'\n";
 
     // Prepare output for the liftover if required.
-    const bool produce_liftover = (out_liftover_file.empty() ? false : true);
-    LiftoverOutFormat liftover_fmt = LiftoverOutFormat::Unknown;
-    FILE* fp_out_liftover = NULL;
-    if (produce_liftover) {
-        liftover_fmt = ParseLiftoverFormatFromExt(out_liftover_file);
-        // Parse the output format, and make sure it's good.
-        if (liftover_fmt == LiftoverOutFormat::Unknown) {
-            throw std::runtime_error("Unknown output liftover format for file: '" + out_liftover_file + "'.");
-        }
-        // Open the output liftover file if required, and sanity check.
-        fp_out_liftover = fopen(out_liftover_file.c_str(), "w");
-        if (fp_out_liftover == NULL) {
-            throw std::runtime_error("Cannot open file '" + out_liftover_file + "' for writing!.");
-        }
+    const bool produce_liftover = (out_liftover_prefix.empty() ? false : true);
+
+    if (write_liftover_sam && produce_liftover == false) {
+        throw std::runtime_error("Writing of the liftover SAM file option ('-S') cannot be used without specifying the liftover output prefix ('-L').");
     }
 
     auto polisher = racon::createPolisher(input_paths[0], input_paths[1],
@@ -298,11 +333,7 @@ int main(int argc, char** argv) {
     // Write the liftover file if required.
     if (produce_liftover) {
         fprintf(stderr, "[racon::] Writing the liftover file.\n");
-        WriteLiftoverFile(fp_out_liftover, liftover_fmt, polisher, polished_sequences);
-        fflush(fp_out_liftover);
-        if (fp_out_liftover) {
-            fclose(fp_out_liftover);
-        }
+        WriteLiftoverFile(out_liftover_prefix, write_liftover_sam, polisher, polished_sequences);
     }
 
     return 0;
@@ -342,9 +373,14 @@ void help() {
         "            disables consensus trimming at window ends\n"
         "        -L, --liftover <string>\n"
         "            default: ''\n"
-        "            optional output liftover file which converts the draft\n"
-        "            sequence to the output consensus. Supported formats:\n"
+        "            optional prefix of the output liftover files which convert\n"
+        "            the draft sequence to the output consensus. PAF and VCF files\n"
+        "            are always written with this prefix, and SAM can optionally\n"
+        "            be written if the -S option is provided."
         "            VCF, PAF, SAM. Format is determined from extension.\n"
+        "        -S, --liftover-sam\n"
+        "            Used only in combination with the -L option, this writes out\n"
+        "            a SAM formatted alignment of the polished sequences vs the draft.\n"
         "        -m, --match <int>\n"
         "            default: 3\n"
         "            score for matching bases\n"
