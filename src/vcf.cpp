@@ -4,8 +4,11 @@
  * @brief VCF data structures and tools.
  */
 
+#include <fstream>
 #include <stdexcept>
 #include <sstream>
+#include <string>
+#include <time.h>
 #include "vcf.hpp"
 
 namespace racon {
@@ -74,6 +77,23 @@ std::vector<VcfDiff> ExtractVCFEventsFromCigarString(const racon::Cigar& cigar, 
         }
 
         if (qpos > qlen || tpos > tlen) {
+            char date[50];
+            time_t t = time(0);
+            struct tm *tm;
+            tm = gmtime(&t);
+            strftime(date, sizeof(date), "%Y_%m_%d.%H_%M_%S", tm);
+            std::string outPrefix = "error.vcf." + std::string(date) + "." + std::to_string(tseq.size()) + "." + std::to_string(qseq.size());
+            std::ofstream ofsQuery(outPrefix + ".query.fasta");
+            ofsQuery << ">query " << qseq.size() << "\n" << qseq << "\n";
+            ofsQuery.flush();
+            std::ofstream ofsTarget(outPrefix + ".target.fasta");
+            ofsTarget << ">target " << tseq.size() << "\n" << tseq << "\n";
+            ofsTarget.flush();
+            std::ofstream ofsCigar(outPrefix + ".cigar");
+            ofsCigar << cigar.size() << "\n";
+            ofsCigar << racon::CigarToString(cigar) << "\n";
+            ofsCigar.flush();
+
             std::ostringstream oss;
             oss << "Invalid CIGAR vector, the operations do not match the provided sequence "
                 << "lengths. qpos = " << qpos << ", tpos = " << tpos << ", qlen = " << qlen << ", tlen = " << tlen;
