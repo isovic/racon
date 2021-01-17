@@ -51,31 +51,6 @@ static struct option options[] = {
     {0, 0, 0, 0}
 };
 
-enum class LiftoverOutFormat {
-    PAF,
-    SAM,
-    VCF,
-    Unknown,
-};
-
-LiftoverOutFormat ParseLiftoverFormatFromExt(const std::string& out_file) {
-    std::vector<std::string> tokens = racon::Tokenize(out_file, '.');
-    if (tokens.size() < 2) {
-        return LiftoverOutFormat::Unknown;
-    }
-    std::string ext = tokens.back();
-    std::transform(ext.begin(), ext.end(), ext.begin(),
-                        [](unsigned char c){ return std::tolower(c); });
-    if (ext == "paf") {
-        return LiftoverOutFormat::PAF;
-    } else if (ext == "sam") {
-        return LiftoverOutFormat::SAM;
-    } else if (ext == "vcf") {
-        return LiftoverOutFormat::VCF;
-    }
-    return LiftoverOutFormat::Unknown;
-}
-
 void WriteLiftoverFile(const std::string& out_prefix, bool write_sam, const std::unique_ptr<racon::Polisher>& polisher,
                         const std::vector<std::unique_ptr<racon::Sequence>>& polished_sequences) {
 
