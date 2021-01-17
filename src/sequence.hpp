@@ -59,6 +59,10 @@ public:
         return id_;
     }
 
+    void id(int32_t val) {
+        id_ = val;
+    }
+
     void create_reverse_complement();
 
     void transmute(bool has_name, bool has_data, bool has_reverse_data);
