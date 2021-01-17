@@ -293,11 +293,13 @@ int main(int argc, char** argv) {
     for (const auto& it: polished_sequences) {
         fprintf(stdout, ">%s\n%s\n", it->name().c_str(), it->data().c_str());
     }
+    fflush(stdout);
 
     // Write the liftover file if required.
     if (produce_liftover) {
         fprintf(stderr, "[racon::] Writing the liftover file.\n");
         WriteLiftoverFile(fp_out_liftover, liftover_fmt, polisher, polished_sequences);
+        fflush(fp_out_liftover);
         if (fp_out_liftover) {
             fclose(fp_out_liftover);
         }
