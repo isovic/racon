@@ -71,6 +71,7 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
 
     if (sequences_.size() < 3) {
         consensus_ = std::string(sequences_.front().first, sequences_.front().second);
+        cigar_ = std::to_string(consensus_.size()) + "=";
         return false;
     }
 
@@ -149,22 +150,31 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
         const char* q = consensus_.c_str();
         const uint32_t q_len = consensus_.size();
 
-        // align overlaps with edlib
-        EdlibAlignResult result = edlibAlign(q, q_len, t, t_len,
-                edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH,
-                    nullptr, 0));
+        // Avoid Edlib edge cases which can segfault.
+        if (q_len == 0 && t_len > 0) {
+            cigar_ = std::to_string(t_len) + "D";
 
-        if (result.status == EDLIB_STATUS_OK) {
-            char* cigar = edlibAlignmentToCigar(result.alignment,
-                    result.alignmentLength, EDLIB_CIGAR_EXTENDED);
-            cigar_ = cigar;
-            free(cigar);
+        } else if (q_len > 0 && t_len == 0) {
+            cigar_ = std::to_string(q_len) + "I";
+
         } else {
-            edlibFreeAlignResult(result);
-            throw std::runtime_error("Edlib unable to align consensus to draft sequence!");
-        }
+            // align overlaps with edlib
+            EdlibAlignResult result = edlibAlign(q, q_len, t, t_len,
+                    edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH,
+                        nullptr, 0));
 
-        edlibFreeAlignResult(result);
+            if (result.status == EDLIB_STATUS_OK) {
+                char* cigar = edlibAlignmentToCigar(result.alignment,
+                        result.alignmentLength, EDLIB_CIGAR_EXTENDED);
+                cigar_ = cigar;
+                free(cigar);
+            } else {
+                edlibFreeAlignResult(result);
+                throw std::runtime_error("Edlib unable to align consensus to draft sequence!");
+            }
+
+            edlibFreeAlignResult(result);
+        }
     }
 
     return true;
@@ -178,9 +188,11 @@ std::ostream& operator<<(std::ostream& os, const Window& a)
         << ", end = " << a.end_
         << ", backbone_len = " << a.backbone_length()
         << ", consensus_len = " << a.consensus_.size()
+        << ", cigar: " << a.cigar()
         << ", seqs_len = " << a.sequences_.size()
         << ", quals_len = " << a.qualities_.size()
-        << ", pos_len = " << a.positions_.size();
+        << ", pos_len = " << a.positions_.size()
+        << "\n";
     return os;
 }
 
