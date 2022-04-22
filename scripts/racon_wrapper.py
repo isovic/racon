@@ -13,6 +13,9 @@ class RaconWrapper:
     __racon = '@racon_path@'
     __rampler = '@rampler_path@'
 
+    if(not os.path.exists(__rampler) and shutil.which("rampler")):
+        __rampler = shutil.which("rampler")
+
     def __init__(self, sequences, overlaps, target_sequences, split, subsample,
         include_unpolished, fragment_correction, window_length, quality_threshold,
         error_threshold, match, mismatch, gap, threads,
